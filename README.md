@@ -1,4 +1,4 @@
-# CDKTF AWS Project
+# The Production Experience Showcase
 
 This is a simple AWS infrastructure project using the Cloud Development Kit for Terraform (CDKTF) with TypeScript.
 
