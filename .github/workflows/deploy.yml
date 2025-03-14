@@ -1,0 +1,57 @@
+name: Deploy Prod-E
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install CDKTF
+        run: npm install -g cdktf-cli
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Generate CDKTF Providers
+        run: cdktf get
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Build and Push Backend
+        run: |
+          cd backend
+          docker build -t prod-e-backend .
+          docker tag prod-e-backend:latest 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-backend:latest
+          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 043309339649.dkr.ecr.us-west-2.amazonaws.com
+          docker push 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-backend:latest
+
+      - name: Build and Push Prometheus
+        run: |
+          cd backend
+          docker build -f Dockerfile.prometheus -t prod-e-prometheus .
+          docker tag prod-e-prometheus:latest 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest
+          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 043309339649.dkr.ecr.us-west-2.amazonaws.com
+          docker push 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest
+
+      - name: Run Backend Tests
+        run: |
+          cd backend
+          npm install
+          npm test
+
+      - name: Deploy Infrastructure
+        run: |
+          cdktf synth && cdktf deploy --auto-approve

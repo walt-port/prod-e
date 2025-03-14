@@ -16,6 +16,7 @@ This document serves as the main index for all infrastructure documentation in t
 | Container Deployment      | Documentation for ECR, Docker builds, and container deployment                 | [container-deployment.md](./container-deployment.md) |
 | Testing                   | Comprehensive testing documentation including approach, coverage, and examples | [testing.md](./testing.md)                           |
 | Monitoring                | Documentation for Prometheus and Grafana implementation                        | [monitoring.md](./monitoring.md)                     |
+| CI/CD                     | Documentation for GitHub Actions CI/CD implementation                          | [ci-cd.md](./ci-cd.md)                               |
 
 ## Infrastructure Overview
 
@@ -77,8 +78,14 @@ The project is being implemented according to the following timeline:
 - ✅ **Day 2 Continued**: Monitoring Setup (Partial)
 
   - ✅ Prometheus server implementation on ECS Fargate
-  - ⏳ Grafana dashboard setup (next step)
+  - ⏳ Grafana dashboard setup (coming soon)
   - ⏳ Alert configuration
+
+- ✅ **Day 2 Continued**: CI/CD Setup
+
+  - ✅ GitHub Actions workflow configuration
+  - ✅ Automated Docker builds and push to ECR
+  - ✅ Automated testing and deployment
 
 - ⏳ **Day 3**: Frontend Dashboard
 
@@ -86,9 +93,9 @@ The project is being implemented according to the following timeline:
   - Metrics visualization
   - Real-time updates
 
-- ⏳ **Day 4**: CI/CD & Polish
-  - GitHub Actions for CI/CD
-  - Final testing and documentation
+- ⏳ **Day 4**: Polish & Documentation
+  - Final testing and polishing
+  - Complete documentation
   - Project demonstration
 
 ## Deployment Instructions
