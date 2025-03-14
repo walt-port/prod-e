@@ -16,7 +16,8 @@
     "upgrade": "npm i cdktf@latest cdktf-cli@latest",
     "upgrade:next": "npm i cdktf@next cdktf-cli@next",
     "deploy": "cdktf deploy prod-e",
-    "destroy": "cdktf destroy prod-e"
+    "destroy": "cdktf destroy prod-e",
+    "build:docker": "./scripts/build-and-push.sh"
   },
   "engines": {
     "node": ">=18.0"

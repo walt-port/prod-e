@@ -6,13 +6,14 @@ This document serves as the main index for all infrastructure documentation in t
 
 ## Available Documentation
 
-| Component                 | Description                                                          | Document Link                                  |
-| ------------------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
-| VPC and Networking        | Documentation about VPC, subnets, Internet Gateway, and routing      | [vpc-networking.md](./vpc-networking.md)       |
-| Application Load Balancer | Documentation about ALB, target groups, and listeners                | [load-balancer.md](./load-balancer.md)         |
-| RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups | [rds-database.md](./rds-database.md)           |
-| ECS Fargate Service       | Documentation about ECS cluster, task definition, and service        | [ecs-fargate.md](./ecs-fargate.md)             |
-| Multi-AZ Strategy         | Documentation of current multi-AZ implementation and future plans    | [multi-az-strategy.md](./multi-az-strategy.md) |
+| Component                 | Description                                                          | Document Link                                        |
+| ------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------- |
+| VPC and Networking        | Documentation about VPC, subnets, Internet Gateway, and routing      | [vpc-networking.md](./vpc-networking.md)             |
+| Application Load Balancer | Documentation about ALB, target groups, and listeners                | [load-balancer.md](./load-balancer.md)               |
+| RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups | [rds-database.md](./rds-database.md)                 |
+| ECS Fargate Service       | Documentation about ECS cluster, task definition, and service        | [ecs-fargate.md](./ecs-fargate.md)                   |
+| Multi-AZ Strategy         | Documentation of current multi-AZ implementation and future plans    | [multi-az-strategy.md](./multi-az-strategy.md)       |
+| Container Deployment      | Documentation for ECR, Docker builds, and container deployment       | [container-deployment.md](./container-deployment.md) |
 
 ## Infrastructure Overview
 

@@ -2,6 +2,7 @@ import { App, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
 import { DbInstance } from './.gen/providers/aws/db-instance';
 import { DbSubnetGroup } from './.gen/providers/aws/db-subnet-group';
+import { EcrRepository } from './.gen/providers/aws/ecr-repository';
 import { EcsCluster } from './.gen/providers/aws/ecs-cluster';
 import { EcsService } from './.gen/providers/aws/ecs-service';
 import { EcsTaskDefinition } from './.gen/providers/aws/ecs-task-definition';
@@ -45,16 +46,22 @@ const config = {
     allocatedStorage: 20,
     skipFinalSnapshot: true,
   },
+  // ECR configuration
+  ecr: {
+    repositoryName: 'prod-e-backend',
+    imageScanningConfig: true,
+    mutability: 'MUTABLE',
+  },
   // ECS configuration
   ecs: {
     clusterName: 'prod-e-cluster',
     serviceName: 'prod-e-service',
     taskFamily: 'prod-e-task',
-    containerName: 'dummy-container',
-    containerPort: 80,
+    containerName: 'prod-e-container',
+    containerPort: 3000, // Updated to match our Express app port
     cpu: '256', // 0.25 vCPU
     memory: '512', // 0.5 GB
-    image: 'node:16', // Using Node.js 16 as the base image for our application
+    image: 'node:16', // This will be updated with our ECR image
     desiredCount: 1,
   },
 };
@@ -318,7 +325,7 @@ class MyStack extends TerraformStack {
     });
 
     // Create the RDS PostgreSQL instance
-    const rdsInstance = new DbInstance(this, 'postgres-instance', {
+    const dbInstance = new DbInstance(this, 'postgres-instance', {
       identifier: 'postgres-instance',
       instanceClass: config.database.instanceClass,
       allocatedStorage: config.database.allocatedStorage,
@@ -377,6 +384,20 @@ class MyStack extends TerraformStack {
       cidrBlocks: ['0.0.0.0/0'], // Allow traffic to anywhere
       securityGroupId: ecsSecurityGroup.id,
       description: 'Allow all outbound traffic',
+    });
+
+    // -------------------- ECR Repository Section --------------------
+    // Create an Elastic Container Registry repository to store our Docker images
+
+    const ecrRepository = new EcrRepository(this, 'ecr-repository', {
+      name: config.ecr.repositoryName,
+      imageScanningConfiguration: {
+        scanOnPush: config.ecr.imageScanningConfig,
+      },
+      imageTagMutability: config.ecr.mutability,
+      tags: {
+        Name: 'ecr-repository',
+      },
     });
 
     // Create an ECS cluster
@@ -450,13 +471,39 @@ class MyStack extends TerraformStack {
       containerDefinitions: JSON.stringify([
         {
           name: config.ecs.containerName,
-          image: config.ecs.image, // Node.js 16 base image
+          image: `${ecrRepository.repositoryUrl}:latest`, // Use our ECR repository with latest tag
           essential: true, // If this container fails, the entire task fails
           portMappings: [
             {
-              containerPort: config.ecs.containerPort, // Port 80 inside the container
+              containerPort: config.ecs.containerPort, // Port 3000 inside the container (Express app)
               hostPort: config.ecs.containerPort, // Same port on the host (required for Fargate)
               protocol: 'tcp',
+            },
+          ],
+          environment: [
+            {
+              name: 'DB_HOST',
+              value: dbInstance.address,
+            },
+            {
+              name: 'DB_PORT',
+              value: dbInstance.port.toString(),
+            },
+            {
+              name: 'DB_NAME',
+              value: config.database.dbName,
+            },
+            {
+              name: 'DB_USER',
+              value: config.database.username,
+            },
+            {
+              name: 'DB_PASSWORD',
+              value: config.database.password,
+            },
+            {
+              name: 'NODE_ENV',
+              value: 'production',
             },
           ],
           logConfiguration: {
@@ -467,6 +514,13 @@ class MyStack extends TerraformStack {
               'awslogs-stream-prefix': 'ecs',
               'awslogs-create-group': 'true',
             },
+          },
+          healthCheck: {
+            command: ['CMD-SHELL', 'curl -f http://localhost:3000/health || exit 1'],
+            interval: 30,
+            timeout: 5,
+            retries: 3,
+            startPeriod: 60,
           },
         },
       ]),
@@ -555,13 +609,13 @@ class MyStack extends TerraformStack {
 
     // Output the RDS endpoint address
     new TerraformOutput(this, 'rds-endpoint', {
-      value: rdsInstance.endpoint,
+      value: dbInstance.endpoint,
       description: 'The connection endpoint for the RDS instance',
     });
 
     // Output the RDS port
     new TerraformOutput(this, 'rds-port', {
-      value: rdsInstance.port.toString(),
+      value: dbInstance.port.toString(),
       description: 'The port for the RDS instance',
     });
 
@@ -581,6 +635,12 @@ class MyStack extends TerraformStack {
     new TerraformOutput(this, 'ecs-task-definition-arn', {
       value: ecsTaskDefinition.arn,
       description: 'The ARN of the ECS task definition',
+    });
+
+    // Output the ECR repository URL
+    new TerraformOutput(this, 'ecr-repository-url', {
+      value: ecrRepository.repositoryUrl,
+      description: 'The URL of the ECR repository',
     });
   }
 }
