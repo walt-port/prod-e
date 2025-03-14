@@ -1,0 +1,31 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Environment variables - we'll inject these at runtime
+.env
+.env.*
+
+# Git related
+.git/
+.gitignore
+
+# Documentation and markdown
+README.md
+*.md
+
+# Development tools
+.vscode/
+.idea/
+*.sublime-*
+
+# Test files
+test/
+__tests__/
+coverage/
+
+# Other unnecessary files
+.DS_Store
+Thumbs.db
