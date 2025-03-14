@@ -2,10 +2,10 @@ import { App, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
 import { DbInstance } from './.gen/providers/aws/db-instance';
 import { DbSubnetGroup } from './.gen/providers/aws/db-subnet-group';
-import { EcrRepository } from './.gen/providers/aws/ecr-repository';
 import { EcsCluster } from './.gen/providers/aws/ecs-cluster';
 import { EcsService } from './.gen/providers/aws/ecs-service';
 import { EcsTaskDefinition } from './.gen/providers/aws/ecs-task-definition';
+import { Eip } from './.gen/providers/aws/eip';
 import { IamRole } from './.gen/providers/aws/iam-role';
 import { IamRolePolicyAttachment } from './.gen/providers/aws/iam-role-policy-attachment';
 import { InternetGateway } from './.gen/providers/aws/internet-gateway';
@@ -13,6 +13,7 @@ import { Lb } from './.gen/providers/aws/lb';
 import { LbListener } from './.gen/providers/aws/lb-listener';
 import { LbListenerRule } from './.gen/providers/aws/lb-listener-rule';
 import { LbTargetGroup } from './.gen/providers/aws/lb-target-group';
+import { NatGateway } from './.gen/providers/aws/nat-gateway';
 import { AwsProvider } from './.gen/providers/aws/provider';
 import { Route } from './.gen/providers/aws/route';
 import { RouteTable } from './.gen/providers/aws/route-table';
@@ -90,11 +91,11 @@ class MyStack extends TerraformStack {
       },
     });
 
-    // Create an Internet Gateway for the public subnet
+    // Create an Internet Gateway to provide internet access
     const internetGateway = new InternetGateway(this, 'internet-gateway', {
       vpcId: vpc.id,
       tags: {
-        Name: 'igw',
+        Name: 'main-igw',
       },
     });
 
@@ -142,7 +143,24 @@ class MyStack extends TerraformStack {
       },
     });
 
-    // Create a route table for the public subnet
+    // Create an Elastic IP for the NAT Gateway
+    const natEip = new Eip(this, 'nat-eip', {
+      domain: 'vpc',
+      tags: {
+        Name: 'nat-eip',
+      },
+    });
+
+    // Create a NAT Gateway in the public subnet
+    const natGateway = new NatGateway(this, 'nat-gateway', {
+      allocationId: natEip.id,
+      subnetId: publicSubnet.id,
+      tags: {
+        Name: 'main-nat-gateway',
+      },
+    });
+
+    // Create a route table for public subnets
     const publicRouteTable = new RouteTable(this, 'public-route-table', {
       vpcId: vpc.id,
       tags: {
@@ -150,11 +168,26 @@ class MyStack extends TerraformStack {
       },
     });
 
-    // Create a route to the internet gateway
+    // Create a route table for private subnets
+    const privateRouteTable = new RouteTable(this, 'private-route-table', {
+      vpcId: vpc.id,
+      tags: {
+        Name: 'private-rt',
+      },
+    });
+
+    // Create a route to the internet through the Internet Gateway for public subnets
     new Route(this, 'public-route', {
       routeTableId: publicRouteTable.id,
-      destinationCidrBlock: '0.0.0.0/0', // All traffic
+      destinationCidrBlock: '0.0.0.0/0',
       gatewayId: internetGateway.id,
+    });
+
+    // Create a route to the internet through the NAT Gateway for private subnets
+    new Route(this, 'private-route', {
+      routeTableId: privateRouteTable.id,
+      destinationCidrBlock: '0.0.0.0/0',
+      natGatewayId: natGateway.id,
     });
 
     // Associate the public route table with the public subnet
@@ -167,14 +200,6 @@ class MyStack extends TerraformStack {
     new RouteTableAssociation(this, 'public-route-association-b', {
       subnetId: publicSubnetB.id,
       routeTableId: publicRouteTable.id,
-    });
-
-    // Create a route table for the private subnet
-    const privateRouteTable = new RouteTable(this, 'private-route-table', {
-      vpcId: vpc.id,
-      tags: {
-        Name: 'private-rt',
-      },
     });
 
     // Associate the private route table with the private subnet
@@ -225,7 +250,7 @@ class MyStack extends TerraformStack {
 
     // Create a target group for the ALB
     const ecsTargetGroup = new LbTargetGroup(this, 'ecs-target-group', {
-      name: 'ecs-target-group',
+      name: 'ecs-target-group-v2',
       port: config.ecs.containerPort,
       protocol: 'HTTP',
       vpcId: vpc.id,
@@ -258,23 +283,23 @@ class MyStack extends TerraformStack {
       },
     });
 
-    // Create a listener on port 80
-    const httpListener = new LbListener(this, 'alb-http-listener', {
+    // Create an HTTP listener for the ALB
+    const albHttpListener = new LbListener(this, 'alb-http-listener', {
       loadBalancerArn: alb.arn,
       port: 80,
-      protocol: 'HTTP',
+      protocol: 'HTTP', // Using HTTP for simplicity
       defaultAction: [
         {
           type: 'fixed-response',
           fixedResponse: {
             contentType: 'text/plain',
-            messageBody: 'Service Unavailable',
-            statusCode: '503',
+            statusCode: '404',
+            messageBody: 'Not Found',
           },
         },
       ],
       tags: {
-        Name: 'http-listener',
+        Name: 'alb-http-listener',
       },
     });
 
@@ -362,16 +387,15 @@ class MyStack extends TerraformStack {
       },
     });
 
-    // Add inbound rule to allow HTTP traffic from the ALB only
-    // This ensures that only the ALB can send traffic to our containers
+    // Add inbound rule to allow HTTP traffic from ALB
     new SecurityGroupRule(this, 'ecs-http-inbound', {
       type: 'ingress',
       fromPort: config.ecs.containerPort,
       toPort: config.ecs.containerPort,
       protocol: 'tcp',
-      sourceSecurityGroupId: albSecurityGroup.id, // Allow traffic only from ALB
+      sourceSecurityGroupId: albSecurityGroup.id, // Allow traffic from ALB
       securityGroupId: ecsSecurityGroup.id,
-      description: 'Allow HTTP traffic from ALB security group',
+      description: 'Allow HTTP traffic from ALB',
     });
 
     // Add outbound rule to allow all traffic
@@ -389,25 +413,16 @@ class MyStack extends TerraformStack {
     // -------------------- ECR Repository Section --------------------
     // Create an Elastic Container Registry repository to store our Docker images
 
-    const ecrRepository = new EcrRepository(this, 'ecr-repository', {
-      name: config.ecr.repositoryName,
-      imageScanningConfiguration: {
-        scanOnPush: config.ecr.imageScanningConfig,
-      },
-      imageTagMutability: config.ecr.mutability,
-      tags: {
-        Name: 'ecr-repository',
-      },
-    });
-
-    // Create an ECS cluster
-    // This is a logical grouping of ECS tasks and services
+    // Create ECS cluster
     const ecsCluster = new EcsCluster(this, 'ecs-cluster', {
       name: config.ecs.clusterName,
       tags: {
         Name: 'ecs-cluster',
       },
     });
+
+    // Reference existing ECR repository
+    const ecrRepositoryUrl = `043309339649.dkr.ecr.${config.region}.amazonaws.com/${config.ecr.repositoryName}`;
 
     // Create IAM execution role for ECS tasks
     // This role allows ECS to pull container images and publish logs to CloudWatch
@@ -471,7 +486,7 @@ class MyStack extends TerraformStack {
       containerDefinitions: JSON.stringify([
         {
           name: config.ecs.containerName,
-          image: `${ecrRepository.repositoryUrl}:latest`, // Use our ECR repository with latest tag
+          image: `${ecrRepositoryUrl}:latest`, // Use our ECR repository with latest tag
           essential: true, // If this container fails, the entire task fails
           portMappings: [
             {
@@ -530,35 +545,42 @@ class MyStack extends TerraformStack {
     });
 
     // Create an ECS service
-    // This manages the deployment and lifecycle of the ECS tasks
+    // This defines how our task should run and be scaled
     const ecsService = new EcsService(this, 'ecs-service', {
-      name: config.ecs.serviceName,
       cluster: ecsCluster.id,
+      desiredCount: config.ecs.desiredCount,
+      launchType: 'FARGATE', // Use serverless Fargate
       taskDefinition: ecsTaskDefinition.arn,
-      desiredCount: config.ecs.desiredCount, // Run 1 instance of the task
-      launchType: 'FARGATE', // Serverless, no EC2 instances to manage
-      schedulingStrategy: 'REPLICA', // Maintain the desired count of tasks
+      name: config.ecs.serviceName,
       networkConfiguration: {
-        subnets: [privateSubnet.id], // Place tasks in the private subnet in us-west-2a
-        securityGroups: [ecsSecurityGroup.id], // Use the security group we created
-        assignPublicIp: false, // No public IP, will be accessed through the ALB
+        subnets: [privateSubnet.id, privateSubnetB.id],
+        securityGroups: [ecsSecurityGroup.id],
+        assignPublicIp: false, // No public IP needed in private subnet
       },
       loadBalancer: [
         {
-          targetGroupArn: ecsTargetGroup.arn,
           containerName: config.ecs.containerName,
           containerPort: config.ecs.containerPort,
+          targetGroupArn: ecsTargetGroup.arn,
         },
       ],
+      forceNewDeployment: true, // Force new deployment on changes
+      deploymentCircuitBreaker: {
+        enable: true,
+        rollback: true,
+      },
+      deploymentController: {
+        type: 'ECS', // Use ECS managed deployments
+      },
       tags: {
         Name: 'ecs-service',
       },
     });
 
-    // Create a listener rule to forward traffic to the ECS target group
+    // Create a listener rule to forward traffic to our ECS service
     new LbListenerRule(this, 'alb-listener-rule', {
-      listenerArn: httpListener.arn,
-      priority: 100,
+      listenerArn: albHttpListener.arn,
+      priority: 100, // Higher priority rules are evaluated first
       action: [
         {
           type: 'forward',
@@ -568,12 +590,15 @@ class MyStack extends TerraformStack {
       condition: [
         {
           pathPattern: {
-            values: ['/*'],
+            values: ['/*'], // Forward all traffic
           },
         },
       ],
       tags: {
         Name: 'ecs-listener-rule',
+      },
+      lifecycle: {
+        createBeforeDestroy: true,
       },
     });
 
@@ -639,7 +664,7 @@ class MyStack extends TerraformStack {
 
     // Output the ECR repository URL
     new TerraformOutput(this, 'ecr-repository-url', {
-      value: ecrRepository.repositoryUrl,
+      value: ecrRepositoryUrl,
       description: 'The URL of the ECR repository',
     });
   }

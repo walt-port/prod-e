@@ -53,6 +53,7 @@ This project sets up the following AWS resources:
 - Public subnets in us-west-2a (10.0.1.0/24) and us-west-2b (10.0.3.0/24)
 - Private subnets in us-west-2a (10.0.2.0/24) and us-west-2b (10.0.4.0/24)
 - Internet Gateway for public internet access
+- NAT Gateway in the public subnet for private subnet internet access
 - Route tables with proper routing configuration
 - Application Load Balancer for traffic management (spanning multiple AZs)
 
@@ -79,16 +80,19 @@ The infrastructure is deployed across multiple availability zones (us-west-2a an
 
 - Public subnets in two AZs with direct internet access through an Internet Gateway
 - Private subnets in two AZs for ECS Fargate services and RDS
+- NAT Gateway in the public subnet allowing private resources to access the internet
 - Application Load Balancer spanning multiple AZs for fault tolerance
 - RDS PostgreSQL database with a subnet group covering multiple AZs
 
 ### 🆕 Recent Improvements
 
-The infrastructure was recently updated to support AWS requirements for multi-AZ deployments:
+The infrastructure was recently updated to support AWS requirements and best practices:
 
 - Application Load Balancer now spans both us-west-2a and us-west-2b
 - RDS database subnet group includes subnets in both us-west-2a and us-west-2b
 - PostgreSQL username was updated to comply with reserved word restrictions
+- NAT Gateway added to enable internet access from private subnets
+- ECS task health checks optimized to use Node.js instead of curl
 
 ## 🧪 Testing
 
@@ -195,10 +199,11 @@ To modify the infrastructure:
 
 This project is designed to be cost-effective for demonstration purposes:
 
-- Estimated monthly cost: ~$42-43
+- Estimated monthly cost: ~$45-50
 - ECS Fargate: ~$10
 - RDS PostgreSQL: ~$15
 - Application Load Balancer: ~$16
+- NAT Gateway: ~$4.5 (plus data processing)
 - Data Transfer: ~$1-2
 
 Resources can be shut down after demonstration to avoid ongoing costs.
@@ -211,6 +216,10 @@ During deployment and testing, we encountered and resolved the following issues:
 
 2. **PostgreSQL Reserved Words**: 'admin' is a reserved word in PostgreSQL and cannot be used as a master username. We changed this to 'dbadmin'.
 
-3. **Test Environment Isolation**: Initial test failures occurred due to shared state between tests. We resolved this by implementing proper test isolation using Jest's `beforeEach` and `afterEach` hooks, ensuring each test starts with a clean state.
+3. **Private Subnet Internet Access**: ECS tasks in private subnets couldn't access ECR to pull Docker images. We fixed this by adding a NAT Gateway to provide internet access for resources in private subnets.
 
-4. **Mock Database Connections**: Tests were failing intermittently due to improper mocking of PostgreSQL connections. We fixed this by implementing a more robust mocking strategy that properly handles connection states and error scenarios.
+4. **Container Health Check Configuration**: The ECS task definition health check used curl, which wasn't available in the container. We changed it to use a Node.js script instead.
+
+5. **Test Environment Isolation**: Initial test failures occurred due to shared state between tests. We resolved this by implementing proper test isolation using Jest's `beforeEach` and `afterEach` hooks, ensuring each test starts with a clean state.
+
+6. **Mock Database Connections**: Tests were failing intermittently due to improper mocking of PostgreSQL connections. We fixed this by implementing a more robust mocking strategy that properly handles connection states and error scenarios.
