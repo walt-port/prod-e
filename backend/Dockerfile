@@ -27,11 +27,13 @@ ENV NODE_ENV=production
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Copy application code from builder stage
 COPY --from=builder /app/index.js ./
-COPY --from=builder /app/.env ./
+
+# Create an empty .env file if it doesn't exist in the production environment
+RUN touch .env
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
