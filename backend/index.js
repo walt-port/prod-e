@@ -111,8 +111,9 @@ async function initializeDatabase() {
     return;
   }
 
+  let client;
   try {
-    const client = await pool.connect();
+    client = await pool.connect();
     try {
       // Create metrics table if it doesn't exist
       await client.query(`
@@ -127,7 +128,7 @@ async function initializeDatabase() {
       `);
       console.log('Database initialized successfully');
     } finally {
-      client.release();
+      if (client) client.release();
     }
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -225,13 +226,15 @@ app.get('/metrics', async (req, res) => {
 // Serve Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`Metrics available at http://localhost:${port}/metrics`);
-  console.log(`Health check available at http://localhost:${port}/health`);
-  console.log(`API documentation available at http://localhost:${port}/api-docs`);
-});
+// Start the server only if not being required (i.e., not in a test)
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+    console.log(`Metrics available at http://localhost:${port}/metrics`);
+    console.log(`Health check available at http://localhost:${port}/health`);
+    console.log(`API documentation available at http://localhost:${port}/api-docs`);
+  });
+}
 
 // Handle process termination gracefully
 process.on('SIGTERM', () => {

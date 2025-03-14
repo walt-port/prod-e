@@ -31,6 +31,7 @@ RUN npm ci --only=production
 
 # Copy application code from builder stage
 COPY --from=builder /app/index.js ./
+COPY --from=builder /app/.env ./
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \

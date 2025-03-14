@@ -90,6 +90,36 @@ The infrastructure was recently updated to support AWS requirements for multi-AZ
 - RDS database subnet group includes subnets in both us-west-2a and us-west-2b
 - PostgreSQL username was updated to comply with reserved word restrictions
 
+## 🧪 Testing
+
+The project includes comprehensive testing to ensure reliability and quality:
+
+### Backend Testing Framework
+
+- Jest as the primary test runner and assertion library
+- Supertest for HTTP endpoint testing
+- Mocked external dependencies (PostgreSQL, Prometheus clients)
+
+### Test Categories
+
+- API endpoints: Validates response codes, content types, and payload structure
+- Health checks: Ensures proper status reporting and database connection handling
+- Metrics collection: Verifies Prometheus metrics generation and formatting
+- Environment variables: Tests configuration from environment variables
+- Database connections: Tests connection handling and error scenarios
+- Docker container: Validates Dockerfile configuration and best practices
+
+### Current Test Coverage
+
+| Metric     | Coverage |
+| ---------- | -------- |
+| Statements | 87.01%   |
+| Branches   | 75%      |
+| Functions  | 55.55%   |
+| Lines      | 86.84%   |
+
+All tests are organized by functionality with detailed documentation available in the `docs/` directory.
+
 ## ⏱️ Implementation Timeline
 
 The project is being implemented over a 4-day timeline:
@@ -130,6 +160,19 @@ npm run deploy
 npm run destroy
 ```
 
+### Running Tests
+
+```bash
+# Run all tests
+cd backend && npm test
+
+# Run tests in watch mode (for development)
+cd backend && npm run test:watch
+
+# Generate test coverage report
+cd backend && npm run test:coverage
+```
+
 ## 📁 Project Structure
 
 - `main.ts` - Main CDKTF code that defines the infrastructure
@@ -162,8 +205,12 @@ Resources can be shut down after demonstration to avoid ongoing costs.
 
 ## ⚠️ Known Issues and Resolutions
 
-During deployment, we encountered and resolved the following issues:
+During deployment and testing, we encountered and resolved the following issues:
 
 1. **RDS DB Subnet Group Requirement**: AWS requires RDS instances to have subnet groups spanning at least two AZs, even for single-AZ database deployments. We resolved this by adding a second private subnet in us-west-2b.
 
 2. **PostgreSQL Reserved Words**: 'admin' is a reserved word in PostgreSQL and cannot be used as a master username. We changed this to 'dbadmin'.
+
+3. **Test Environment Isolation**: Initial test failures occurred due to shared state between tests. We resolved this by implementing proper test isolation using Jest's `beforeEach` and `afterEach` hooks, ensuring each test starts with a clean state.
+
+4. **Mock Database Connections**: Tests were failing intermittently due to improper mocking of PostgreSQL connections. We fixed this by implementing a more robust mocking strategy that properly handles connection states and error scenarios.
