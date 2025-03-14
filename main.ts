@@ -37,7 +37,7 @@ const config = {
   database: {
     instanceClass: 'db.t3.micro',
     engine: 'postgres',
-    engineVersion: '14.10',
+    engineVersion: '14.17',
     dbName: 'appdb',
     username: 'admin',
     password: 'ReallyStrongPass87$',
