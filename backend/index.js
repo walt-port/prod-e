@@ -88,7 +88,7 @@ app.use((req, res, next) => {
   const start = Date.now();
 
   // Add listener for response finish event
-  res.on('finish', () => {
+  res.on('finish', async () => {
     const duration = (Date.now() - start) / 1000; // Convert to seconds
 
     // Exclude metrics endpoint from metrics to avoid circular references
@@ -98,6 +98,22 @@ app.use((req, res, next) => {
         .observe(duration);
 
       httpRequestCounter.labels(req.method, req.path, res.statusCode).inc();
+
+      // Log all non-metrics requests to the database
+      if (shouldConnectToDatabase && req.path !== '/health') {
+        // Skip /health as it's logged separately
+        const client = await pool.connect();
+        try {
+          await client.query(
+            'INSERT INTO metrics(endpoint, method, status_code, duration_ms) VALUES($1, $2, $3, $4)',
+            [req.path, req.method, res.statusCode, duration * 1000] // Convert to ms
+          );
+        } catch (err) {
+          console.error('Error logging to DB:', err);
+        } finally {
+          client.release();
+        }
+      }
     }
   });
 

@@ -257,7 +257,7 @@ class MyStack extends TerraformStack {
       targetType: 'ip', // Using IP targets for Fargate
       healthCheck: {
         enabled: true,
-        path: '/',
+        path: '/health',
         port: 'traffic-port',
         healthyThreshold: 3,
         unhealthyThreshold: 3,
