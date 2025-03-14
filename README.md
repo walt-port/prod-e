@@ -78,8 +78,8 @@ This project implements a complete cloud infrastructure with monitoring capabili
 
 #### Monitoring & Observability
 
-- Prometheus metrics collection (in progress)
-- Grafana dashboards (planned)
+- ✅ Prometheus metrics collection and server
+- ⏳ Grafana dashboards (coming next)
 - CloudWatch integration
 </details>
 
@@ -203,7 +203,7 @@ The project is being implemented over a 4-day timeline:
   - ECS Fargate cluster and service
   - Application Load Balancer
 
-- ✅ **Day 2**: Backend Services (Partial)
+- ✅ **Day 2**: Backend Services
 
   - Node.js/Express API implementation
   - Database connectivity
@@ -211,11 +211,11 @@ The project is being implemented over a 4-day timeline:
   - Metrics endpoint for Prometheus
   - Database logging middleware
 
-- 🔄 **Day 2 Continued**: Monitoring Setup (In Progress)
+- ✅ **Day 2 Continued**: Monitoring Setup (Partial)
 
-  - Prometheus server implementation
-  - Grafana dashboard setup
-  - Alert configuration
+  - ✅ Prometheus server implemented on ECS Fargate
+  - ⏳ Grafana dashboard setup (next step)
+  - ⏳ Alert configuration
 
 - ⏳ **Day 3**: Frontend Dashboard
 
@@ -323,17 +323,15 @@ Below is a summary of issues encountered and their solutions.
 
 1. **RDS DB Subnet Group Requirement**: AWS requires RDS instances to have subnet groups spanning at least two AZs, even for single-AZ database deployments. We resolved this by adding a second private subnet in us-west-2b.
 
-2. **PostgreSQL Reserved Words**: 'admin' is a reserved word in PostgreSQL and cannot be used as a master username. We changed this to 'dbadmin'.
+2. **Private Subnet Internet Access**: ECS tasks in private subnets couldn't access ECR to pull Docker images. We fixed this by adding a NAT Gateway to provide internet access for resources in private subnets.
 
-3. **Private Subnet Internet Access**: ECS tasks in private subnets couldn't access ECR to pull Docker images. We fixed this by adding a NAT Gateway to provide internet access for resources in private subnets.
+3. **Container Health Check Configuration**: The ECS task definition health check used curl, which wasn't available in the container. We changed it to use a Node.js script instead.
 
-4. **Container Health Check Configuration**: The ECS task definition health check used curl, which wasn't available in the container. We changed it to use a Node.js script instead.
+4. **ALB Health Check Path**: The ALB target group was checking the root path ('/') instead of the dedicated health endpoint. We updated it to use the '/health' endpoint.
 
-5. **ALB Health Check Path**: The ALB target group was checking the root path ('/') instead of the dedicated health endpoint. We updated it to use the '/health' endpoint.
+5. **Test Environment Isolation**: Initial test failures occurred due to shared state between tests. We resolved this by implementing proper test isolation using Jest's `beforeEach` and `afterEach` hooks, ensuring each test starts with a clean state.
 
-6. **Test Environment Isolation**: Initial test failures occurred due to shared state between tests. We resolved this by implementing proper test isolation using Jest's `beforeEach` and `afterEach` hooks, ensuring each test starts with a clean state.
-
-7. **Mock Database Connections**: Tests were failing intermittently due to improper mocking of PostgreSQL connections. We fixed this by implementing a more robust mocking strategy that properly handles connection states and error scenarios.
+6. **Mock Database Connections**: Tests were failing intermittently due to improper mocking of PostgreSQL connections. We fixed this by implementing a more robust mocking strategy that properly handles connection states and error scenarios.
 </details>
 
 ## 📚 Documentation

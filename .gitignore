@@ -12,4 +12,5 @@ tsconfig.tsbuildinfo
 !backend/**/*.js
 .cursor
 .vscode
+.context_updates/
 

@@ -6,17 +6,17 @@ This document outlines the monitoring strategy for the Production Experience Sho
 
 ## Current Status
 
-The backend application includes Prometheus metrics collection via the `prom-client` library, with a `/metrics` endpoint exposed for scraping. The full Prometheus and Grafana implementation is the next phase of the project.
+The backend application includes Prometheus metrics collection via the `prom-client` library, with a `/metrics` endpoint exposed for scraping. Prometheus has been successfully deployed on ECS Fargate and is now scraping metrics from the backend application.
 
 ### Implemented Components:
 
 - ✅ Backend API with `/metrics` endpoint
 - ✅ Custom metrics for HTTP request duration and count
 - ✅ Node.js default metrics collection
+- ✅ Prometheus server deployment on ECS Fargate
 
 ### Pending Implementation:
 
-- ⏳ Prometheus server deployment
 - ⏳ Grafana deployment
 - ⏳ Dashboard configuration
 - ⏳ Alerting rules
@@ -29,7 +29,7 @@ The monitoring architecture consists of the following components:
 
 Prometheus serves as the time-series database and metrics collection system with the following responsibilities:
 
-- Scraping metrics from the application's `/metrics` endpoint
+- Scraping metrics from the application's `/metrics` endpoint via ALB
 - Storing time-series data
 - Providing a query language (PromQL) for analyzing metrics
 - Serving as a data source for Grafana
@@ -61,44 +61,42 @@ The application exposes metrics via the `/metrics` endpoint using several types 
 
 ## Implementation Plan
 
-### Phase 1: Prometheus Server Setup
+### Phase 1: Prometheus Server Setup (✅ Completed)
 
 1. **Infrastructure Updates**:
 
-   - Add Prometheus container to ECS task definition
-   - Configure networking and security groups
-   - Set up persistent storage for metrics data
+   - ✅ Add Prometheus container to ECS task definition
+   - ✅ Configure networking and security groups
+   - ✅ Deploy Prometheus on ECS Fargate
 
 2. **Prometheus Configuration**:
 
-   - Create prometheus.yml with scrape configuration
-   - Set up scrape interval and evaluation interval
-   - Configure retention policies
+   - ✅ Create prometheus.yml with scrape configuration
+   - ✅ Configure scrape targets to use ALB DNS name
 
 3. **Testing**:
-   - Verify Prometheus can scrape metrics from application
-   - Test basic PromQL queries
-   - Validate data retention
+   - ✅ Verify Prometheus can scrape metrics from application
+   - ✅ Validate CloudWatch logs showing successful operation
 
-### Phase 2: Grafana Setup
+### Phase 2: Grafana Setup (⏳ In Progress)
 
 1. **Infrastructure Updates**:
 
-   - Add Grafana container to ECS task definition
-   - Configure networking and security groups
-   - Set up persistent storage for dashboards and settings
+   - ⏳ Add Grafana container to ECS task definition
+   - ⏳ Configure networking and security groups
+   - ⏳ Set up persistent storage for dashboards and settings
 
 2. **Grafana Configuration**:
 
-   - Configure Prometheus data source
-   - Set up initial admin user
-   - Configure default organization
+   - ⏳ Configure Prometheus data source
+   - ⏳ Set up initial admin user
+   - ⏳ Configure default organization
 
 3. **Dashboard Creation**:
-   - Application overview dashboard
-   - HTTP request metrics dashboard
-   - Node.js runtime metrics dashboard
-   - System metrics dashboard
+   - ⏳ Application overview dashboard
+   - ⏳ HTTP request metrics dashboard
+   - ⏳ Node.js runtime metrics dashboard
+   - ⏳ System metrics dashboard
 
 ### Phase 3: Alerting Setup
 
@@ -112,6 +110,33 @@ The application exposes metrics via the `/metrics` endpoint using several types 
    - Email notifications
    - Slack integration (optional)
    - PagerDuty integration (optional)
+
+## Prometheus Deployment Details
+
+Prometheus has been deployed with the following configuration:
+
+1. **ECS Task Definition**:
+
+   - Family: `prom-task`
+   - CPU: 256 (0.25 vCPU)
+   - Memory: 512 MB
+   - Image: Custom Prometheus image with configuration
+
+2. **Configuration**:
+
+   - Scrape interval: Default (15s)
+   - Target: Backend service via ALB (`application-load-balancer-XXXXX.us-west-2.elb.amazonaws.com:3000`)
+   - Path: `/metrics`
+
+3. **Security**:
+
+   - Runs in private subnets
+   - Limited security group access (only from ALB)
+   - Uses IAM role with appropriate CloudWatch permissions
+
+4. **Logging**:
+   - Logs available in CloudWatch under `/ecs/prom-task`
+   - Container logs showing successful startup and scrape operations
 
 ## Expected Metrics and Dashboards
 

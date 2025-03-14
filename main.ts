@@ -452,6 +452,12 @@ class MyStack extends TerraformStack {
       policyArn: 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy',
     });
 
+    // Add CloudWatch Logs permissions to create log groups
+    new IamRolePolicyAttachment(this, 'ecs-task-execution-cloudwatch-logs-policy', {
+      role: ecsTaskExecutionRole.name,
+      policyArn: 'arn:aws:iam::aws:policy/CloudWatchLogsFullAccess',
+    });
+
     // Create IAM task role for ECS tasks
     // This role defines what AWS services the application inside the container can access
     const ecsTaskRole = new IamRole(this, 'ecs-task-role', {
@@ -601,6 +607,70 @@ class MyStack extends TerraformStack {
         createBeforeDestroy: true,
       },
     });
+
+    // Prometheus Setup
+    const promSecurityGroup = new SecurityGroup(this, 'prom-security-group', {
+      name: 'prom-security-group',
+      vpcId: vpc.id,
+      tags: { Name: 'prom-sg' },
+    });
+    new SecurityGroupRule(this, 'prom-inbound', {
+      type: 'ingress',
+      fromPort: 9090,
+      toPort: 9090,
+      protocol: 'tcp',
+      sourceSecurityGroupId: albSecurityGroup.id, // Allow from ALB only
+      securityGroupId: promSecurityGroup.id,
+    });
+    new SecurityGroupRule(this, 'prom-outbound', {
+      type: 'egress',
+      fromPort: 0,
+      toPort: 0,
+      protocol: '-1',
+      cidrBlocks: ['0.0.0.0/0'],
+      securityGroupId: promSecurityGroup.id,
+    });
+    const promTaskDefinition = new EcsTaskDefinition(this, 'prom-task-definition', {
+      family: 'prom-task',
+      requiresCompatibilities: ['FARGATE'],
+      networkMode: 'awsvpc',
+      cpu: '256',
+      memory: '512',
+      executionRoleArn: ecsTaskExecutionRole.arn,
+      taskRoleArn: ecsTaskRole.arn,
+      containerDefinitions: JSON.stringify([
+        {
+          name: 'prometheus',
+          image: '043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest',
+          essential: true,
+          portMappings: [{ containerPort: 9090, hostPort: 9090, protocol: 'tcp' }],
+          logConfiguration: {
+            logDriver: 'awslogs',
+            options: {
+              'awslogs-group': '/ecs/prom-task',
+              'awslogs-region': config.region,
+              'awslogs-stream-prefix': 'ecs',
+              'awslogs-create-group': 'true',
+            },
+          },
+        },
+      ]),
+      tags: { Name: 'prom-task-def' },
+    });
+    const promService = new EcsService(this, 'prom-service', {
+      name: 'prod-e-prom-service', // Changed to ensure uniqueness
+      cluster: ecsCluster.id,
+      taskDefinition: promTaskDefinition.arn,
+      desiredCount: 1,
+      launchType: 'FARGATE',
+      networkConfiguration: {
+        subnets: [privateSubnet.id, privateSubnetB.id],
+        securityGroups: [promSecurityGroup.id],
+        assignPublicIp: false,
+      },
+      tags: { Name: 'prom-service' },
+    });
+    new TerraformOutput(this, 'prom-service-name', { value: promService.name });
 
     // Output the VPC ID
     new TerraformOutput(this, 'vpc-id', {

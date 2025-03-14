@@ -1,0 +1,4 @@
+scrape_configs:
+  - job_name: 'prod-e'
+    static_configs:
+      - targets: ['application-load-balancer-98932456.us-west-2.elb.amazonaws.com:3000'] # ALB DNS from Terraform output

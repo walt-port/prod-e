@@ -66,7 +66,7 @@ The project is being implemented according to the following timeline:
   - ECS Fargate cluster and service
   - Application Load Balancer
 
-- ✅ **Day 2**: Backend Services (Partial)
+- ✅ **Day 2**: Backend Services
 
   - Node.js/Express API implementation
   - Database connectivity
@@ -74,11 +74,11 @@ The project is being implemented according to the following timeline:
   - Metrics endpoint for Prometheus
   - Database logging middleware
 
-- 🔄 **Day 2 Continued**: Monitoring Setup (In Progress)
+- ✅ **Day 2 Continued**: Monitoring Setup (Partial)
 
-  - Prometheus server implementation
-  - Grafana dashboard setup
-  - Alert configuration
+  - ✅ Prometheus server implementation on ECS Fargate
+  - ⏳ Grafana dashboard setup (next step)
+  - ⏳ Alert configuration
 
 - ⏳ **Day 3**: Frontend Dashboard
 
