@@ -2,18 +2,21 @@
 
 ## Overview
 
-The prod-e infrastructure follows AWS best practices for secure, scalable, and highly available network architecture. This document details the network components, configuration, and design considerations.
+The prod-e infrastructure follows AWS best practices for secure, scalable, and highly available network architecture. This document details the network components, configuration, and design considerations implemented in the project.
 
 ## VPC Configuration
 
-The Virtual Private Cloud (VPC) is configured with the following specifications:
+The Virtual Private Cloud (VPC) serves as the network foundation for all AWS resources and is configured with the following specifications:
 
 - **CIDR Block**: 10.0.0.0/16
 - **DNS Support**: Enabled
 - **DNS Hostnames**: Enabled
 - **Region**: us-west-2
+- **Proper Tagging**: All resources tagged for management
 
-## Subnet Layout
+## Multi-AZ Subnet Layout
+
+The infrastructure is deployed across multiple availability zones (us-west-2a and us-west-2b) for improved reliability and to meet AWS requirements.
 
 ### Public Subnets
 
@@ -94,6 +97,17 @@ The private route table includes:
 - **Inbound**: PostgreSQL (5432) from ECS Task Security Group
 - **Outbound**: No outbound rules (not needed)
 
+## Implementation Status
+
+The following network components have been successfully implemented:
+
+- ✅ VPC with DNS support and hostnames
+- ✅ Public and private subnets across two availability zones
+- ✅ Internet Gateway for public subnet internet access
+- ✅ NAT Gateway for private subnet outbound internet access
+- ✅ Route tables and associations for proper traffic routing
+- ✅ Security groups for access control
+
 ## Network Troubleshooting
 
 ### Common Issues
@@ -123,7 +137,8 @@ The private route table includes:
 
 1. Ensure health check endpoint is properly implemented in the application
 2. Verify security groups allow traffic between ALB and ECS tasks
-3. Check that health check command is compatible with container environment (Node.js vs. curl)
+3. Check that health check path in target group matches the application endpoint (/health)
+4. Verify health check command is compatible with container environment (Node.js)
 
 ## Maintenance Considerations
 
@@ -134,15 +149,29 @@ The private route table includes:
 
 ### High Availability
 
-For production environments, consider:
+The current implementation provides basic multi-AZ redundancy for networking components. For enhanced high availability in production environments, consider:
 
 - Deploying a NAT Gateway in each availability zone for redundancy
 - Creating custom network ACLs for additional security layers
 - Implementing AWS Transit Gateway for more complex network architectures
 
+## Lessons Learned
+
+During implementation, we encountered several important AWS requirements:
+
+1. **Application Load Balancer**:
+
+   - ALBs must have subnets in at least two AZs
+   - This requirement led to adding a second public subnet
+
+2. **RDS Subnet Group**:
+   - AWS requires DB subnet groups to span at least two AZs, even for single-AZ database deployments
+   - This requirement necessitated adding a second private subnet
+
 ## Improvement History
 
-| Date       | Change                                       | Reason                                                                     |
-| ---------- | -------------------------------------------- | -------------------------------------------------------------------------- |
-| 2025-03-14 | Added NAT Gateway to public-subnet-a         | Enable ECS tasks in private subnets to access ECR for image pulls          |
-| 2025-03-14 | Updated ECS task health check to use Node.js | Replace curl with Node.js script for more reliable container health checks |
+| Date       | Change                                         | Reason                                                            |
+| ---------- | ---------------------------------------------- | ----------------------------------------------------------------- |
+| 2025-03-14 | Added NAT Gateway to public-subnet-a           | Enable ECS tasks in private subnets to access ECR for image pulls |
+| 2025-03-14 | Added public and private subnets in us-west-2b | Meet AWS requirements for ALB and RDS DB subnet groups            |
+| 2025-03-14 | Updated ALB target group health check path     | Change from / to /health for accurate service health monitoring   |
