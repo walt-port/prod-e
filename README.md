@@ -21,11 +21,11 @@ This project sets up the following AWS resources:
 ### Networking
 
 - VPC with DNS support and DNS hostnames
-- Public subnet (10.0.1.0/24) in us-west-2a
-- Private subnet (10.0.2.0/24) in us-west-2a
+- Public subnets in us-west-2a (10.0.1.0/24) and us-west-2b (10.0.3.0/24)
+- Private subnets in us-west-2a (10.0.2.0/24) and us-west-2b (10.0.4.0/24)
 - Internet Gateway for public internet access
 - Route tables with proper routing configuration
-- Application Load Balancer for traffic management
+- Application Load Balancer for traffic management (spanning multiple AZs)
 
 ### Compute
 
@@ -35,8 +35,8 @@ This project sets up the following AWS resources:
 
 ### Data Storage
 
-- RDS PostgreSQL instance (db.t3.micro)
-- Prometheus time series database for metrics
+- RDS PostgreSQL instance (db.t3.micro) with subnet group spanning multiple AZs
+- Prometheus time series database for metrics (to be implemented)
 
 ### Monitoring & Visualization
 
@@ -46,21 +46,20 @@ This project sets up the following AWS resources:
 
 ## Infrastructure Design
 
-The current implementation uses a single availability zone (us-west-2a) for simplicity. The infrastructure includes:
+The infrastructure is deployed across multiple availability zones (us-west-2a and us-west-2b) for high availability. The design includes:
 
-- A public subnet with direct internet access through an Internet Gateway
-- A private subnet for ECS Fargate services
-- Application Load Balancer in the public subnet
-- RDS PostgreSQL database in the private subnet
+- Public subnets in two AZs with direct internet access through an Internet Gateway
+- Private subnets in two AZs for ECS Fargate services and RDS
+- Application Load Balancer spanning multiple AZs for fault tolerance
+- RDS PostgreSQL database with a subnet group covering multiple AZs
 
-### Future Multi-AZ Plan
+### Recent Improvements
 
-In the future, this infrastructure will be expanded to support multiple availability zones for high availability and fault tolerance. The planned enhancements include:
+The infrastructure was recently updated to support AWS requirements for multi-AZ deployments:
 
-- Adding public and private subnets in multiple AZs (us-west-2b, us-west-2c)
-- Implementing NAT Gateways for private subnet internet access
-- Setting up proper routing between all subnets
-- Configuring load balancers across multiple AZs
+- Application Load Balancer now spans both us-west-2a and us-west-2b
+- RDS database subnet group includes subnets in both us-west-2a and us-west-2b
+- PostgreSQL username was updated to comply with reserved word restrictions
 
 ## Implementation Timeline
 
@@ -131,3 +130,13 @@ This project is designed to be cost-effective for demonstration purposes:
 - Data Transfer: ~$1-2
 
 Resources can be shut down after demonstration to avoid ongoing costs.
+
+## Known Issues and Resolutions
+
+During deployment, we encountered and resolved the following issues:
+
+1. **RDS DB Subnet Group Requirement**: AWS requires RDS instances to have subnet groups spanning at least two AZs, even for single-AZ database deployments. We resolved this by adding a second private subnet in us-west-2b.
+
+2. **ALB Multi-AZ Requirement**: Application Load Balancers require subnets in at least two AZs. We resolved this by adding a second public subnet in us-west-2b.
+
+3. **PostgreSQL Reserved Words**: 'admin' is a reserved word in PostgreSQL and cannot be used as a master username. We changed this to 'dbadmin'.

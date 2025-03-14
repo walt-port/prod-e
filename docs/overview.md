@@ -12,7 +12,7 @@ This document serves as the main index for all infrastructure documentation in t
 | Application Load Balancer | Documentation about ALB, target groups, and listeners                | [load-balancer.md](./load-balancer.md)         |
 | RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups | [rds-database.md](./rds-database.md)           |
 | ECS Fargate Service       | Documentation about ECS cluster, task definition, and service        | [ecs-fargate.md](./ecs-fargate.md)             |
-| Multi-AZ Strategy         | Strategy for expanding to multiple availability zones                | [multi-az-strategy.md](./multi-az-strategy.md) |
+| Multi-AZ Strategy         | Documentation of current multi-AZ implementation and future plans    | [multi-az-strategy.md](./multi-az-strategy.md) |
 
 ## Infrastructure Overview
 
@@ -20,27 +20,36 @@ The current infrastructure consists of:
 
 1. **Base Network Layer**
 
-   - VPC with public and private subnets
+   - VPC with public and private subnets in two availability zones (us-west-2a and us-west-2b)
    - Internet Gateway for public internet access
-   - Route tables and associations
+   - Route tables and associations for both public and private subnets
 
 2. **Application Delivery Layer**
 
-   - Application Load Balancer (ALB)
-   - Target groups for future service integration
+   - Application Load Balancer (ALB) spanning multiple AZs
+   - Target groups for ECS service integration
    - Security groups for controlling traffic
 
 3. **Data Storage Layer**
 
-   - PostgreSQL RDS instance
-   - Database subnet groups
+   - PostgreSQL RDS instance (currently single-AZ but with multi-AZ subnet group)
+   - Database subnet group spanning multiple AZs
    - Security groups for database access
 
 4. **Compute Layer**
    - ECS Fargate cluster
    - Task definition with minimal resources (0.25 vCPU, 0.5GB memory)
-   - ECS service with a dummy container
+   - ECS service with a Node.js 16 container
    - IAM roles for execution permissions
+
+## Deployment Status
+
+The infrastructure has been successfully deployed with the following components:
+
+- VPC (vpc-id): vpc-0fc6af22ecf8449ff
+- ALB DNS name: application-load-balancer-98932456.us-west-2.elb.amazonaws.com
+- ECS cluster: prod-e-cluster
+- RDS endpoint: postgres-instance.cnymcgs0e26q.us-west-2.rds.amazonaws.com:5432
 
 ## Deployment Instructions
 
@@ -71,6 +80,20 @@ To deploy this infrastructure:
    ```bash
    npm run deploy
    ```
+
+## Troubleshooting Common Issues
+
+During deployment, you may encounter the following issues:
+
+1. **RDS Username Reserved Word Error**:
+
+   - Error message: `InvalidParameterValue: MasterUsername admin cannot be used as it is a reserved word used by the engine`
+   - Resolution: Change the username to something other than 'admin' in the configuration
+
+2. **Subnet Requirements for Services**:
+   - ALB requires subnets in at least two availability zones
+   - RDS DB subnet group requires subnets in at least two availability zones
+   - Resolution: Add additional subnets in a second AZ
 
 ## Teardown Instructions
 
