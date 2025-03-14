@@ -1,4 +1,7 @@
 name: Deploy Prod-E
+# For detailed documentation on this workflow, see:
+# 1. .github/CICD.md - Quick reference
+# 2. docs/ci-cd.md - Complete documentation
 on:
   push:
     branches: [main]
