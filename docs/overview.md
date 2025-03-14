@@ -6,12 +6,13 @@ This document serves as the main index for all infrastructure documentation in t
 
 ## Available Documentation
 
-| Component                 | Description                                                          | Document Link                            |
-| ------------------------- | -------------------------------------------------------------------- | ---------------------------------------- |
-| VPC and Networking        | Documentation about VPC, subnets, Internet Gateway, and routing      | [vpc-networking.md](./vpc-networking.md) |
-| Application Load Balancer | Documentation about ALB, target groups, and listeners                | [load-balancer.md](./load-balancer.md)   |
-| RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups | [rds-database.md](./rds-database.md)     |
-| ECS Fargate Service       | Documentation about ECS cluster, task definition, and service        | [ecs-fargate.md](./ecs-fargate.md)       |
+| Component                 | Description                                                          | Document Link                                  |
+| ------------------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
+| VPC and Networking        | Documentation about VPC, subnets, Internet Gateway, and routing      | [vpc-networking.md](./vpc-networking.md)       |
+| Application Load Balancer | Documentation about ALB, target groups, and listeners                | [load-balancer.md](./load-balancer.md)         |
+| RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups | [rds-database.md](./rds-database.md)           |
+| ECS Fargate Service       | Documentation about ECS cluster, task definition, and service        | [ecs-fargate.md](./ecs-fargate.md)             |
+| Multi-AZ Strategy         | Strategy for expanding to multiple availability zones                | [multi-az-strategy.md](./multi-az-strategy.md) |
 
 ## Infrastructure Overview
 
@@ -121,7 +122,7 @@ The infrastructure is designed with configuration parameters that can be adjuste
 
 The infrastructure is designed to be expanded in the future. Planned enhancements include:
 
-- Multi-AZ deployment for high availability
+- Multi-AZ deployment for high availability (see [multi-az-strategy.md](./multi-az-strategy.md))
 - Proper Node.js/Express API for the ECS service
 - Prometheus and Grafana for monitoring
 - React frontend for visualization

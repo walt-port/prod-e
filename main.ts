@@ -26,7 +26,9 @@ const config = {
   region: 'us-west-2',
   vpcCidr: '10.0.0.0/16',
   publicSubnetCidr: '10.0.1.0/24',
+  publicSubnetCidrB: '10.0.3.0/24', // New public subnet in AZ b for ALB requirement
   privateSubnetCidr: '10.0.2.0/24',
+  privateSubnetCidrB: '10.0.4.0/24', // New private subnet in AZ b for RDS requirement
   tags: {
     ManagedBy: 'CDKTF',
     Project: 'prod-e',
@@ -96,7 +98,18 @@ class MyStack extends TerraformStack {
       availabilityZone: `${config.region}a`, // Using only us-west-2a
       mapPublicIpOnLaunch: true, // Auto-assign public IP
       tags: {
-        Name: 'public-subnet',
+        Name: 'public-subnet-a',
+      },
+    });
+
+    // Create a public subnet in us-west-2b (for ALB requirement)
+    const publicSubnetB = new Subnet(this, 'public-subnet-b', {
+      vpcId: vpc.id,
+      cidrBlock: config.publicSubnetCidrB,
+      availabilityZone: `${config.region}b`, // Using us-west-2b as second AZ
+      mapPublicIpOnLaunch: true, // Auto-assign public IP
+      tags: {
+        Name: 'public-subnet-b',
       },
     });
 
@@ -107,7 +120,18 @@ class MyStack extends TerraformStack {
       availabilityZone: `${config.region}a`, // Using only us-west-2a
       mapPublicIpOnLaunch: false, // No public IP
       tags: {
-        Name: 'private-subnet',
+        Name: 'private-subnet-a',
+      },
+    });
+
+    // Create a private subnet in us-west-2b (for RDS requirement)
+    const privateSubnetB = new Subnet(this, 'private-subnet-b', {
+      vpcId: vpc.id,
+      cidrBlock: config.privateSubnetCidrB,
+      availabilityZone: `${config.region}b`, // Using us-west-2b as second AZ
+      mapPublicIpOnLaunch: false, // No public IP
+      tags: {
+        Name: 'private-subnet-b',
       },
     });
 
@@ -132,6 +156,12 @@ class MyStack extends TerraformStack {
       routeTableId: publicRouteTable.id,
     });
 
+    // Associate the public route table with the public subnet B
+    new RouteTableAssociation(this, 'public-route-association-b', {
+      subnetId: publicSubnetB.id,
+      routeTableId: publicRouteTable.id,
+    });
+
     // Create a route table for the private subnet
     const privateRouteTable = new RouteTable(this, 'private-route-table', {
       vpcId: vpc.id,
@@ -143,6 +173,12 @@ class MyStack extends TerraformStack {
     // Associate the private route table with the private subnet
     new RouteTableAssociation(this, 'private-route-association', {
       subnetId: privateSubnet.id,
+      routeTableId: privateRouteTable.id,
+    });
+
+    // Associate the private route table with the private subnet B
+    new RouteTableAssociation(this, 'private-route-association-b', {
+      subnetId: privateSubnetB.id,
       routeTableId: privateRouteTable.id,
     });
 
@@ -208,7 +244,7 @@ class MyStack extends TerraformStack {
       internal: false, // Internet-facing ALB
       loadBalancerType: 'application',
       securityGroups: [albSecurityGroup.id],
-      subnets: [publicSubnet.id], // Using only public subnet in us-west-2a
+      subnets: [publicSubnet.id, publicSubnetB.id], // Using public subnets in two AZs for ALB requirement
       enableDeletionProtection: false, // For easy cleanup in development
       tags: {
         Name: 'app-lb',
@@ -271,10 +307,10 @@ class MyStack extends TerraformStack {
     });
 
     // Create a DB subnet group (required for RDS instances)
-    // For a single-AZ setup, we need to include at least two subnets but will only use one
+    // Including subnets in two AZs to meet AWS requirement
     const dbSubnetGroup = new DbSubnetGroup(this, 'db-subnet-group', {
       name: 'db-subnet-group',
-      subnetIds: [privateSubnet.id, publicSubnet.id], // Using both subnets to meet the minimum requirement
+      subnetIds: [privateSubnet.id, privateSubnetB.id], // Using private subnets in two AZs for RDS requirement
       description: 'Subnet group for RDS instance',
       tags: {
         Name: 'db-subnet-group',
