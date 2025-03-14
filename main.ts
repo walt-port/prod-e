@@ -39,7 +39,7 @@ const config = {
     engine: 'postgres',
     engineVersion: '14.17',
     dbName: 'appdb',
-    username: 'admin',
+    username: 'dbadmin',
     password: 'ReallyStrongPass87$',
     port: 5432,
     allocatedStorage: 20,
