@@ -1,5 +1,7 @@
 import { App, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
+import { DbInstance } from './.gen/providers/aws/db-instance';
+import { DbSubnetGroup } from './.gen/providers/aws/db-subnet-group';
 import { InternetGateway } from './.gen/providers/aws/internet-gateway';
 import { Lb } from './.gen/providers/aws/lb';
 import { LbListener } from './.gen/providers/aws/lb-listener';
@@ -22,6 +24,18 @@ const config = {
   tags: {
     ManagedBy: 'CDKTF',
     Project: 'prod-e',
+  },
+  // Database configuration
+  database: {
+    instanceClass: 'db.t3.micro',
+    engine: 'postgres',
+    engineVersion: '14.10',
+    dbName: 'appdb',
+    username: 'admin',
+    password: 'ReallyStrongPass87$',
+    port: 5432,
+    allocatedStorage: 20,
+    skipFinalSnapshot: true,
   },
 };
 
@@ -204,6 +218,74 @@ class MyStack extends TerraformStack {
       },
     });
 
+    // -------------------- RDS PostgreSQL Database Section --------------------
+
+    // Create a security group for the RDS instance
+    const dbSecurityGroup = new SecurityGroup(this, 'db-security-group', {
+      name: 'db-security-group',
+      description: 'Security group for the RDS PostgreSQL instance',
+      vpcId: vpc.id,
+      tags: {
+        Name: 'db-sg',
+      },
+    });
+
+    // Add inbound rule to allow PostgreSQL traffic (port 5432) from anywhere
+    // Note: This is for development purposes only. In production, limit access to specific sources.
+    new SecurityGroupRule(this, 'db-postgres-inbound', {
+      type: 'ingress',
+      fromPort: config.database.port,
+      toPort: config.database.port,
+      protocol: 'tcp',
+      cidrBlocks: ['0.0.0.0/0'], // Allow traffic from anywhere (for dev only)
+      securityGroupId: dbSecurityGroup.id,
+      description: 'Allow PostgreSQL traffic from anywhere',
+    });
+
+    // Add outbound rule to allow all traffic from the RDS instance
+    new SecurityGroupRule(this, 'db-all-outbound', {
+      type: 'egress',
+      fromPort: 0,
+      toPort: 0,
+      protocol: '-1', // All protocols
+      cidrBlocks: ['0.0.0.0/0'], // Allow traffic to anywhere
+      securityGroupId: dbSecurityGroup.id,
+      description: 'Allow all outbound traffic',
+    });
+
+    // Create a DB subnet group (required for RDS instances)
+    // For a single-AZ setup, we need to include at least two subnets but will only use one
+    const dbSubnetGroup = new DbSubnetGroup(this, 'db-subnet-group', {
+      name: 'db-subnet-group',
+      subnetIds: [privateSubnet.id, publicSubnet.id], // Using both subnets to meet the minimum requirement
+      description: 'Subnet group for RDS instance',
+      tags: {
+        Name: 'db-subnet-group',
+      },
+    });
+
+    // Create the RDS PostgreSQL instance
+    const rdsInstance = new DbInstance(this, 'postgres-instance', {
+      identifier: 'postgres-instance',
+      instanceClass: config.database.instanceClass,
+      allocatedStorage: config.database.allocatedStorage,
+      engine: config.database.engine,
+      engineVersion: config.database.engineVersion,
+      dbName: config.database.dbName,
+      username: config.database.username,
+      password: config.database.password,
+      dbSubnetGroupName: dbSubnetGroup.name,
+      vpcSecurityGroupIds: [dbSecurityGroup.id],
+      skipFinalSnapshot: config.database.skipFinalSnapshot, // Skip final snapshot for easy cleanup
+      publiclyAccessible: true, // Allow public access for development
+      port: config.database.port,
+      multiAz: false, // Single AZ deployment
+      availabilityZone: `${config.region}a`, // Use same AZ as our private subnet
+      tags: {
+        Name: 'postgres-db',
+      },
+    });
+
     // Output the VPC ID
     new TerraformOutput(this, 'vpc-id', {
       value: vpc.id,
@@ -232,6 +314,18 @@ class MyStack extends TerraformStack {
     new TerraformOutput(this, 'alb-arn', {
       value: alb.arn,
       description: 'The ARN of the Application Load Balancer',
+    });
+
+    // Output the RDS endpoint address
+    new TerraformOutput(this, 'rds-endpoint', {
+      value: rdsInstance.endpoint,
+      description: 'The connection endpoint for the RDS instance',
+    });
+
+    // Output the RDS port
+    new TerraformOutput(this, 'rds-port', {
+      value: rdsInstance.port.toString(),
+      description: 'The port for the RDS instance',
     });
   }
 }
