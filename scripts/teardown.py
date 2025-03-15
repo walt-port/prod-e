@@ -351,6 +351,25 @@ def delete_vpc_resources(session, region, project_tag, dry_run):
                 print(f"Deleting internet gateway {igw['InternetGatewayId']}...")
                 ec2_client.delete_internet_gateway(InternetGatewayId=igw['InternetGatewayId'])
 
+        # Find and delete NAT gateways
+        print(f"Searching for NAT gateways in VPC {vpc_id}...")
+        nat_response = ec2_client.describe_nat_gateways(
+            Filters=[
+                {
+                    'Name': 'vpc-id',
+                    'Values': [vpc_id]
+                }
+            ]
+        )
+
+        for nat in nat_response.get('NatGateways', []):
+            print(f"Found NAT gateway: {nat['NatGatewayId']}")
+            if not dry_run:
+                print(f"Deleting NAT gateway {nat['NatGatewayId']}...")
+                ec2_client.delete_nat_gateway(NatGatewayId=nat['NatGatewayId'])
+                print(f"Waiting for NAT gateway {nat['NatGatewayId']} to be deleted...")
+                # NAT gateways take time to delete, so we'll just continue and let it delete in the background
+
         # Find and delete subnets
         print(f"Searching for subnets in VPC {vpc_id}...")
         subnet_response = ec2_client.describe_subnets(
@@ -420,6 +439,149 @@ def delete_iam_resources(session, region, project_tag, dry_run):
                 print(f"Error deleting IAM role {role_name}: {e}")
 
 
+def delete_efs_resources(session, region, project_tag, dry_run):
+    """Delete EFS resources."""
+    efs_client = session.client('efs', region_name=region)
+
+    # Find EFS file systems with the project tag
+    print("\nSearching for EFS file systems...")
+    try:
+        file_systems = efs_client.describe_file_systems()['FileSystems']
+
+        for fs in file_systems:
+            fs_id = fs['FileSystemId']
+
+            # Get file system tags
+            try:
+                fs_tags = efs_client.describe_tags(FileSystemId=fs_id)['Tags']
+
+                is_project_resource = False
+                for tag in fs_tags:
+                    if tag['Key'] == 'Project' and tag['Value'] == project_tag:
+                        is_project_resource = True
+                        break
+
+                if not is_project_resource:
+                    continue
+
+                print(f"Found EFS file system: {fs_id}")
+
+                # First, delete all mount targets
+                mount_targets = efs_client.describe_mount_targets(FileSystemId=fs_id)['MountTargets']
+
+                for mt in mount_targets:
+                    mt_id = mt['MountTargetId']
+                    print(f"  Found mount target: {mt_id} in subnet {mt['SubnetId']}")
+
+                    if not dry_run:
+                        print(f"  Deleting mount target {mt_id}...")
+                        efs_client.delete_mount_target(MountTargetId=mt_id)
+
+                if mount_targets and not dry_run:
+                    print(f"  Waiting for mount targets to be deleted...")
+                    time.sleep(30)  # Mount targets take time to delete
+
+                # Delete access points if any
+                access_points = efs_client.describe_access_points(FileSystemId=fs_id)['AccessPoints']
+
+                for ap in access_points:
+                    ap_id = ap['AccessPointId']
+                    print(f"  Found access point: {ap_id}")
+
+                    if not dry_run:
+                        print(f"  Deleting access point {ap_id}...")
+                        efs_client.delete_access_point(AccessPointId=ap_id)
+
+                # Finally, delete the file system
+                if not dry_run:
+                    print(f"Deleting EFS file system {fs_id}...")
+                    efs_client.delete_file_system(FileSystemId=fs_id)
+
+            except ClientError as e:
+                print(f"Error processing EFS file system {fs_id}: {e}")
+
+    except ClientError as e:
+        print(f"Error accessing EFS resources: {e}")
+
+
+def delete_lambda_resources(session, region, project_tag, dry_run):
+    """Delete Lambda resources."""
+    lambda_client = session.client('lambda', region_name=region)
+    events_client = session.client('events', region_name=region)
+
+    # Find Lambda functions with the project tag
+    print("\nSearching for Lambda functions...")
+
+    # Get all Lambda functions
+    paginator = lambda_client.get_paginator('list_functions')
+    functions = []
+
+    for page in paginator.paginate():
+        functions.extend(page['Functions'])
+
+    for function in functions:
+        function_name = function['FunctionName']
+
+        # Check if the function name contains our project tag
+        if project_tag.lower() in function_name.lower():
+            try:
+                # Check for tags as well
+                arn = function['FunctionArn']
+                tags = lambda_client.list_tags(Resource=arn).get('Tags', {})
+
+                if tags.get('Project') == project_tag or project_tag.lower() in function_name.lower():
+                    print(f"Found Lambda function: {function_name} ({arn})")
+
+                    # Find and remove event triggers
+                    try:
+                        policy = lambda_client.get_policy(FunctionName=function_name)
+                        policy_json = policy.get('Policy')
+
+                        if policy_json:
+                            print(f"  Found policy for function {function_name}")
+                            if not dry_run:
+                                # Check for EventBridge rules that trigger this function
+                                rules = events_client.list_rules()['Rules']
+                                for rule in rules:
+                                    rule_name = rule['Name']
+                                    targets = events_client.list_targets_by_rule(Rule=rule_name)['Targets']
+
+                                    for target in targets:
+                                        if target.get('Arn') == arn:
+                                            print(f"  Found EventBridge rule {rule_name} targeting this function")
+                                            if not dry_run:
+                                                print(f"  Removing target from rule {rule_name}...")
+                                                events_client.remove_targets(Rule=rule_name, Ids=[target['Id']])
+                                                print(f"  Deleting rule {rule_name}...")
+                                                events_client.delete_rule(Name=rule_name)
+                    except ClientError as e:
+                        if 'ResourceNotFoundException' not in str(e):
+                            print(f"  Error getting policy: {e}")
+
+                    # Delete versions and aliases
+                    try:
+                        versions = lambda_client.list_versions_by_function(FunctionName=function_name)['Versions']
+                        for version in versions:
+                            if version['Version'] != '$LATEST':
+                                print(f"  Found version: {version['Version']}")
+                                if not dry_run:
+                                    print(f"  Deleting version {version['Version']}...")
+                                    lambda_client.delete_function(
+                                        FunctionName=function_name,
+                                        Qualifier=version['Version']
+                                    )
+                    except ClientError as e:
+                        print(f"  Error listing versions: {e}")
+
+                    # Delete the function
+                    if not dry_run:
+                        print(f"Deleting Lambda function {function_name}...")
+                        lambda_client.delete_function(FunctionName=function_name)
+
+            except ClientError as e:
+                print(f"Error processing Lambda function {function_name}: {e}")
+
+
 def main():
     """Main function."""
     args = parse_args()
@@ -438,9 +600,11 @@ def main():
         print("\n=== Identifying Resources ===")
 
         # Delete resources in the correct order (reverse dependency order)
+        delete_lambda_resources(session, args.region, args.project_tag, True)
         delete_ecs_resources(session, args.region, args.project_tag, True)
         delete_alb_resources(session, args.region, args.project_tag, True)
         delete_rds_resources(session, args.region, args.project_tag, True)
+        delete_efs_resources(session, args.region, args.project_tag, True)
         delete_vpc_resources(session, args.region, args.project_tag, True)
         delete_iam_resources(session, args.region, args.project_tag, True)
 
@@ -449,9 +613,11 @@ def main():
             print("\n=== Deleting Resources ===")
 
             # Delete resources in the correct order (reverse dependency order)
+            delete_lambda_resources(session, args.region, args.project_tag, args.dry_run)
             delete_ecs_resources(session, args.region, args.project_tag, args.dry_run)
             delete_alb_resources(session, args.region, args.project_tag, args.dry_run)
             delete_rds_resources(session, args.region, args.project_tag, args.dry_run)
+            delete_efs_resources(session, args.region, args.project_tag, args.dry_run)
             delete_vpc_resources(session, args.region, args.project_tag, args.dry_run)
             delete_iam_resources(session, args.region, args.project_tag, args.dry_run)
 
