@@ -197,7 +197,7 @@ Detailed testing documentation is available in the `docs/testing.md` file.
 The project follows a phased implementation approach:
 
 <details>
-<summary>✅ **Phase 1**: Infrastructure Setup</summary>
+<summary>✅ Phase 1: Infrastructure Setup</summary>
 
 - **Networking**
 
@@ -227,7 +227,7 @@ The project follows a phased implementation approach:
   </details>
 
 <details>
-<summary>✅ **Phase 2**: Backend Services & Monitoring</summary>
+<summary>✅ Phase 2: Backend Services & Monitoring</summary>
 
 - **Node.js/Express API**
 
@@ -254,7 +254,7 @@ The project follows a phased implementation approach:
   </details>
 
 <details>
-<summary>🔄 **Phase 3**: Grafana Implementation (In Progress)</summary>
+<summary>🔄 Phase 3: Grafana Implementation (In Progress)</summary>
 
 - **Planned Components**
 
@@ -273,7 +273,7 @@ The project follows a phased implementation approach:
   </details>
 
 <details>
-<summary>⏳ **Phase 4**: Frontend & Documentation (Planned)</summary>
+<summary>⏳ Phase 4: Frontend & Documentation (Planned)</summary>
 
 - **React/TypeScript Frontend**
 
