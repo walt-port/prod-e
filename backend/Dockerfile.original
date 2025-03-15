@@ -23,15 +23,6 @@ WORKDIR /app
 # Set node environment to production
 ENV NODE_ENV=production
 
-# Install essential dependencies for health checks and troubleshooting
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    wget \
-    ca-certificates \
-    jq \
-    netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/*
-
 # Copy package files
 COPY package*.json ./
 
@@ -57,9 +48,9 @@ USER nodeuser
 # Expose application port
 EXPOSE 3000
 
-# Set health check using curl (now available in the image)
+# Set health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
+    CMD node -e "const http = require('http'); const options = { hostname: 'localhost', port: 3000, path: '/health', timeout: 2000 }; const req = http.get(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => { process.exit(1); });"
 
 # Command to run the application
 CMD ["node", "index.js"]
