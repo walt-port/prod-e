@@ -476,6 +476,12 @@ class MyStack extends TerraformStack {
       policyArn: 'arn:aws:iam::aws:policy/CloudWatchLogsFullAccess',
     });
 
+    // Add SecretsManager access policy to the ECS task execution role
+    new IamRolePolicyAttachment(this, 'ecs-task-execution-secretsmanager-policy', {
+      role: ecsTaskExecutionRole.name,
+      policyArn: 'arn:aws:iam::aws:policy/SecretsManagerReadWrite',
+    });
+
     // Create IAM task role for ECS tasks
     // This role defines what AWS services the application inside the container can access
     const ecsTaskRole = new IamRole(this, 'ecs-task-role', {
