@@ -14,12 +14,14 @@ The backend application includes Prometheus metrics collection via the `prom-cli
 - ✅ Custom metrics for HTTP request duration and count
 - ✅ Node.js default metrics collection
 - ✅ Prometheus server deployment on ECS Fargate
+- ✅ Grafana deployment with persistent storage (EFS)
+- ✅ Dashboard configuration for Node.js and HTTP metrics
+- ✅ Alerting rules for high event loop lag
 
 ### Pending Implementation:
 
-- ⏳ Grafana deployment
-- ⏳ Dashboard configuration
-- ⏳ Alerting rules
+- ⏳ Advanced dashboard customization
+- ⏳ Additional business metrics
 
 ## Architecture
 
@@ -69,47 +71,24 @@ The application exposes metrics via the `/metrics` endpoint using several types 
    - ✅ Configure networking and security groups
    - ✅ Deploy Prometheus on ECS Fargate
 
-2. **Prometheus Configuration**:
+### Phase 2: Grafana Implementation (✅ Completed)
 
-   - ✅ Create prometheus.yml with scrape configuration
-   - ✅ Configure scrape targets to use ALB DNS name
+1. **Infrastructure Setup**:
 
-3. **Testing**:
-   - ✅ Verify Prometheus can scrape metrics from application
-   - ✅ Validate CloudWatch logs showing successful operation
+   - ✅ Create EFS filesystem with appropriate access points
+   - ✅ Deploy Grafana on ECS Fargate (single-AZ for cost efficiency)
+   - ✅ Configure ALB path-based routing for `/grafana`
+   - ✅ Set up AWS Secrets Manager for credentials
+   - ✅ Implement S3-based backup solution
 
-### Phase 2: Grafana Setup (⏳ In Progress)
+2. **Dashboard Configuration**:
 
-1. **Infrastructure Updates**:
+   - ✅ Configure Prometheus data source
+   - ✅ Create Node.js metrics dashboard
+   - ✅ Set up HTTP request metrics dashboard
+   - ✅ Configure basic alerting rules
 
-   - ⏳ Add Grafana container to ECS task definition
-   - ⏳ Configure networking and security groups
-   - ⏳ Set up persistent storage for dashboards and settings
-
-2. **Grafana Configuration**:
-
-   - ⏳ Configure Prometheus data source
-   - ⏳ Set up initial admin user
-   - ⏳ Configure default organization
-
-3. **Dashboard Creation**:
-   - ⏳ Application overview dashboard
-   - ⏳ HTTP request metrics dashboard
-   - ⏳ Node.js runtime metrics dashboard
-   - ⏳ System metrics dashboard
-
-### Phase 3: Alerting Setup
-
-1. **Define Alerting Rules**:
-
-   - High error rate alerts
-   - Latency threshold alerts
-   - Resource utilization alerts
-
-2. **Notification Channels**:
-   - Email notifications
-   - Slack integration (optional)
-   - PagerDuty integration (optional)
+For detailed Grafana implementation information, see [Grafana Documentation](./grafana.md).
 
 ## Prometheus Deployment Details
 

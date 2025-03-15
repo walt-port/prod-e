@@ -54,6 +54,14 @@ jobs:
           aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 043309339649.dkr.ecr.us-west-2.amazonaws.com
           docker push 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest
 
+      - name: Build and Push Grafana
+        run: |
+          cd backend
+          docker build -f Dockerfile.grafana -t prod-e-grafana .
+          docker tag prod-e-grafana:latest 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-grafana:latest
+          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 043309339649.dkr.ecr.us-west-2.amazonaws.com
+          docker push 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-grafana:latest
+
       - name: Run Backend Tests
         run: |
           cd backend

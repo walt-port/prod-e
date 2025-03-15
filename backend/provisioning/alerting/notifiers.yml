@@ -1,0 +1,9 @@
+apiVersion: 1
+notifiers:
+  - name: email
+    type: email
+    uid: email
+    org_id: 1
+    is_default: true
+    settings:
+      addresses: 'admin@example.com'

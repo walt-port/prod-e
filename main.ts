@@ -1,14 +1,21 @@
 import { App, S3Backend, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
+import { CloudwatchEventRule } from './.gen/providers/aws/cloudwatch-event-rule';
 import { DbInstance } from './.gen/providers/aws/db-instance';
 import { DbSubnetGroup } from './.gen/providers/aws/db-subnet-group';
 import { EcsCluster } from './.gen/providers/aws/ecs-cluster';
 import { EcsService } from './.gen/providers/aws/ecs-service';
 import { EcsTaskDefinition } from './.gen/providers/aws/ecs-task-definition';
+import { EfsAccessPoint } from './.gen/providers/aws/efs-access-point';
+import { EfsFileSystem } from './.gen/providers/aws/efs-file-system';
+import { EfsMountTarget } from './.gen/providers/aws/efs-mount-target';
 import { Eip } from './.gen/providers/aws/eip';
 import { IamRole } from './.gen/providers/aws/iam-role';
+import { IamRolePolicy } from './.gen/providers/aws/iam-role-policy';
 import { IamRolePolicyAttachment } from './.gen/providers/aws/iam-role-policy-attachment';
 import { InternetGateway } from './.gen/providers/aws/internet-gateway';
+import { LambdaFunction } from './.gen/providers/aws/lambda-function';
+import { LambdaPermission } from './.gen/providers/aws/lambda-permission';
 import { Lb } from './.gen/providers/aws/lb';
 import { LbListener } from './.gen/providers/aws/lb-listener';
 import { LbListenerRule } from './.gen/providers/aws/lb-listener-rule';
@@ -18,6 +25,8 @@ import { AwsProvider } from './.gen/providers/aws/provider';
 import { Route } from './.gen/providers/aws/route';
 import { RouteTable } from './.gen/providers/aws/route-table';
 import { RouteTableAssociation } from './.gen/providers/aws/route-table-association';
+import { S3Bucket } from './.gen/providers/aws/s3-bucket';
+import { SecretsmanagerSecret } from './.gen/providers/aws/secretsmanager-secret';
 import { SecurityGroup } from './.gen/providers/aws/security-group';
 import { SecurityGroupRule } from './.gen/providers/aws/security-group-rule';
 import { Subnet } from './.gen/providers/aws/subnet';
@@ -680,6 +689,289 @@ class MyStack extends TerraformStack {
       tags: { Name: 'prom-service' },
     });
     new TerraformOutput(this, 'prom-service-name', { value: promService.name });
+
+    // Setup Grafana
+
+    // EFS File System for Grafana persistence
+    const grafanaFileSystem = new EfsFileSystem(this, 'grafana-efs', {
+      creationToken: 'grafana-efs',
+      encrypted: true,
+      lifecyclePolicy: [{ transitionToIa: 'AFTER_30_DAYS' }],
+      performanceMode: 'generalPurpose',
+      throughputMode: 'bursting',
+      tags: { Name: 'grafana-efs' },
+    });
+
+    // EFS Access Point
+    const grafanaAccessPoint = new EfsAccessPoint(this, 'grafana-ap', {
+      fileSystemId: grafanaFileSystem.id,
+      posixUser: { uid: 472, gid: 472 }, // Grafana container user
+      rootDirectory: {
+        path: '/grafana',
+        creationInfo: {
+          ownerGid: 472,
+          ownerUid: 472,
+          permissions: '755',
+        },
+      },
+    });
+
+    // EFS Mount Target
+    const grafanaMountTarget = new EfsMountTarget(this, 'grafana-mt', {
+      fileSystemId: grafanaFileSystem.id,
+      subnetId: privateSubnet.id,
+      securityGroups: [ecsSecurityGroup.id],
+    });
+
+    // Grafana security group
+    const grafanaSecurityGroup = new SecurityGroup(this, 'grafana-security-group', {
+      name: 'grafana-security-group',
+      vpcId: vpc.id,
+      tags: { Name: 'grafana-sg' },
+    });
+
+    // Security group rules for Grafana
+    new SecurityGroupRule(this, 'grafana-inbound', {
+      type: 'ingress',
+      fromPort: 3000,
+      toPort: 3000,
+      protocol: 'tcp',
+      sourceSecurityGroupId: albSecurityGroup.id, // Only allow access from ALB
+      securityGroupId: grafanaSecurityGroup.id,
+    });
+
+    new SecurityGroupRule(this, 'grafana-outbound', {
+      type: 'egress',
+      fromPort: 0,
+      toPort: 0,
+      protocol: '-1',
+      cidrBlocks: ['0.0.0.0/0'],
+      securityGroupId: grafanaSecurityGroup.id,
+    });
+
+    // Specific security group rule for EFS access
+    new SecurityGroupRule(this, 'grafana-efs-outbound', {
+      type: 'egress',
+      fromPort: 2049,
+      toPort: 2049,
+      protocol: 'tcp',
+      cidrBlocks: [config.vpcCidr], // VPC CIDR
+      securityGroupId: grafanaSecurityGroup.id,
+    });
+
+    // Specific security group rule for Prometheus access
+    new SecurityGroupRule(this, 'grafana-prom-outbound', {
+      type: 'egress',
+      fromPort: 9090,
+      toPort: 9090,
+      protocol: 'tcp',
+      sourceSecurityGroupId: promSecurityGroup.id,
+      securityGroupId: grafanaSecurityGroup.id,
+    });
+
+    // Create a Secret for Grafana admin password
+    const grafanaSecret = new SecretsmanagerSecret(this, 'grafana-admin-secret', {
+      name: 'grafana-admin-credentials',
+      recoveryWindowInDays: 7,
+    });
+
+    // Grafana Task Definition
+    const grafanaTaskDefinition = new EcsTaskDefinition(this, 'grafana-task-definition', {
+      family: 'grafana-task',
+      requiresCompatibilities: ['FARGATE'],
+      networkMode: 'awsvpc',
+      cpu: '256',
+      memory: '512',
+      executionRoleArn: ecsTaskExecutionRole.arn,
+      taskRoleArn: ecsTaskRole.arn,
+      volume: [
+        {
+          name: 'grafana-storage',
+          efsVolumeConfiguration: {
+            fileSystemId: grafanaFileSystem.id,
+            transitEncryption: 'ENABLED',
+            authorizationConfig: {
+              accessPointId: grafanaAccessPoint.id,
+              iam: 'ENABLED',
+            },
+            rootDirectory: '/',
+          },
+        },
+      ],
+      containerDefinitions: JSON.stringify([
+        {
+          name: 'grafana',
+          image: `043309339649.dkr.ecr.${config.region}.amazonaws.com/prod-e-grafana:latest`,
+          essential: true,
+          portMappings: [{ containerPort: 3000, hostPort: 3000, protocol: 'tcp' }],
+          environment: [
+            { name: 'GF_SERVER_ROOT_URL', value: `http://${alb.dnsName}/grafana` },
+            { name: 'GF_SECURITY_ADMIN_USER', value: 'admin' },
+            { name: 'GF_USERS_ALLOW_SIGN_UP', value: 'false' },
+            { name: 'GF_INSTALL_PLUGINS', value: 'grafana-piechart-panel,grafana-clock-panel' },
+            { name: 'GF_LOG_MODE', value: 'console' },
+            { name: 'GF_PATHS_PROVISIONING', value: '/etc/grafana/provisioning' },
+          ],
+          secrets: [
+            { name: 'GF_SECURITY_ADMIN_PASSWORD', valueFrom: `${grafanaSecret.arn}:password::` },
+          ],
+          mountPoints: [
+            {
+              sourceVolume: 'grafana-storage',
+              containerPath: '/var/lib/grafana',
+              readOnly: false,
+            },
+          ],
+          healthCheck: {
+            command: ['CMD-SHELL', 'wget -q --spider http://localhost:3000/api/health || exit 1'],
+            interval: 30,
+            timeout: 5,
+            retries: 3,
+            startPeriod: 60,
+          },
+          logConfiguration: {
+            logDriver: 'awslogs',
+            options: {
+              'awslogs-group': '/ecs/grafana-task',
+              'awslogs-region': config.region,
+              'awslogs-stream-prefix': 'ecs',
+              'awslogs-create-group': 'true',
+            },
+          },
+        },
+      ]),
+      tags: { Name: 'grafana-task-def' },
+    });
+
+    // Grafana Target Group
+    const grafanaTargetGroup = new LbTargetGroup(this, 'grafana-target-group', {
+      name: 'grafana-tg',
+      port: 3000,
+      protocol: 'HTTP',
+      vpcId: vpc.id,
+      targetType: 'ip',
+      healthCheck: {
+        path: '/api/health',
+        interval: 30,
+        timeout: 5,
+        healthyThreshold: 3,
+        unhealthyThreshold: 3,
+        matcher: '200',
+      },
+    });
+
+    // Grafana Service
+    const grafanaService = new EcsService(this, 'grafana-service', {
+      name: 'grafana-service',
+      cluster: ecsCluster.id,
+      taskDefinition: grafanaTaskDefinition.arn,
+      desiredCount: 1,
+      launchType: 'FARGATE',
+      networkConfiguration: {
+        subnets: [privateSubnet.id], // Single-AZ for cost efficiency
+        securityGroups: [grafanaSecurityGroup.id],
+        assignPublicIp: false,
+      },
+      loadBalancer: [
+        {
+          targetGroupArn: grafanaTargetGroup.arn,
+          containerName: 'grafana',
+          containerPort: 3000,
+        },
+      ],
+      dependsOn: [grafanaMountTarget],
+      tags: { Name: 'grafana-service' },
+    });
+
+    // ALB Listener Rule for Grafana path
+    new LbListenerRule(this, 'grafana-listener-rule', {
+      listenerArn: albHttpListener.arn,
+      priority: 40,
+      action: [
+        {
+          type: 'forward',
+          targetGroupArn: grafanaTargetGroup.arn,
+        },
+      ],
+      condition: [
+        {
+          pathPattern: {
+            values: ['/grafana', '/grafana/*'],
+          },
+        },
+      ],
+    });
+
+    // Backup infrastructure
+    const backupBucket = new S3Bucket(this, 'grafana-backup-bucket', {
+      bucket: 'prod-e-grafana-backups',
+      versioning: { enabled: true },
+      tags: { Name: 'grafana-backup-bucket' },
+    });
+
+    const backupRole = new IamRole(this, 'grafana-backup-role', {
+      assumeRolePolicy: JSON.stringify({
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { Service: 'lambda.amazonaws.com' },
+            Action: 'sts:AssumeRole',
+          },
+        ],
+      }),
+      managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'],
+      tags: { Name: 'grafana-backup-role' },
+    });
+
+    new IamRolePolicy(this, 'grafana-backup-policy', {
+      role: backupRole.id,
+      policy: JSON.stringify({
+        Version: '2012-10-17',
+        Statement: [
+          { Effect: 'Allow', Action: ['s3:PutObject'], Resource: `${backupBucket.arn}/*` },
+          {
+            Effect: 'Allow',
+            Action: ['elasticfilesystem:ClientMount'],
+            Resource: grafanaFileSystem.arn,
+          },
+        ],
+      }),
+    });
+
+    // Lambda backup function - simplified for now, will use a pre-built zip file
+    const backupLambda = new LambdaFunction(this, 'grafana-backup-lambda', {
+      functionName: 'grafana-backup',
+      runtime: 'nodejs16.x',
+      handler: 'index.handler',
+      role: backupRole.arn,
+      s3Bucket: backupBucket.bucket, // Store lambda code in the same S3 bucket
+      s3Key: 'lambda/backup-function.zip', // This file needs to be uploaded separately
+      timeout: 300,
+      fileSystemConfig: { arn: grafanaFileSystem.arn, localMountPath: '/mnt/efs' },
+      tags: { Name: 'grafana-backup-lambda' },
+    });
+
+    const backupSchedule = new CloudwatchEventRule(this, 'grafana-backup-schedule', {
+      name: 'grafana-backup-schedule',
+      scheduleExpression: 'rate(1 day)',
+      tags: { Name: 'grafana-backup-schedule' },
+    });
+
+    new LambdaPermission(this, 'grafana-backup-permission', {
+      action: 'lambda:InvokeFunction',
+      functionName: backupLambda.functionName,
+      principal: 'events.amazonaws.com',
+      sourceArn: backupSchedule.arn,
+    });
+
+    // Outputs for Grafana
+    new TerraformOutput(this, 'grafana-url', {
+      value: `http://${alb.dnsName}/grafana`,
+    });
+    new TerraformOutput(this, 'grafana-service-name', {
+      value: grafanaService.name,
+    });
 
     // Output the VPC ID
     new TerraformOutput(this, 'vpc-id', {
