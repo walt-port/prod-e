@@ -18,6 +18,8 @@ This document serves as the main index for all infrastructure documentation in t
 | Monitoring                | Documentation for Prometheus and Grafana implementation                        | [monitoring.md](./monitoring.md)                     |
 | CI/CD                     | Documentation for GitHub Actions CI/CD implementation                          | [ci-cd.md](./ci-cd.md)                               |
 | Remote State Backend      | Documentation for S3 remote state backend and DynamoDB state locking           | [remote_state.md](./remote_state.md)                 |
+| Infrastructure Audits     | Documentation for infrastructure and codebase audits                           | [../audits/overview.md](../audits/overview.md)       |
+| Audit Processes           | Documentation for infrastructure and codebase audit processes                  | [audits.md](./audits.md)                             |
 
 ## Infrastructure Overview
 
