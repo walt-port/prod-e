@@ -14,8 +14,8 @@ cdktf.log
 *terraform.*.tfstate*
 terraform.tfstate
 terraform.tfstate.backup
-terraform.prod-e.tfstate
-terraform.prod-e.tfstate.backup
+infrastructure/terraform/*.tfstate
+infrastructure/terraform/*.tfstate.backup
 terraform-state-policy.json
 .gen
 .terraform
@@ -39,4 +39,42 @@ override.tf.json
 
 # Logs
 *.log
+
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Build artifacts
+dist/
+build/
+coverage/
+
+# Logs
+logs/
+*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-*
+*.swp
+*.swo
+
+# Temporary files
+temp/
+task-def-*.json
+healthcheck.json
 
