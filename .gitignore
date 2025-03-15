@@ -1,16 +1,42 @@
+# TypeScript/JavaScript
 *.d.ts
 *.js
 node_modules
-cdktf.out
-cdktf.log
-*terraform.*.tfstate*
-.gen
-.terraform
 tsconfig.tsbuildinfo
+dist/
 !jest.config.js
 !setup.js
 !backend/**/*.js
+
+# Terraform/CDKTF
+cdktf.out
+cdktf.log
+*terraform.*.tfstate*
+terraform.tfstate
+terraform.tfstate.backup
+terraform.prod-e.tfstate
+terraform.prod-e.tfstate.backup
+terraform-state-policy.json
+.gen
+.terraform
+*.tfplan
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Environment & secrets
+.env
+**/.env
+*.pem
+*.key
+
+# IDE & local
 .cursor
 .vscode
 .context_updates/
+
+# Logs
+*.log
 
