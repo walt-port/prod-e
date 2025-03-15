@@ -948,7 +948,7 @@ class MyStack extends TerraformStack {
       sourceCodeHash: 'lambda-backup-code-hash',
       filename: '/tmp/lambda-code.zip', // This is a placeholder, we'll need to create this file separately
       timeout: 300,
-      fileSystemConfig: { arn: grafanaFileSystem.arn, localMountPath: '/mnt/efs' },
+      fileSystemConfig: { arn: grafanaAccessPoint.arn, localMountPath: '/mnt/efs' },
       tags: { Name: 'grafana-backup-lambda' },
     });
 
