@@ -939,14 +939,14 @@ class MyStack extends TerraformStack {
       }),
     });
 
-    // Lambda backup function - simplified for now, will use a pre-built zip file
+    // Lambda backup function - simplified for now, will use inline code
     const backupLambda = new LambdaFunction(this, 'grafana-backup-lambda', {
       functionName: 'grafana-backup',
       runtime: 'nodejs16.x',
       handler: 'index.handler',
       role: backupRole.arn,
-      s3Bucket: backupBucket.bucket, // Store lambda code in the same S3 bucket
-      s3Key: 'lambda/backup-function.zip', // This file needs to be uploaded separately
+      sourceCodeHash: 'lambda-backup-code-hash',
+      filename: '/tmp/lambda-code.zip', // This is a placeholder, we'll need to create this file separately
       timeout: 300,
       fileSystemConfig: { arn: grafanaFileSystem.arn, localMountPath: '/mnt/efs' },
       tags: { Name: 'grafana-backup-lambda' },
