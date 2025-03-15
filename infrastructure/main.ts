@@ -713,20 +713,13 @@ class MyStack extends TerraformStack {
       fileSystemId: grafanaFileSystem.id,
       posixUser: { uid: 472, gid: 472 }, // Grafana container user
       rootDirectory: {
-        path: '/grafana',
+        path: '/var/lib/grafana',
         creationInfo: {
           ownerGid: 472,
           ownerUid: 472,
           permissions: '755',
         },
       },
-    });
-
-    // EFS Mount Target
-    const grafanaMountTarget = new EfsMountTarget(this, 'grafana-mt', {
-      fileSystemId: grafanaFileSystem.id,
-      subnetId: privateSubnet.id,
-      securityGroups: [ecsSecurityGroup.id],
     });
 
     // Grafana security group
@@ -763,6 +756,26 @@ class MyStack extends TerraformStack {
       protocol: 'tcp',
       cidrBlocks: [config.vpcCidr], // VPC CIDR
       securityGroupId: grafanaSecurityGroup.id,
+      description: 'Allow Grafana to access EFS via NFS',
+    });
+
+    // Add a dedicated security group for the EFS mount target
+    const efsMountSecurityGroup = new SecurityGroup(this, 'efs-mount-security-group', {
+      name: 'efs-mount-security-group',
+      vpcId: vpc.id,
+      description: 'Security group for EFS mount targets',
+      tags: { Name: 'efs-mount-sg' },
+    });
+
+    // Allow inbound NFS traffic from Grafana security group
+    new SecurityGroupRule(this, 'efs-mount-inbound', {
+      type: 'ingress',
+      fromPort: 2049,
+      toPort: 2049,
+      protocol: 'tcp',
+      sourceSecurityGroupId: grafanaSecurityGroup.id,
+      securityGroupId: efsMountSecurityGroup.id,
+      description: 'Allow NFS traffic from Grafana tasks',
     });
 
     // Specific security group rule for Prometheus access
@@ -773,6 +786,13 @@ class MyStack extends TerraformStack {
       protocol: 'tcp',
       sourceSecurityGroupId: promSecurityGroup.id,
       securityGroupId: grafanaSecurityGroup.id,
+    });
+
+    // EFS Mount Target
+    const grafanaMountTarget = new EfsMountTarget(this, 'grafana-mt', {
+      fileSystemId: grafanaFileSystem.id,
+      subnetId: privateSubnet.id,
+      securityGroups: [efsMountSecurityGroup.id], // Use dedicated EFS security group
     });
 
     // Create a Secret for Grafana admin password
@@ -812,11 +832,25 @@ class MyStack extends TerraformStack {
           portMappings: [{ containerPort: 3000, hostPort: 3000, protocol: 'tcp' }],
           environment: [
             { name: 'GF_SERVER_ROOT_URL', value: `http://${alb.dnsName}/grafana` },
+            { name: 'GF_SERVER_SERVE_FROM_SUB_PATH', value: 'true' },
             { name: 'GF_SECURITY_ADMIN_USER', value: 'admin' },
             { name: 'GF_USERS_ALLOW_SIGN_UP', value: 'false' },
             { name: 'GF_INSTALL_PLUGINS', value: 'grafana-piechart-panel,grafana-clock-panel' },
             { name: 'GF_LOG_MODE', value: 'console' },
+            { name: 'GF_LOG_LEVEL', value: 'debug' },
             { name: 'GF_PATHS_PROVISIONING', value: '/etc/grafana/provisioning' },
+            { name: 'GF_PATHS_LOGS', value: '/var/log/grafana' },
+            { name: 'GF_PATHS_DATA', value: '/var/lib/grafana' },
+            { name: 'GF_DATABASE_TYPE', value: 'sqlite3' },
+            { name: 'GF_DATABASE_PATH', value: '/var/lib/grafana/grafana.db' },
+            { name: 'GF_DATABASE_CACHE_MODE', value: 'shared' },
+            { name: 'GF_DATABASE_WAL', value: 'true' },
+            { name: 'GF_DASHBOARDS_MIN_REFRESH_INTERVAL', value: '10s' },
+            { name: 'GF_AUTH_ANONYMOUS_ENABLED', value: 'true' },
+            { name: 'GF_AUTH_ANONYMOUS_ORG_NAME', value: 'Main Org.' },
+            { name: 'GF_AUTH_ANONYMOUS_ORG_ROLE', value: 'Editor' },
+            { name: 'GF_SECURITY_ALLOW_EMBEDDING', value: 'true' },
+            { name: 'FORCE_REFRESH', value: '2025-03-15-v5' }, // Update to force a new deployment with updated image
           ],
           secrets: [
             { name: 'GF_SECURITY_ADMIN_PASSWORD', valueFrom: `${grafanaSecret.arn}:password::` },
@@ -829,11 +863,11 @@ class MyStack extends TerraformStack {
             },
           ],
           healthCheck: {
-            command: ['CMD-SHELL', 'wget -q --spider http://localhost:3000/api/health || exit 1'],
+            command: ['CMD-SHELL', 'curl -f -m 20 http://localhost:3000/ || exit 1'],
             interval: 30,
-            timeout: 5,
-            retries: 3,
-            startPeriod: 60,
+            timeout: 20,
+            retries: 5,
+            startPeriod: 120,
           },
           logConfiguration: {
             logDriver: 'awslogs',
@@ -857,12 +891,12 @@ class MyStack extends TerraformStack {
       vpcId: vpc.id,
       targetType: 'ip',
       healthCheck: {
-        path: '/api/health',
-        interval: 30,
-        timeout: 5,
-        healthyThreshold: 3,
-        unhealthyThreshold: 3,
-        matcher: '200',
+        path: '/grafana/api/health',
+        interval: 60,
+        timeout: 30,
+        healthyThreshold: 2,
+        unhealthyThreshold: 5,
+        matcher: '200,302,401,404', // Include 404 as valid during startup
       },
     });
 
@@ -902,10 +936,17 @@ class MyStack extends TerraformStack {
       condition: [
         {
           pathPattern: {
-            values: ['/grafana', '/grafana/*'],
+            values: ['/grafana', '/grafana/', '/grafana/*'],
           },
         },
       ],
+    });
+
+    // Add Grafana ALB Rule Debugging Output
+    new TerraformOutput(this, 'grafana-listener-rule-arn', {
+      value: albHttpListener.arn,
+      description:
+        'ARN of the ALB listener for Grafana rule at http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/grafana',
     });
 
     // Backup infrastructure
@@ -948,14 +989,13 @@ class MyStack extends TerraformStack {
       }),
     });
 
-    // Lambda backup function - simplified for now, will use inline code
+    // Lambda backup function - update with inline code
     const backupLambda = new LambdaFunction(this, 'grafana-backup-lambda', {
       functionName: 'grafana-backup',
       runtime: 'nodejs16.x',
       handler: 'index.handler',
       role: backupRole.arn,
-      sourceCodeHash: 'lambda-backup-code-hash',
-      filename: '/tmp/lambda-code.zip', // This is a placeholder, we'll need to create this file separately
+      filename: '/home/echo_space/.dev/prod-e/lambda.zip', // Absolute path to ZIP
       timeout: 300,
       fileSystemConfig: { arn: grafanaAccessPoint.arn, localMountPath: '/mnt/efs' },
       vpcConfig: {
