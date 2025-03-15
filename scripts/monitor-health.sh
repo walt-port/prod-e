@@ -314,9 +314,22 @@ check_endpoints() {
   PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --region $AWS_REGION --query "services[0].status" --output text)
 
   if [[ "$PROM_SERVICE" == "ACTIVE" ]]; then
-    echo -n "Endpoint Prometheus: "
-    echo -e "${YELLOW}SKIPPED - Prometheus health check requires direct task access${NC}"
-    echo -e "${YELLOW}Note: Prometheus appears to be running based on ECS service status${NC}"
+    # Check if the Prometheus task is healthy
+    PROM_TASK=$(aws ecs list-tasks --cluster prod-e-cluster --family prom-task --region $AWS_REGION | jq -r '.taskArns[0]')
+    if [[ -n "$PROM_TASK" ]]; then
+      HEALTH_STATUS=$(aws ecs describe-tasks --cluster prod-e-cluster --tasks $PROM_TASK --region $AWS_REGION | jq -r '.tasks[0].containers[0].healthStatus')
+      echo -n "Endpoint Prometheus: "
+      if [[ "$HEALTH_STATUS" == "HEALTHY" ]]; then
+        echo -e "${GREEN}HEALTHY (Task health: $HEALTH_STATUS)${NC}"
+      else
+        echo -e "${RED}PROBLEM (Task health: $HEALTH_STATUS)${NC}"
+        send_alert "Prometheus task is not healthy ($HEALTH_STATUS)" "warning"
+      fi
+    else
+      echo -n "Endpoint Prometheus: "
+      echo -e "${RED}PROBLEM (No running tasks found)${NC}"
+      send_alert "No running Prometheus tasks found" "critical"
+    fi
   else
     echo -n "Endpoint Prometheus: "
     echo -e "${RED}NOT RUNNING - Prometheus service is not active${NC}"
