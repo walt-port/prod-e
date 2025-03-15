@@ -4,11 +4,23 @@
 
 This document outlines the monitoring strategy for the Production Experience Showcase project using Prometheus and Grafana. It covers the overall architecture, implementation plan, and best practices for monitoring our containerized application environment.
 
+## Table of Contents
+
+- [Current Status](#current-status)
+- [Architecture](#architecture)
+- [Implementation Plan](#implementation-plan)
+- [Prometheus Deployment Details](#prometheus-deployment-details)
+- [Expected Metrics and Dashboards](#expected-metrics-and-dashboards)
+- [Security Considerations](#security-considerations)
+- [Best Practices](#best-practices)
+- [Resources](#resources)
+- [Related Documentation](#related-documentation)
+
 ## Current Status
 
 The backend application includes Prometheus metrics collection via the `prom-client` library, with a `/metrics` endpoint exposed for scraping. Prometheus has been successfully deployed on ECS Fargate and is now scraping metrics from the backend application.
 
-### Implemented Components:
+### Implemented Components
 
 - ✅ Backend API with `/metrics` endpoint
 - ✅ Custom metrics for HTTP request duration and count
@@ -18,7 +30,7 @@ The backend application includes Prometheus metrics collection via the `prom-cli
 - ✅ Dashboard configuration for Node.js and HTTP metrics
 - ✅ Alerting rules for high event loop lag
 
-### Pending Implementation:
+### Pending Implementation
 
 - ⏳ Advanced dashboard customization
 - ⏳ Additional business metrics
@@ -218,3 +230,14 @@ Prometheus has been deployed with the following configuration:
 - [Grafana Documentation](https://grafana.com/docs/)
 - [prom-client Node.js Library](https://github.com/siimon/prom-client)
 - [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator) (for Kubernetes deployments)
+
+## Related Documentation
+
+- [Grafana Documentation](./grafana.md)
+- [ECS Service Documentation](./ecs-service.md)
+- [Load Balancer Documentation](./load-balancer.md)
+
+---
+
+**Last Updated**: 2025-03-15
+**Version**: 1.0
