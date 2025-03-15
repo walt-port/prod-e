@@ -736,16 +736,6 @@ class MyStack extends TerraformStack {
       tags: { Name: 'grafana-sg' },
     });
 
-    // Security group rule for EFS to allow inbound traffic from Grafana
-    new SecurityGroupRule(this, 'efs-inbound', {
-      type: 'ingress',
-      fromPort: 2049,
-      toPort: 2049,
-      protocol: 'tcp',
-      sourceSecurityGroupId: grafanaSecurityGroup.id,
-      securityGroupId: ecsSecurityGroup.id,
-    });
-
     // Security group rules for Grafana
     new SecurityGroupRule(this, 'grafana-inbound', {
       type: 'ingress',
