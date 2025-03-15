@@ -1,4 +1,4 @@
-import { App, TerraformOutput, TerraformStack } from 'cdktf';
+import { App, S3Backend, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
 import { DbInstance } from './.gen/providers/aws/db-instance';
 import { DbSubnetGroup } from './.gen/providers/aws/db-subnet-group';
@@ -70,6 +70,15 @@ const config = {
 class MyStack extends TerraformStack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
+
+    // Configure S3 backend
+    new S3Backend(this, {
+      bucket: 'prod-e-terraform-state',
+      key: 'terraform.tfstate',
+      region: 'us-west-2',
+      encrypt: true,
+      dynamodbTable: 'prod-e-terraform-lock',
+    });
 
     // Define AWS provider
     new AwsProvider(this, 'aws', {
