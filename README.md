@@ -384,3 +384,41 @@ Below is a summary of issues encountered and their solutions.
 - [Testing Documentation](docs/testing.md) - Testing approach and coverage
 - [CI/CD Implementation](docs/ci-cd.md) - GitHub Actions workflow for continuous deployment
 </details>
+
+<details>
+<summary>🛠️ Utility Scripts</summary>
+
+The project includes several utility scripts to help with management and monitoring:
+
+- **Resource Check Script** (`scripts/resource_check.sh`):
+
+  - Provides comprehensive status checks of all AWS resources
+  - Color-coded output for easy identification of issues
+  - Covers VPC, RDS, ECS, ALB, ECR, Terraform state, and Prometheus
+
+- **Teardown Script** (`scripts/teardown.py`):
+
+  - Alternative to `npm run destroy` with more detailed control
+  - Shows resources that will be deleted before taking action
+  - Handles resources in the correct dependency order
+
+- **Build and Push Script** (`scripts/build-and-push.sh`):
+  - Builds and pushes Docker images to ECR
+  - Streamlines the container deployment process
+
+Usage:
+
+```bash
+# Check status of all AWS resources
+./scripts/resource_check.sh
+
+# Teardown infrastructure with detailed control
+python scripts/teardown.py --dry-run
+
+# Build and push Docker images
+./scripts/build-and-push.sh
+```
+
+For detailed documentation on these scripts, see [scripts/RESOURCE_CHECK.md](scripts/RESOURCE_CHECK.md).
+
+</details>
