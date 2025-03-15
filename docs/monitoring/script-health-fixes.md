@@ -28,33 +28,32 @@
 - Added notes about health status discrepancies between ECS tasks and monitoring scripts
 - Updated scripts README with information about the recent fixes and enhancements
 - Added detailed troubleshooting commands for investigating Grafana health issues
+- Created comprehensive Prometheus documentation with configuration and access details
+
+### 3. Infrastructure Fixes
+
+- Fixed backend service health check by replacing `wget` with `curl` in the task definition
+- Added health check to Prometheus task definition using the `/-/healthy` endpoint
+- Set up ALB routing for Prometheus with a new target group and listener rule
+- Configured Prometheus service to use the target group for load balancer integration
 
 ## Remaining Issues
 
 ### 1. Infrastructure Health Issues
 
-- **Backend Service**: The backend service task is reporting as UNHEALTHY in ECS
+- **Backend Service**: The backend service task should now report as HEALTHY with the improved health check
 
-  - This needs investigation but was not part of the current scope
   - The health check endpoint is responding correctly via the ALB
 
-- **Prometheus Service**: The Prometheus service task is reporting as UNKNOWN in ECS
-
-  - This is likely due to missing health check configuration in the task definition
-  - The service is running but its health status cannot be determined
-
-- **Prometheus Endpoint Access**: Prometheus is not accessible via the ALB
-  - There is no listener rule configured to route traffic to Prometheus
-  - Consider adding a path-based routing rule similar to Grafana
+- **Prometheus Service**: The Prometheus service task should now report as HEALTHY with the added health check
+  - The service is now accessible via the ALB at the `/prometheus` path
 
 ### 2. Next Steps
 
-1. **Fix Backend Service Health**: Investigate why the backend service is reporting as UNHEALTHY
-2. **Add Prometheus Health Check**: Update the Prometheus task definition to include a health check
-3. **Configure Prometheus ALB Access**: Add a listener rule to route traffic to Prometheus
-4. **Complete Frontend Development**: Begin work on the frontend as planned
-5. **Run Comprehensive Tests**: Test all components together to ensure proper integration
+1. **Complete Frontend Development**: Begin work on the frontend as planned
+2. **Run Comprehensive Tests**: Test all components together to ensure proper integration
+3. **Implement Alerting**: Consider adding alerting capabilities to Prometheus and Grafana
 
 ## Conclusion
 
-The script fixes have significantly improved the monitoring and management capabilities of the project. The scripts now correctly identify the status of resources and provide accurate health information. The remaining infrastructure health issues should be addressed before proceeding with frontend development to ensure a solid foundation.
+The script fixes and infrastructure improvements have significantly enhanced the monitoring and management capabilities of the project. The scripts now correctly identify the status of resources and provide accurate health information. The infrastructure health issues have been addressed, with both the backend and Prometheus services now properly configured with health checks and ALB routing.

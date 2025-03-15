@@ -40,11 +40,12 @@ This document catalogs all documentation in the Production Experience Showcase (
 
 ## Monitoring Documentation
 
-| Document                                                                 | Purpose                                                  | Related Documents                                                                              |
-| ------------------------------------------------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| [monitoring/monitoring.md](./monitoring/monitoring.md)                   | Prometheus and Grafana implementation                    | [monitoring/grafana.md](./monitoring/grafana.md)                                               |
-| [monitoring/grafana.md](./monitoring/grafana.md)                         | Grafana-specific configuration and dashboards            | [monitoring/monitoring.md](./monitoring/monitoring.md)                                         |
-| [monitoring/script-health-fixes.md](./monitoring/script-health-fixes.md) | Summary of script fixes and infrastructure health issues | [monitoring/grafana.md](./monitoring/grafana.md), [../scripts/README.md](../scripts/README.md) |
+| Document                                                                 | Purpose                                                  | Related Documents                                                                                              |
+| ------------------------------------------------------------------------ | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| [monitoring/monitoring.md](./monitoring/monitoring.md)                   | Prometheus and Grafana implementation                    | [monitoring/grafana.md](./monitoring/grafana.md), [monitoring/prometheus.md](./monitoring/prometheus.md)       |
+| [monitoring/grafana.md](./monitoring/grafana.md)                         | Grafana-specific configuration and dashboards            | [monitoring/monitoring.md](./monitoring/monitoring.md), [monitoring/prometheus.md](./monitoring/prometheus.md) |
+| [monitoring/prometheus.md](./monitoring/prometheus.md)                   | Prometheus-specific configuration and access             | [monitoring/monitoring.md](./monitoring/monitoring.md), [monitoring/grafana.md](./monitoring/grafana.md)       |
+| [monitoring/script-health-fixes.md](./monitoring/script-health-fixes.md) | Summary of script fixes and infrastructure health issues | [monitoring/grafana.md](./monitoring/grafana.md), [../scripts/README.md](../scripts/README.md)                 |
 
 ## Process Documentation
 
