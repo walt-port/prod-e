@@ -14,6 +14,19 @@ These scripts provide automation for common DevOps tasks such as checking resour
 | [create-lambda-zip.js](#create-lambda-zip) | Create deployment package for Lambda functions       | Node.js  |
 | [resource_check.sh](#resource-check)       | Check status of all AWS resources                    | Bash     |
 | [teardown.py](#teardown)                   | Clean up all AWS resources with fine-grained control | Python   |
+| [monitor-health.sh](#monitor-health)       | Monitor health of all services with alerting         | Bash     |
+| [backup-database.sh](#backup-database)     | Create and manage RDS database backups               | Bash     |
+| [rollback.sh](#rollback)                   | Roll back deployments to previous versions           | Bash     |
+| [cleanup-resources.sh](#cleanup-resources) | Clean up unused AWS resources to reduce costs        | Bash     |
+
+## Scripting Languages
+
+This directory contains scripts in multiple languages (Bash, Python, and Node.js). While consistency is important, we've chosen the right language for each task based on:
+
+1. **Task complexity**: Python for complex orchestration (teardown.py), Bash for straightforward tasks
+2. **Available libraries**: Using Node.js for ZIP creation leverages the JSZip library
+3. **AWS interactions**: Python with boto3 provides more sophisticated error handling and dependency management when working with AWS resources
+4. **Maintenance consideration**: Each script uses the language best suited for long-term maintenance of that particular task
 
 ## Script Details
 
@@ -133,6 +146,122 @@ python scripts/teardown.py --region us-west-2 --project-tag prod-e
 - AWS SDK for Python (boto3): `pip install boto3`
 - AWS credentials configured
 
+### <a name="monitor-health"></a>monitor-health.sh
+
+Monitors the health of all services and sends alerts when issues are detected.
+
+**Features:**
+
+- Checks ECS services, tasks, and deployments
+- Checks RDS instance status
+- Checks load balancers and target groups
+- Monitors endpoint health with timeout detection
+- Supports Slack and email alerts
+- Can run continuously with a configurable interval
+
+**Usage:**
+
+```bash
+# Run health check once
+./scripts/monitor-health.sh --once
+
+# Run continuously with alerts to Slack
+./scripts/monitor-health.sh --alerts --slack https://hooks.slack.com/... --interval 300
+```
+
+**Requirements:**
+
+- AWS CLI configured with appropriate credentials
+- curl for endpoint checks
+- mailx package for email notifications (if using email alerts)
+
+### <a name="backup-database"></a>backup-database.sh
+
+Creates and manages backups of RDS database instances.
+
+**Features:**
+
+- Creates RDS snapshots with proper tagging
+- Exports snapshots to S3 for long-term storage
+- Configurable retention policy for managing old snapshots
+- S3 lifecycle configuration for tiered storage cost optimization
+
+**Usage:**
+
+```bash
+# Create backup with default settings
+./scripts/backup-database.sh --db-instance prod-e-db
+
+# Create backup with custom settings
+./scripts/backup-database.sh --db-instance prod-e-db --keep 5 --bucket my-backup-bucket
+```
+
+**Requirements:**
+
+- AWS CLI configured with appropriate credentials
+- IAM role for RDS snapshot export
+
+### <a name="rollback"></a>rollback.sh
+
+Handles rolling back deployments in case of issues.
+
+**Features:**
+
+- Rolls back to previous ECS task definitions
+- Can roll back to specific container image versions
+- Monitors rollback deployment status
+- Optionally rolls back Terraform state
+- Supports rolling back individual services or all services
+
+**Usage:**
+
+```bash
+# Roll back backend service to previous task definition
+./scripts/rollback.sh backend
+
+# Roll back to specific image tag
+./scripts/rollback.sh -t v1.0.0 -r prod-e-backend backend
+
+# Roll back all services without confirmation
+./scripts/rollback.sh --auto-approve all
+```
+
+**Requirements:**
+
+- AWS CLI configured with appropriate credentials
+- jq for JSON parsing
+
+### <a name="cleanup-resources"></a>cleanup-resources.sh
+
+Identifies and optionally removes unused AWS resources to reduce costs.
+
+**Features:**
+
+- Cleans up old ECR images while keeping the latest
+- Removes unattached EBS volumes
+- Deletes old EBS and RDS snapshots
+- Sets retention policies on CloudWatch log groups
+- Removes old Lambda function versions
+- Dry-run mode to preview changes
+
+**Usage:**
+
+```bash
+# List unused resources (dry run)
+./scripts/cleanup-resources.sh
+
+# Clean up unused resources
+./scripts/cleanup-resources.sh --force
+
+# Clean up resources older than 14 days
+./scripts/cleanup-resources.sh --days 14 --force
+```
+
+**Requirements:**
+
+- AWS CLI configured with appropriate credentials
+- jq for JSON parsing
+
 ## Best Practices
 
 When using these scripts, follow these best practices:
@@ -153,6 +282,7 @@ When adding new scripts to this directory:
 4. Update this README with information about the new script
 5. Consider adding error handling and logging to ensure reliability
 6. Add a section in this README following the established format
+7. Choose the appropriate language for the script's functionality
 
 ## Related Documentation
 
