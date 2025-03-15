@@ -223,7 +223,13 @@ The project is being implemented over a 4-day timeline:
   - ✅ Automated Docker builds and push to ECR
   - ✅ Automated testing and deployment
 
-- ⏳ **Day 3**: Frontend Dashboard
+- ✅ **Day 3**: Infrastructure Improvements
+
+  - ✅ Remote state backend with S3 and DynamoDB
+  - ✅ IAM policy for state management
+  - ✅ State locking for concurrent modifications
+
+- ⏳ **Day 3 Continued**: Frontend Dashboard
 
   - React/TypeScript dashboard
   - Metrics visualization
@@ -244,18 +250,16 @@ The project is being implemented over a 4-day timeline:
 
 ## 🔧 Installation & Usage
 
+<details>
+<summary>📝 Detailed Usage Instructions</summary>
+
 ```bash
 # Install dependencies
 npm install
 
 # Generate CDKTF providers
 cdktf get
-```
 
-<details>
-<summary>📝 Detailed Usage Instructions</summary>
-
-```bash
 # Synthesize Terraform configuration
 npm run synth
 
@@ -362,6 +366,7 @@ Below is a summary of issues encountered and their solutions.
 - [Network Architecture](docs/network-architecture.md) - VPC, subnets, and connectivity
 - [Load Balancer](docs/load-balancer.md) - ALB configuration and routing
 - [Multi-AZ Strategy](docs/multi-az-strategy.md) - High availability approach
+- [Remote State Backend](docs/remote_state.md) - S3 and DynamoDB for Terraform state
 </details>
 
 <details>
