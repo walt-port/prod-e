@@ -279,6 +279,19 @@ cd backend && npm run test:watch
 cd backend && npm run test:coverage
 ```
 
+### GitHub Actions CI/CD Setup
+
+To use the GitHub Actions CI/CD pipeline, you need to add AWS credentials to your GitHub repository:
+
+1. Go to your GitHub repository > Settings > Secrets and variables > Actions
+2. Add two repository secrets:
+   - `AWS_ACCESS_KEY_ID`: Your AWS access key
+   - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
+
+These credentials must have permissions for all the AWS services used in this project (ECR, ECS, CloudWatch, etc.).
+
+> **Security Note**: GitHub secrets are encrypted and not visible to other users. They are only used during workflow runs and are masked in logs.
+
 </details>
 
 <details>
