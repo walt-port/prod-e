@@ -276,38 +276,36 @@ check_terraform_state() {
   fi
 }
 
-# Check Prometheus and Grafana monitoring services
+# Check monitoring services
 check_monitoring() {
   print_header "CHECKING MONITORING SERVICES"
 
-  # Check Prometheus ECS service
-  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --output text --region $AWS_REGION --query "services[*].[serviceName,status,desiredCount,runningCount]")
+  # Check Prometheus
+  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text)
 
   if [[ -z "$PROM_SERVICE" ]]; then
     print_error "Prometheus service not found"
   else
-    echo "$PROM_SERVICE" | while read -r name status desired running; do
-      if [[ "$status" == "ACTIVE" && "$desired" == "$running" ]]; then
-        print_success "Prometheus: $status ($running/$desired tasks running)"
-      else
-        print_info "Prometheus: $status ($running/$desired tasks running)"
-      fi
-    done
+    read -r name desired running <<< "$PROM_SERVICE"
+    if [[ "$desired" == "$running" ]]; then
+      print_success "Prometheus: ACTIVE ($running/$desired tasks running)"
+    else
+      print_error "Prometheus: DEGRADED ($running/$desired tasks running)"
+    fi
   fi
 
-  # Check Grafana ECS service
-  GRAFANA_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-grafana-service --output text --region $AWS_REGION --query "services[*].[serviceName,status,desiredCount,runningCount]" 2>/dev/null || echo "")
+  # Check Grafana
+  GRAFANA_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services grafana-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text)
 
   if [[ -z "$GRAFANA_SERVICE" ]]; then
     print_error "Grafana service not found"
   else
-    echo "$GRAFANA_SERVICE" | while read -r name status desired running; do
-      if [[ "$status" == "ACTIVE" && "$desired" == "$running" ]]; then
-        print_success "Grafana: $status ($running/$desired tasks running)"
-      else
-        print_info "Grafana: $status ($running/$desired tasks running)"
-      fi
-    done
+    read -r name desired running <<< "$GRAFANA_SERVICE"
+    if [[ "$desired" == "$running" ]]; then
+      print_success "Grafana: ACTIVE ($running/$desired tasks running)"
+    else
+      print_error "Grafana: DEGRADED ($running/$desired tasks running)"
+    fi
   fi
 }
 
@@ -315,53 +313,58 @@ check_monitoring() {
 check_efs() {
   print_header "CHECKING EFS RESOURCES"
 
-  # List EFS file systems
-  EFS_SYSTEMS=$(aws efs describe-file-systems --region $AWS_REGION --query "FileSystems[?contains(Tags[?Key=='Project'].Value, 'prod-e')].[FileSystemId,LifeCycleState,SizeInBytes.Value]" --output text)
+  # Get EFS file systems
+  FS_IDS=$(aws efs describe-file-systems --query "FileSystems[?Tags[?Key=='Project' && Value=='prod-e']].FileSystemId" --output text --region $AWS_REGION)
 
-  if [[ -z "$EFS_SYSTEMS" ]]; then
+  if [[ -z "$FS_IDS" ]]; then
     print_error "No EFS file systems found for the project"
   else
-    echo "$EFS_SYSTEMS" | while read -r id state size; do
-      if [[ "$state" == "available" ]]; then
-        size_mb=$(echo "scale=2; $size/1024/1024" | bc)
-        print_success "EFS file system: $id is $state (${size_mb}MB used)"
+    for fs_id in $FS_IDS; do
+      # Get file system details
+      FS_INFO=$(aws efs describe-file-systems --file-system-id $fs_id --query "FileSystems[0].[FileSystemId,LifeCycleState,SizeInBytes.Value]" --output text --region $AWS_REGION)
+      FS_ID=$(echo $FS_INFO | awk '{print $1}')
+      STATE=$(echo $FS_INFO | awk '{print $2}')
+      SIZE_BYTES=$(echo $FS_INFO | awk '{print $3}')
+
+      # Convert bytes to MB using bash arithmetic instead of bc
+      SIZE_MB=$((SIZE_BYTES / 1024 / 1024))
+
+      if [[ "$STATE" == "available" ]]; then
+        print_success "EFS file system: $FS_ID is $STATE ($SIZE_MB MB used)"
       else
-        print_info "EFS file system: $id is $state"
+        print_error "EFS file system: $FS_ID is $STATE"
       fi
 
       # Check mount targets
-      MOUNT_TARGETS=$(aws efs describe-mount-targets --file-system-id "$id" --region $AWS_REGION --query "MountTargets[*].[MountTargetId,LifeCycleState,SubnetId]" --output text)
+      MOUNT_TARGETS=$(aws efs describe-mount-targets --file-system-id $fs_id --query "MountTargets[*].[MountTargetId,SubnetId,LifeCycleState]" --output text --region $AWS_REGION)
 
       if [[ -z "$MOUNT_TARGETS" ]]; then
-        print_error "  No mount targets found"
+        print_error "  No mount targets found for $FS_ID"
       else
-        echo "$MOUNT_TARGETS" | while read -r mount_id mount_state subnet; do
-          if [[ "$mount_state" == "available" ]]; then
-            print_success "  Mount target: $mount_id is $mount_state in subnet $subnet"
+        echo "$MOUNT_TARGETS" | while read -r mt_id subnet_id mt_state; do
+          if [[ "$mt_state" == "available" ]]; then
+            print_success "  Mount target: $mt_id is $mt_state in subnet $subnet_id"
           else
-            print_info "  Mount target: $mount_id is $mount_state in subnet $subnet"
+            print_error "  Mount target: $mt_id is $mt_state in subnet $subnet_id"
           fi
         done
       fi
-    done
 
-    # Check EFS access points if any
-    EFS_ID=$(echo "$EFS_SYSTEMS" | awk '{print $1}' | head -1)
-    if [[ -n "$EFS_ID" ]]; then
-      ACCESS_POINTS=$(aws efs describe-access-points --file-system-id "$EFS_ID" --region $AWS_REGION --query "AccessPoints[*].[AccessPointId,LifeCycleState]" --output text)
+      # Check access points
+      ACCESS_POINTS=$(aws efs describe-access-points --file-system-id $fs_id --query "AccessPoints[*].[AccessPointId,LifeCycleState]" --output text --region $AWS_REGION)
 
       if [[ -z "$ACCESS_POINTS" ]]; then
-        print_info "  No access points configured"
+        print_info "  No access points found for $FS_ID"
       else
         echo "$ACCESS_POINTS" | while read -r ap_id ap_state; do
           if [[ "$ap_state" == "available" ]]; then
             print_success "  Access point: $ap_id is $ap_state"
           else
-            print_info "  Access point: $ap_id is $ap_state"
+            print_error "  Access point: $ap_id is $ap_state"
           fi
         done
       fi
-    fi
+    done
   fi
 }
 

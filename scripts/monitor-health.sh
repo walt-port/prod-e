@@ -276,42 +276,47 @@ check_alb() {
   fi
 }
 
-# Check endpoint health
+# Check endpoints
 check_endpoints() {
   echo -e "\n${BLUE}Checking Endpoints...${NC}"
 
-  # Define endpoints to check with expected status code and timeout
-  # format: "name|url|expected_status|timeout_seconds"
-  local endpoints=(
-    "Backend API|http://prod-e-api.internal/health|200|5"
-    "Grafana|http://prod-e-grafana.internal/api/health|200|5"
-    "Prometheus|http://prod-e-prometheus.internal/-/healthy|200|5"
-  )
+  # Get the ALB DNS name
+  ALB_DNS=$(aws elbv2 describe-load-balancers --names application-load-balancer --query "LoadBalancers[0].DNSName" --output text --region $AWS_REGION)
 
-  local has_errors=false
+  if [[ -z "$ALB_DNS" ]]; then
+    echo -e "${RED}Could not determine ALB DNS name${NC}"
+    send_alert "Could not determine ALB DNS name" "critical"
+    return
+  fi
 
-  for endpoint in "${endpoints[@]}"; do
-    IFS='|' read -r name url expected_status timeout <<< "$endpoint"
-    echo -n "Endpoint $name ($url): "
+  # Test backend endpoint
+  STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://${ALB_DNS}/health" --max-time 5)
+  echo -n "Endpoint Backend API (http://${ALB_DNS}/health): "
+  if [[ "$STATUS_CODE" == "200" ]]; then
+    echo -e "${GREEN}HEALTHY (HTTP $STATUS_CODE)${NC}"
+  else
+    echo -e "${RED}PROBLEM (HTTP $STATUS_CODE, expected 200)${NC}"
+    send_alert "Backend API endpoint is not healthy (HTTP $STATUS_CODE)" "critical"
+  fi
 
-    # Use curl to check the endpoint
-    response=$(curl -s -o /dev/null -w "%{http_code}" --max-time "$timeout" "$url" 2>/dev/null || echo "TIMEOUT")
+  # Test Grafana endpoint
+  STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://${ALB_DNS}/grafana/api/health" --max-time 5)
+  echo -n "Endpoint Grafana (http://${ALB_DNS}/grafana/api/health): "
+  if [[ "$STATUS_CODE" == "200" ]]; then
+    echo -e "${GREEN}HEALTHY (HTTP $STATUS_CODE)${NC}"
+  else
+    echo -e "${RED}PROBLEM (HTTP $STATUS_CODE, expected 200)${NC}"
+    send_alert "Grafana endpoint is not healthy (HTTP $STATUS_CODE)" "critical"
+  fi
 
-    if [[ "$response" == "TIMEOUT" ]]; then
-      echo -e "${RED}TIMEOUT after ${timeout}s${NC}"
-      send_alert "Endpoint $name ($url) timed out after ${timeout}s" "critical"
-      has_errors=true
-    elif [[ "$response" == "$expected_status" ]]; then
-      echo -e "${GREEN}HEALTHY (HTTP $response)${NC}"
-    else
-      echo -e "${RED}PROBLEM (HTTP $response, expected $expected_status)${NC}"
-      send_alert "Endpoint $name ($url) returned HTTP $response (expected $expected_status)" "critical"
-      has_errors=true
-    fi
-  done
-
-  if [ "$has_errors" = false ]; then
-    echo -e "${GREEN}All endpoints are healthy${NC}"
+  # Test Prometheus endpoint (add a forward path if needed)
+  STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://${ALB_DNS}/prom/-/healthy" --max-time 5)
+  echo -n "Endpoint Prometheus (http://${ALB_DNS}/prom/-/healthy): "
+  if [[ "$STATUS_CODE" == "200" ]]; then
+    echo -e "${GREEN}HEALTHY (HTTP $STATUS_CODE)${NC}"
+  else
+    echo -e "${RED}PROBLEM (HTTP $STATUS_CODE, expected 200)${NC}"
+    send_alert "Prometheus endpoint is not healthy (HTTP $STATUS_CODE)" "critical"
   fi
 }
 
