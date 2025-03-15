@@ -162,6 +162,7 @@ Monitors the health of all services and sends alerts when issues are detected.
 - Checks RDS instance status
 - Checks load balancers and target groups
 - Monitors endpoint health via ALB with timeout detection
+- Verifies Prometheus health by checking the task health status
 - Supports Slack and email alerts
 - Can run continuously with a configurable interval
 
@@ -179,12 +180,14 @@ Monitors the health of all services and sends alerts when issues are detected.
 
 - AWS CLI configured with appropriate credentials
 - curl for endpoint checks
+- jq for JSON parsing
 - mailx package for email notifications (if using email alerts)
 
 **Notes:**
 
 - Uses the ALB DNS name for endpoint checks to avoid internal DNS resolution issues
-- Tests appropriate paths for each service endpoint (e.g., `/grafana/api/health` for Grafana)
+- Tests appropriate paths for each service endpoint (e.g., `/grafana/` for Grafana)
+- Checks Prometheus health by verifying the ECS task health status
 - Properly handles timeouts and reports health status accurately
 
 ### <a name="backup-database"></a>backup-database.sh

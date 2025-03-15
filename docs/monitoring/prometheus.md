@@ -19,6 +19,7 @@ The Prometheus task definition includes:
 - Container image: `043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest`
 - Port mapping: 9090
 - Health check: `wget -q -O - http://localhost:9090/-/healthy || exit 1`
+- Command: `--web.external-url=/prometheus` (configures Prometheus to use the /prometheus path prefix)
 - CPU: 256 units
 - Memory: 512 MB
 
@@ -66,17 +67,21 @@ Common issues and their resolutions:
 
 1. **Prometheus Task Unhealthy**:
 
-   - Check the Prometheus logs: `aws logs get-log-events --log-group-name /ecs/prom-task --log-stream-name <log-stream-name> --region us-west-2`
-   - Verify the health check endpoint is responding: `curl http://localhost:9090/-/healthy`
+   - Check the task health status using `aws ecs describe-tasks`
+   - Verify the container logs in CloudWatch
+   - Ensure the health check endpoint is accessible within the container
 
-2. **Cannot Access Prometheus via ALB**:
+2. **Prometheus Endpoint Inaccessible**:
 
-   - Verify the target group is healthy: `aws elbv2 describe-target-health --target-group-arn <prometheus-target-group-arn> --region us-west-2`
-   - Check the listener rule is correctly configured: `aws elbv2 describe-rules --listener-arn <listener-arn> --region us-west-2`
+   - The Prometheus UI is accessible via the ALB at `/prometheus/`
+   - The health check endpoint is at `/prometheus/-/healthy`
+   - Verify the ALB listener rules are correctly configured for the `/prometheus` path pattern
+   - Ensure the target group has a healthy target
 
-3. **No Metrics Showing**:
-   - Verify the Prometheus configuration file includes the correct scrape targets
-   - Check that the backend service is exposing metrics at the expected endpoint
+3. **Web External URL Configuration**:
+   - Prometheus is configured with `--web.external-url=/prometheus` to handle path-based routing
+   - This configuration ensures that all internal links and API endpoints use the correct path prefix
+   - If changing this configuration, update the ALB listener rules accordingly
 
 ## Future Enhancements
 
