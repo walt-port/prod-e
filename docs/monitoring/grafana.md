@@ -103,9 +103,41 @@ aws lambda invoke --function-name grafana-backup out.json
    - Verify the ALB DNS in the data source configuration matches the actual ALB DNS
 
 3. **EFS mount issues**:
+
    - Check EFS mount target is in the same subnet as the Grafana task
    - Verify security group rules allow NFS traffic (port 2049)
    - Check EFS access point configuration
+
+4. **Internal endpoints not accessible**:
+
+   - Scripts using internal DNS names (e.g., `prod-e-grafana.internal`) may fail with timeout errors
+   - Use the ALB DNS name instead, with the appropriate path (e.g., `http://{ALB_DNS}/grafana/api/health`)
+
+5. **Task reports as UNHEALTHY in monitoring scripts**:
+   - Check the ECS task's health status using `aws ecs describe-tasks`
+   - Verify that the container's health check is passing
+   - Check CloudWatch logs for error messages (`/ecs/grafana-task`)
+
+### Health Status Discrepancies
+
+The ECS tasks may report as HEALTHY while monitoring scripts report issues. This is often due to:
+
+1. **Internal vs. External Health Checks**: The container's health check tests internally while monitoring scripts test via the ALB
+2. **Network Configuration**: Private tasks are not directly accessible outside their VPC
+3. **Path Routing**: Ensure scripts use the correct ALB paths matching the listener rules
+
+To investigate Grafana health:
+
+```bash
+# Check Grafana service status
+aws ecs describe-services --cluster prod-e-cluster --services grafana-service
+
+# Check Grafana task details
+aws ecs describe-tasks --cluster prod-e-cluster --tasks $(aws ecs list-tasks --cluster prod-e-cluster --family grafana-task --query 'taskArns[0]' --output text)
+
+# Check Grafana logs
+aws logs get-log-events --log-group-name /ecs/grafana-task --log-stream-name $(aws logs describe-log-streams --log-group-name /ecs/grafana-task --order-by LastEventTime --descending --limit 1 --query 'logStreams[0].logStreamName' --output text)
+```
 
 ## Future Enhancements
 

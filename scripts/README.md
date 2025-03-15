@@ -116,6 +116,12 @@ Provides comprehensive status checks for all AWS resources used in the project.
 - AWS CLI configured with appropriate credentials
 - `jq` installed for JSON parsing
 
+**Notes:**
+
+- Uses bash arithmetic for size calculations (no dependency on `bc`)
+- Identifies Grafana service correctly using the service name `grafana-service`
+- Properly handles EFS resources with multiple mount targets and access points
+
 ### <a name="teardown"></a>teardown.py
 
 Safely and methodically destroys AWS resources with detailed control and visibility.
@@ -155,7 +161,7 @@ Monitors the health of all services and sends alerts when issues are detected.
 - Checks ECS services, tasks, and deployments
 - Checks RDS instance status
 - Checks load balancers and target groups
-- Monitors endpoint health with timeout detection
+- Monitors endpoint health via ALB with timeout detection
 - Supports Slack and email alerts
 - Can run continuously with a configurable interval
 
@@ -174,6 +180,12 @@ Monitors the health of all services and sends alerts when issues are detected.
 - AWS CLI configured with appropriate credentials
 - curl for endpoint checks
 - mailx package for email notifications (if using email alerts)
+
+**Notes:**
+
+- Uses the ALB DNS name for endpoint checks to avoid internal DNS resolution issues
+- Tests appropriate paths for each service endpoint (e.g., `/grafana/api/health` for Grafana)
+- Properly handles timeouts and reports health status accurately
 
 ### <a name="backup-database"></a>backup-database.sh
 
