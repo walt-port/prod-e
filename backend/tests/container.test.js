@@ -50,8 +50,8 @@ describe('Docker Container Configuration', () => {
   });
 
   it('should only install production dependencies in the final stage', () => {
-    // Check for npm ci --only=production or npm install --only=production
-    expect(dockerfileContent).toMatch(/npm (ci|install) --only=production/i);
+    // Check for npm ci --only=production or npm install --only=production or npm install --omit=dev
+    expect(dockerfileContent).toMatch(/npm (ci|install) (--only=production|--omit=dev)/i);
   });
 
   it('should copy only necessary files to the final image', () => {
