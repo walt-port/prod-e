@@ -920,7 +920,10 @@ class MyStack extends TerraformStack {
           },
         ],
       }),
-      managedPolicyArns: ['arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'],
+      managedPolicyArns: [
+        'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+        'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole',
+      ],
       tags: { Name: 'grafana-backup-role' },
     });
 
@@ -932,7 +935,7 @@ class MyStack extends TerraformStack {
           { Effect: 'Allow', Action: ['s3:PutObject'], Resource: `${backupBucket.arn}/*` },
           {
             Effect: 'Allow',
-            Action: ['elasticfilesystem:ClientMount'],
+            Action: ['elasticfilesystem:ClientMount', 'elasticfilesystem:ClientWrite'],
             Resource: grafanaFileSystem.arn,
           },
         ],
@@ -949,6 +952,10 @@ class MyStack extends TerraformStack {
       filename: '/tmp/lambda-code.zip', // This is a placeholder, we'll need to create this file separately
       timeout: 300,
       fileSystemConfig: { arn: grafanaAccessPoint.arn, localMountPath: '/mnt/efs' },
+      vpcConfig: {
+        subnetIds: [privateSubnet.id],
+        securityGroupIds: [grafanaSecurityGroup.id],
+      },
       tags: { Name: 'grafana-backup-lambda' },
     });
 
