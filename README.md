@@ -54,7 +54,7 @@ This project implements a complete cloud infrastructure with monitoring capabili
 ## 🏗️ Infrastructure Components
 
 <details>
-<summary>AWS Cloud Infrastructure</summary>
+<summary>☁️ AWS Cloud Infrastructure</summary>
 
 #### Networking
 
@@ -84,7 +84,7 @@ This project implements a complete cloud infrastructure with monitoring capabili
 </details>
 
 <details>
-<summary>Application Components</summary>
+<summary>📦 Application Components</summary>
 
 #### Backend API
 
@@ -388,7 +388,7 @@ To modify the infrastructure:
 This project is designed with cost efficiency in mind. The current estimated monthly cost is approximately ~$99/month.
 
 <details>
-<summary>Cost Summary</summary>
+<summary>💵 Cost Summary</summary>
 
 - Current infrastructure costs include ECS Fargate tasks, RDS PostgreSQL, Application Load Balancer, NAT Gateway, and other supporting services
 - The planned Grafana implementation will add approximately ~$15/month
@@ -402,7 +402,7 @@ This project is designed with cost efficiency in mind. The current estimated mon
 Below is a summary of issues encountered and their solutions.
 
 <details>
-<summary>View Resolved Issues</summary>
+<summary>🔧 View Resolved Issues</summary>
 
 1. **RDS DB Subnet Group Requirement**: AWS requires RDS instances to have subnet groups spanning at least two AZs, even for single-AZ database deployments. We resolved this by adding a second private subnet in us-west-2b.
 
@@ -420,7 +420,7 @@ Below is a summary of issues encountered and their solutions.
 ## 📚 Documentation
 
 <details>
-<summary>Core Infrastructure Documentation</summary>
+<summary>🏢 Core Infrastructure Documentation</summary>
 
 - [Overview and Index](docs/overview.md) - Main documentation hub
 - [Network Architecture](docs/network-architecture.md) - VPC, subnets, and connectivity
@@ -430,7 +430,7 @@ Below is a summary of issues encountered and their solutions.
 </details>
 
 <details>
-<summary>Services Documentation</summary>
+<summary>🚀 Services Documentation</summary>
 
 - [RDS Database](docs/rds-database.md) - PostgreSQL configuration
 - [ECS Service](docs/ecs-service.md) - Container orchestration and health checks
@@ -438,7 +438,7 @@ Below is a summary of issues encountered and their solutions.
 </details>
 
 <details>
-<summary>Implementation & Testing</summary>
+<summary>📋 Implementation & Testing</summary>
 
 - [Monitoring Implementation](docs/monitoring.md) - Prometheus and Grafana setup
 - [Testing Documentation](docs/testing.md) - Testing approach and coverage
