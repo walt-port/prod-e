@@ -322,18 +322,15 @@ To modify the infrastructure:
 
 ## 💰 Cost Considerations
 
-This project is designed to be cost-effective for demonstration purposes with an estimated monthly cost of ~$45-50.
+This project is designed with cost efficiency in mind. The current estimated monthly cost is approximately ~$99/month.
 
 <details>
-<summary>Detailed Cost Breakdown</summary>
+<summary>Cost Summary</summary>
 
-- ECS Fargate: ~$10
-- RDS PostgreSQL: ~$15
-- Application Load Balancer: ~$16
-- NAT Gateway: ~$4.5 (plus data processing)
-- Data Transfer: ~$1-2
-
-Resources can be shut down after demonstration to avoid ongoing costs.
+- Current infrastructure costs include ECS Fargate tasks, RDS PostgreSQL, Application Load Balancer, NAT Gateway, and other supporting services
+- The planned Grafana implementation will add approximately ~$15/month
+- For a detailed breakdown of all costs, optimization strategies, and future projections, see [AWS Budget Analysis](docs/ongoing_budget.md)
+- Resources can be shut down after demonstration to avoid ongoing costs
 
 </details>
 
