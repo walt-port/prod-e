@@ -1,6 +1,48 @@
-# Scripts Directory
+# Scripts for Production Experience Showcase
 
-This directory contains utility scripts for managing the prod-e project infrastructure.
+This directory contains utility scripts for managing and monitoring the Production Experience Showcase infrastructure.
+
+## Available Scripts
+
+### `resource_check.sh`
+
+A comprehensive resource checking utility that provides status information about all AWS resources used in the project.
+
+**Features:**
+
+- Checks VPC and networking components
+- Checks RDS database instances and subnet groups
+- Checks ECS cluster, services, and tasks
+- Checks Application Load Balancer and target groups
+- Checks ECR repositories and container images
+- Checks Terraform state resources (S3 bucket and DynamoDB table)
+- Checks Prometheus monitoring service
+- Color-coded output for easy status identification
+
+**Usage:**
+
+```bash
+# Make sure the script is executable
+chmod +x scripts/resource_check.sh
+
+# Run the script
+./scripts/resource_check.sh
+```
+
+**Requirements:**
+
+- AWS CLI configured with appropriate credentials
+- `jq` for JSON parsing (script will check and prompt for installation if missing)
+
+## Adding New Scripts
+
+When adding new scripts to this directory:
+
+1. Use descriptive names that reflect the script's purpose
+2. Add proper documentation in the script header
+3. Make scripts executable with `chmod +x`
+4. Update this README with information about the new script
+5. Consider adding error handling and logging to ensure reliability
 
 ## Teardown Script
 
