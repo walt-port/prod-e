@@ -276,11 +276,11 @@ check_terraform_state() {
   fi
 }
 
-# Check Prometheus service
-check_prometheus() {
-  print_header "CHECKING PROMETHEUS"
+# Check Prometheus and Grafana monitoring services
+check_monitoring() {
+  print_header "CHECKING MONITORING SERVICES"
 
-  # Check if Prometheus service is running
+  # Check Prometheus ECS service
   PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --output text --region $AWS_REGION --query "services[*].[serviceName,status,desiredCount,runningCount]")
 
   if [[ -z "$PROM_SERVICE" ]]; then
@@ -288,30 +288,110 @@ check_prometheus() {
   else
     echo "$PROM_SERVICE" | while read -r name status desired running; do
       if [[ "$status" == "ACTIVE" && "$desired" == "$running" ]]; then
-        print_success "$name: $status ($running/$desired tasks running)"
+        print_success "Prometheus: $status ($running/$desired tasks running)"
       else
-        print_info "$name: $status ($running/$desired tasks running)"
+        print_info "Prometheus: $status ($running/$desired tasks running)"
+      fi
+    done
+  fi
+
+  # Check Grafana ECS service
+  GRAFANA_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-grafana-service --output text --region $AWS_REGION --query "services[*].[serviceName,status,desiredCount,runningCount]" 2>/dev/null || echo "")
+
+  if [[ -z "$GRAFANA_SERVICE" ]]; then
+    print_error "Grafana service not found"
+  else
+    echo "$GRAFANA_SERVICE" | while read -r name status desired running; do
+      if [[ "$status" == "ACTIVE" && "$desired" == "$running" ]]; then
+        print_success "Grafana: $status ($running/$desired tasks running)"
+      else
+        print_info "Grafana: $status ($running/$desired tasks running)"
+      fi
+    done
+  fi
+}
+
+# Check EFS Resources
+check_efs() {
+  print_header "CHECKING EFS RESOURCES"
+
+  # List EFS file systems
+  EFS_SYSTEMS=$(aws efs describe-file-systems --region $AWS_REGION --query "FileSystems[?contains(Tags[?Key=='Project'].Value, 'prod-e')].[FileSystemId,LifeCycleState,SizeInBytes.Value]" --output text)
+
+  if [[ -z "$EFS_SYSTEMS" ]]; then
+    print_error "No EFS file systems found for the project"
+  else
+    echo "$EFS_SYSTEMS" | while read -r id state size; do
+      if [[ "$state" == "available" ]]; then
+        size_mb=$(echo "scale=2; $size/1024/1024" | bc)
+        print_success "EFS file system: $id is $state (${size_mb}MB used)"
+      else
+        print_info "EFS file system: $id is $state"
+      fi
+
+      # Check mount targets
+      MOUNT_TARGETS=$(aws efs describe-mount-targets --file-system-id "$id" --region $AWS_REGION --query "MountTargets[*].[MountTargetId,LifeCycleState,SubnetId]" --output text)
+
+      if [[ -z "$MOUNT_TARGETS" ]]; then
+        print_error "  No mount targets found"
+      else
+        echo "$MOUNT_TARGETS" | while read -r mount_id mount_state subnet; do
+          if [[ "$mount_state" == "available" ]]; then
+            print_success "  Mount target: $mount_id is $mount_state in subnet $subnet"
+          else
+            print_info "  Mount target: $mount_id is $mount_state in subnet $subnet"
+          fi
+        done
       fi
     done
 
-    # Get running Prometheus tasks
-    PROM_TASKS=$(aws ecs list-tasks --cluster prod-e-cluster --service-name prod-e-prom-service --output text --region $AWS_REGION --query "taskArns")
+    # Check EFS access points if any
+    EFS_ID=$(echo "$EFS_SYSTEMS" | awk '{print $1}' | head -1)
+    if [[ -n "$EFS_ID" ]]; then
+      ACCESS_POINTS=$(aws efs describe-access-points --file-system-id "$EFS_ID" --region $AWS_REGION --query "AccessPoints[*].[AccessPointId,LifeCycleState]" --output text)
 
-    if [[ -z "$PROM_TASKS" ]]; then
-      print_error "No Prometheus tasks running"
-    else
-      for task in $PROM_TASKS; do
-        TASK_DATA=$(aws ecs describe-tasks --cluster prod-e-cluster --tasks $task --output text --region $AWS_REGION --query "tasks[*].[taskArn,lastStatus,healthStatus]")
-        echo "$TASK_DATA" | while read -r arn status health; do
-          TASK_ID=$(echo "$arn" | awk -F/ '{print $NF}')
-          if [[ "$status" == "RUNNING" && "$health" == "HEALTHY" ]]; then
-            print_success "  $TASK_ID: $status ($health)"
+      if [[ -z "$ACCESS_POINTS" ]]; then
+        print_info "  No access points configured"
+      else
+        echo "$ACCESS_POINTS" | while read -r ap_id ap_state; do
+          if [[ "$ap_state" == "available" ]]; then
+            print_success "  Access point: $ap_id is $ap_state"
           else
-            print_info "  $TASK_ID: $status ($health)"
+            print_info "  Access point: $ap_id is $ap_state"
           fi
         done
-      done
+      fi
     fi
+  fi
+}
+
+# Check Lambda functions
+check_lambda() {
+  print_header "CHECKING LAMBDA FUNCTIONS"
+
+  # List Lambda functions
+  FUNCTIONS=$(aws lambda list-functions --region $AWS_REGION --query "Functions[?contains(FunctionName, 'prod-e')].[FunctionName,Runtime,LastModified,State]" --output text)
+
+  if [[ -z "$FUNCTIONS" ]]; then
+    print_error "No Lambda functions found for the project"
+  else
+    echo "$FUNCTIONS" | while read -r name runtime modified state; do
+      if [[ "$state" == "Active" ]]; then
+        print_success "Function: $name ($runtime) last modified $modified is $state"
+      else
+        print_info "Function: $name ($runtime) last modified $modified is $state"
+      fi
+
+      # Check function configuration (memory, timeout)
+      CONFIG=$(aws lambda get-function-configuration --function-name "$name" --region $AWS_REGION --query "[MemorySize,Timeout]" --output text)
+      MEMORY=$(echo "$CONFIG" | awk '{print $1}')
+      TIMEOUT=$(echo "$CONFIG" | awk '{print $2}')
+      print_info "  Memory: ${MEMORY}MB, Timeout: ${TIMEOUT}s"
+
+      # Get recent invocations
+      INVOCATIONS=$(aws lambda get-function --function-name "$name" --region $AWS_REGION --query "Configuration.LastUpdateStatus" --output text)
+      print_info "  Last update status: $INVOCATIONS"
+    done
   fi
 }
 
@@ -328,7 +408,9 @@ run_all_checks() {
   check_alb
   check_ecr
   check_terraform_state
-  check_prometheus
+  check_monitoring
+  check_efs
+  check_lambda
 
   echo -e "\n${BLUE}===============================================${NC}"
   echo -e "${BLUE}                 CHECK COMPLETE               ${NC}"

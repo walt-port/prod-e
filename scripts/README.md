@@ -1,40 +1,149 @@
-# Scripts for Production Experience Showcase
+# Scripts
 
-This directory contains utility scripts for managing and monitoring the Production Experience Showcase infrastructure.
+This directory contains utility scripts for managing, monitoring, and maintaining the Production Experience Showcase infrastructure.
+
+## Overview
+
+These scripts provide automation for common DevOps tasks such as checking resource status, building and deploying container images, tearing down infrastructure, and creating Lambda function packages.
 
 ## Available Scripts
 
-### `resource_check.sh`
+| Script                                     | Purpose                                              | Language |
+| ------------------------------------------ | ---------------------------------------------------- | -------- |
+| [build-and-push.sh](#build-and-push)       | Build and push Docker images to ECR                  | Bash     |
+| [create-lambda-zip.js](#create-lambda-zip) | Create deployment package for Lambda functions       | Node.js  |
+| [resource_check.sh](#resource-check)       | Check status of all AWS resources                    | Bash     |
+| [teardown.py](#teardown)                   | Clean up all AWS resources with fine-grained control | Python   |
 
-A comprehensive resource checking utility that provides status information about all AWS resources used in the project.
+## Script Details
+
+### <a name="build-and-push"></a>build-and-push.sh
+
+Builds and pushes Docker images to Amazon ECR repositories.
 
 **Features:**
 
-- Checks VPC and networking components
-- Checks RDS database instances and subnet groups
-- Checks ECS cluster, services, and tasks
-- Checks Application Load Balancer and target groups
-- Checks ECR repositories and container images
-- Checks Terraform state resources (S3 bucket and DynamoDB table)
-- Checks Prometheus monitoring service
-- Color-coded output for easy status identification
+- Automatic ECR repository creation if it doesn't exist
+- AWS account detection and authentication
+- Proper tagging and versioning
 
 **Usage:**
 
 ```bash
-# Make sure the script is executable
-chmod +x scripts/resource_check.sh
+# Basic usage (builds and pushes backend image)
+./scripts/build-and-push.sh
 
-# Run the script
+# Build specific image (backend, prometheus, or grafana)
+./scripts/build-and-push.sh --image backend
+./scripts/build-and-push.sh --image prometheus
+./scripts/build-and-push.sh --image grafana
+
+# Build all images
+./scripts/build-and-push.sh --all
+```
+
+**Requirements:**
+
+- Docker installed and running
+- AWS CLI configured with appropriate credentials
+- Appropriate Dockerfiles present in respective directories
+
+### <a name="create-lambda-zip"></a>create-lambda-zip.js
+
+Creates a ZIP deployment package for AWS Lambda functions.
+
+**Features:**
+
+- Packages Lambda function code into a ZIP file
+- Creates proper directory structure for Lambda deployment
+- Works with Node.js Lambda functions
+
+**Usage:**
+
+```bash
+# Create Lambda ZIP package
+node scripts/create-lambda-zip.js
+```
+
+**Requirements:**
+
+- Node.js installed
+- JSZip package installed (`npm install jszip`)
+
+### <a name="resource-check"></a>resource_check.sh
+
+Provides comprehensive status checks for all AWS resources used in the project.
+
+**Features:**
+
+- Color-coded output for easy status identification
+- Checks for VPC, subnets, security groups, route tables
+- Checks RDS database instances
+- Checks ECS clusters, services, and tasks
+- Checks ECR repositories
+- Checks Terraform state (S3 and DynamoDB)
+- Checks monitoring components (Prometheus, Grafana)
+- Checks Lambda functions and event rules
+- Checks EFS file systems and mount targets
+
+**Usage:**
+
+```bash
+# Check all resources
 ./scripts/resource_check.sh
+
+# Check specific resource category
+./scripts/resource_check.sh --vpc
+./scripts/resource_check.sh --ecs
+./scripts/resource_check.sh --monitoring
 ```
 
 **Requirements:**
 
 - AWS CLI configured with appropriate credentials
-- `jq` for JSON parsing (script will check and prompt for installation if missing)
+- `jq` installed for JSON parsing
 
-## Adding New Scripts
+### <a name="teardown"></a>teardown.py
+
+Safely and methodically destroys AWS resources with detailed control and visibility.
+
+**Features:**
+
+- Dry-run mode to preview resources that would be deleted
+- Confirmation step to prevent accidental deletion
+- Handles dependencies correctly by deleting in the proper order
+- Detailed output during the process
+
+**Usage:**
+
+```bash
+# Show resources that would be deleted (dry run)
+python scripts/teardown.py --dry-run
+
+# Delete resources with confirmation
+python scripts/teardown.py
+
+# Target specific region or project
+python scripts/teardown.py --region us-west-2 --project-tag prod-e
+```
+
+**Requirements:**
+
+- Python 3.6 or higher
+- AWS SDK for Python (boto3): `pip install boto3`
+- AWS credentials configured
+
+## Best Practices
+
+When using these scripts, follow these best practices:
+
+1. **Always run in a test environment first** before using in production
+2. **Review actions** before confirming destructive operations
+3. **Back up important data** before making infrastructure changes
+4. **Keep AWS credentials secure** and use roles with appropriate permissions
+5. **Use version control** to track changes to scripts
+
+## Contributing
 
 When adding new scripts to this directory:
 
@@ -43,107 +152,10 @@ When adding new scripts to this directory:
 3. Make scripts executable with `chmod +x`
 4. Update this README with information about the new script
 5. Consider adding error handling and logging to ensure reliability
+6. Add a section in this README following the established format
 
-## Teardown Script
+## Related Documentation
 
-The `teardown.py` script is designed to help tear down AWS infrastructure resources created by this project. It offers an alternative to the `npm run destroy` command by providing more granular control and detailed output during the teardown process.
-
-### Prerequisites
-
-Before using the script, ensure you have the following:
-
-1. Python 3.6 or higher installed
-2. AWS SDK for Python (boto3) installed:
-   ```
-   pip install boto3
-   ```
-3. AWS credentials configured (via AWS CLI, environment variables, or credentials file)
-
-### Installation
-
-No special installation is needed. Just ensure the script is executable:
-
-```bash
-chmod +x teardown.py
-```
-
-### Usage
-
-Basic usage:
-
-```bash
-python teardown.py
-```
-
-With options:
-
-```bash
-python teardown.py --dry-run --region us-west-2 --project-tag prod-e
-```
-
-### Options
-
-- `--dry-run`: Run in dry-run mode (list resources without deleting them)
-- `--region`: Specify the AWS region (default: us-west-2)
-- `--project-tag`: Specify the project tag value to identify resources (default: prod-e)
-
-### How It Works
-
-The script works by:
-
-1. Identifying all resources with the specified project tag
-2. Showing you what resources will be deleted
-3. Asking for confirmation before proceeding with deletion
-4. Deleting resources in the correct order (reverse dependency order)
-
-### Resource Types Handled
-
-The script can delete the following types of resources:
-
-- ECS clusters, services, and task definitions
-- Application Load Balancers, listeners, and target groups
-- RDS instances and subnet groups
-- VPC resources (security groups, route tables, internet gateways, subnets)
-- IAM roles and policies
-
-### Example Output
-
-```
-AWS Region: us-west-2
-Project Tag: prod-e
-Dry Run: Yes
-
-DRY RUN MODE: Resources will be identified but not deleted
-
-=== Identifying Resources ===
-
-Searching for ECS services...
-Found cluster: prod-e-cluster
-  Found service: prod-e-service
-
-Searching for ECS task definitions...
-Found task definition: arn:aws:ecs:us-west-2:123456789012:task-definition/prod-e-task:1
-
-Searching for load balancers...
-Found load balancer: application-load-balancer (arn:aws:elasticloadbalancing:...)
-  Found listener: arn:aws:elasticloadbalancing:...
-    Found rule: arn:aws:elasticloadbalancing:...
-Found target group: ecs-target-group (arn:aws:elasticloadbalancing:...)
-
-...
-
-Are you sure you want to delete these resources? This cannot be undone. (yes/no):
-```
-
-### Comparison with `npm run destroy`
-
-While `npm run destroy` is simpler to use, this script offers:
-
-- More detailed output and visibility into what's being deleted
-- Confirmation step before deletion begins
-- Useful for troubleshooting when standard destroy fails
-- Can identify resources that might have been created outside of Terraform
-
-## Future Scripts
-
-Additional scripts will be added to this directory as the project evolves.
+- [Infrastructure Documentation](../docs/infrastructure/README.md)
+- [Deployment Guide](../docs/guides/deployment-guide.md)
+- [Monitoring Documentation](../docs/monitoring/README.md)
