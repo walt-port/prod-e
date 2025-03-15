@@ -315,7 +315,7 @@ check_endpoints() {
 
   if [[ "$PROM_SERVICE" == "ACTIVE" ]]; then
     # Check if the Prometheus task is healthy
-    PROM_TASK=$(aws ecs list-tasks --cluster prod-e-cluster --family prom-task --region $AWS_REGION | jq -r '.taskArns[0]')
+    PROM_TASK=$(aws ecs list-tasks --cluster prod-e-cluster --service-name prod-e-prom-service --region $AWS_REGION | jq -r '.taskArns[0]')
     if [[ -n "$PROM_TASK" ]]; then
       HEALTH_STATUS=$(aws ecs describe-tasks --cluster prod-e-cluster --tasks $PROM_TASK --region $AWS_REGION | jq -r '.tasks[0].containers[0].healthStatus')
       echo -n "Endpoint Prometheus: "
