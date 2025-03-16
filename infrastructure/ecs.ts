@@ -22,7 +22,11 @@ export class Ecs extends Construct {
 
     this.cluster = new EcsCluster(this, 'cluster', {
       name: 'prod-e-cluster',
-      tags: { Name: 'prod-e-cluster' },
+      tags: {
+        Name: 'ecs-cluster',
+        ManagedBy: 'CDKTF',
+        Project: 'prod-e',
+      },
     });
 
     // Security group for ECS tasks

@@ -1,8 +1,9 @@
 import { Construct } from 'constructs';
-import { LambdaFunction } from '../.gen/providers/aws/lambda-function';
-import { S3Bucket } from '../.gen/providers/aws/s3-bucket';
 import { IamRole } from '../.gen/providers/aws/iam-role';
 import { IamRolePolicy } from '../.gen/providers/aws/iam-role-policy';
+import { IamRolePolicyAttachment } from '../.gen/providers/aws/iam-role-policy-attachment';
+import { LambdaFunction } from '../.gen/providers/aws/lambda-function';
+import { S3Bucket } from '../.gen/providers/aws/s3-bucket';
 
 export class Backup extends Construct {
   public bucket: S3Bucket;
@@ -29,11 +30,18 @@ export class Backup extends Construct {
           },
         ],
       }),
-      managedPolicyArns: [
-        'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-        'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole',
-      ],
       tags: { Name: 'grafana-backup-role' },
+    });
+
+    // Attach managed policies using IamRolePolicyAttachment instead of managedPolicyArns
+    new IamRolePolicyAttachment(this, 'lambda-basic-execution-policy', {
+      role: this.backupRole.name,
+      policyArn: 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+    });
+
+    new IamRolePolicyAttachment(this, 'lambda-vpc-access-policy', {
+      role: this.backupRole.name,
+      policyArn: 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole',
     });
 
     // Create policy for S3 access
