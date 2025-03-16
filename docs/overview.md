@@ -18,7 +18,8 @@ This document serves as the main index for all infrastructure documentation in t
 | Monitoring                | Documentation for Prometheus and Grafana implementation                        | [monitoring.md](./monitoring.md)                                   |
 | CI/CD                     | Documentation for GitHub Actions CI/CD implementation                          | [ci-cd.md](./ci-cd.md)                                             |
 | Remote State Backend      | Documentation for S3 remote state backend and DynamoDB state locking           | [remote_state.md](./remote_state.md)                               |
-| Resource Cleanup          | Documentation for AWS resource cleanup process and findings                    | [infrastructure/cleanup-plan.md](./infrastructure/cleanup-plan.md) |
+| Resource Cleanup          | Documentation for AWS resource cleanup process and automated scripts           | [infrastructure/cleanup-plan.md](./infrastructure/cleanup-plan.md) |
+| Operational Monitoring    | Documentation for health checks and resource monitoring                        | [monitoring/operations.md](./monitoring/operations.md)             |
 | Scripts                   | Documentation for maintenance, cleanup, and deployment scripts                 | [scripts.md](./scripts.md)                                         |
 | Infrastructure Audits     | Documentation for infrastructure and codebase audits                           | [../audits/overview.md](../audits/overview.md)                     |
 | Audit Processes           | Documentation for infrastructure and codebase audit processes                  | [audits.md](./audits.md)                                           |
@@ -47,10 +48,18 @@ The current infrastructure consists of:
    - Security groups for database access
 
 4. **Compute Layer**
+
    - ECS Fargate cluster
-   - Task definition with minimal resources (0.25 vCPU, 0.5GB memory)
-   - ECS service with a Node.js container
-   - IAM roles for execution permissions
+   - ECS Services for the backend application, Prometheus, and Grafana
+   - Task definitions with appropriate CPU and memory allocations
+   - Security groups for service access control
+
+5. **Monitoring and Operations Layer**
+   - Prometheus for metrics collection and storage
+   - Grafana for metrics visualization and dashboards
+   - Lambda function for Grafana state backup to S3
+   - Automated health monitoring scripts
+   - Resource monitoring and cleanup utilities
 
 ## Deployment Status
 

@@ -68,42 +68,67 @@ By default, it runs in dry-run mode, showing what would be deleted without makin
 
 ### resource_check.sh
 
-**Purpose**: Comprehensive check of AWS resources to identify potential issues.
+**Purpose**: Performs a comprehensive check of all AWS resources in the prod-e project.
 
 **Location**: `scripts/resource_check.sh`
 
 **Usage**:
 
 ```bash
-./scripts/resource_check.sh [OPTIONS]
+./scripts/resource_check.sh
+```
+
+**Description**:
+This script provides a detailed assessment of the health and configuration of all AWS resources used in the prod-e project including:
+
+1. VPC resources (subnets, internet gateways, NAT gateways)
+2. RDS instances and database configurations
+3. ECS resources (clusters, services, tasks, task definitions)
+4. Load balancer configurations and target health
+5. ECR repositories and image information
+6. Terraform state management
+7. Monitoring services (Prometheus, Grafana)
+8. EFS resources
+9. Lambda functions (including grafana-backup)
+10. Security groups
+11. Orphaned or unused resources
+
+The script outputs a comprehensive report with color-coded status indicators for easy identification of issues.
+
+### monitor-health.sh
+
+**Purpose**: Monitors the health of critical services and endpoints.
+
+**Location**: `scripts/monitor-health.sh`
+
+**Usage**:
+
+```bash
+./scripts/monitor-health.sh [OPTIONS]
 ```
 
 **Options**:
 
-- `--csv`: Output results to a CSV file (default: resource_check_results.csv)
-- `--csv=FILE`: Output results to the specified CSV file
+- `--once`: Run the health check once and exit (default is continuous monitoring)
+- `--notify`: Enable SNS notifications for alerts
+- `--interval=SECONDS`: Set the check interval in seconds (default: 60)
+- `--region=REGION`: Specify the AWS region (default: us-west-2)
 - `--help`: Display help message
 
 **Description**:
-This script performs a comprehensive check of various AWS resources in the prod-e project, including:
+This script monitors the health of critical infrastructure components including:
 
-- VPC resources (subnets, gateways, Elastic IPs)
-- RDS instances and snapshots
-- ECS resources (clusters, services, tasks)
-- Load balancer health
-- ECR repositories
-- Terraform state
-- Monitoring services (Prometheus, Grafana)
-- EFS resources
-- Lambda functions
-- Security groups
-- Orphaned resources (unattached EBS volumes, inactive resources)
+1. ECS services (prod-e-service, prod-e-prom-service, grafana-service)
+2. RDS database instances
+3. Load balancer and target groups
+4. API endpoints
+5. Grafana and Prometheus services
 
-The script highlights issues with color-coded output and can optionally generate a CSV report.
+By default, it runs continuously at specified intervals. Use the `--once` flag to run a single check.
 
 ### cleanup-resources.sh
 
-**Purpose**: Cleans up unused AWS resources to reduce costs.
+**Purpose**: Cleans up unused or old AWS resources to optimize costs.
 
 **Location**: `scripts/cleanup-resources.sh`
 
@@ -115,25 +140,24 @@ The script highlights issues with color-coded output and can optionally generate
 
 **Options**:
 
-- `--dry-run`: Run in dry-run mode without making changes (default)
-- `--force`: Actually delete resources
-- `--keep=N`: Keep N latest versions of resources (default: 5)
+- `--force`: Actually delete resources (default is dry run)
+- `--age=DAYS`: Age threshold in days for resource deletion (default: 7)
+- `--keep=COUNT`: Number of latest versions to keep (default: 5)
 - `--region=REGION`: Specify the AWS region (default: us-west-2)
 - `--help`: Display help message
 
 **Description**:
-This script identifies and cleans up various unused AWS resources to reduce costs, including:
+This script identifies and optionally deletes:
 
-- Untagged or unused EC2 instances
-- Unattached EBS volumes
-- Old EBS snapshots
-- Unused Elastic IPs
-- Old ECR images
-- Old CloudWatch log groups
-- Inactive Lambda function versions
-- Unused security groups
+1. Old ECR images while keeping the latest N versions
+2. Unattached EBS volumes
+3. Old EBS snapshots
+4. Unused CloudWatch log groups
+5. Old ECS task definitions
+6. Unused Lambda function versions
+7. Unused security groups
 
-By default, it runs in dry-run mode. Use the `--force` flag to actually delete the identified resources.
+By default, it runs in dry-run mode, showing what would be deleted without making changes.
 
 ## Backup Scripts
 
