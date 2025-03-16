@@ -132,6 +132,41 @@ The following security groups are actively in use and should be kept:
 | Create security group cleanup script | Completed | 2025-03-16     | Identified 4 unused security groups    |
 | Force redeploy Prometheus            | Completed | 2025-03-16     | Still needs target group configuration |
 
+## Progress Update (March 16, 2025)
+
+### 1. Verification of Prometheus Fix
+
+We've successfully fixed the Prometheus service with the following improvements:
+
+1. **Configuration Path Issue**: Changed the configuration path from `/etc/prometheus/` to `/prometheus/`.
+2. **Health Check Enhancement**: Updated the health check to use netcat (`nc -z localhost 9090`) instead of wget to avoid dependency issues.
+3. **Service Registration**: Verified the service is properly registered with the load balancer target group.
+
+Verification steps performed:
+
+- Executed `resource_check.sh` which confirmed Prometheus service is active with 1/1 tasks running.
+- Ran `monitor-health.sh` which showed all ECS services, including Prometheus, are healthy.
+- Identified one potential issue: Prometheus metrics endpoint returned HTTP 404 when accessed via Grafana proxy. This suggests a potential Grafana data source configuration issue that should be addressed.
+
+### 2. Resource Cleanup Verification
+
+Executed `cleanup-resources.sh` in dry-run mode to identify resources that can be cleaned up. Findings:
+
+- No ECR images need cleaning at this time (all are below the threshold)
+- 4 unused security groups were identified:
+  - prom-security-group (sg-0017d666e5148acac)
+  - ecs-security-group (sg-0a70331071c677329)
+  - alb-security-group (sg-09bee73fe1eb42ec0)
+  - db-security-group (sg-095f444f62444fc95)
+
+These security groups match our previous findings and could be deleted after proper verification and confirmation.
+
+### 3. Next Steps
+
+1. **Grafana Data Source Configuration**: Investigate and fix the Grafana data source configuration to properly connect to Prometheus.
+2. **Security Group Cleanup**: After thorough verification, proceed with cleaning up the 4 identified unused security groups.
+3. **Documentation Update**: Continue updating documentation to reflect all changes and improvements made to the infrastructure.
+
 ## Conclusion
 
 The cleanup process has successfully addressed the immediate issues with the Grafana service and Lambda function configuration. Additional work is needed to fully resolve the Prometheus service issues and to clean up the 4 identified unused security groups after proper verification.
