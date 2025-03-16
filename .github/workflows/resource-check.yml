@@ -1,0 +1,65 @@
+name: AWS Resource Check
+# Runs a comprehensive resource check after successful deployment
+# For complete documentation, see docs/ci-cd.md
+
+on:
+  workflow_run:
+    workflows: ['Deploy Prod-E']
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      generate_report:
+        description: 'Generate a CSV report'
+        type: boolean
+        default: true
+
+jobs:
+  resource-check:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Wait for resource provisioning
+        run: |
+          echo "Waiting 10 minutes for resources to fully provision..."
+          sleep 600
+
+      - name: Run Resource Check
+        run: |
+          chmod +x scripts/monitoring/resource_check.sh
+          if [[ "${{ github.event.inputs.generate_report || 'true' }}" == "true" ]]; then
+            ./scripts/monitoring/resource_check.sh --csv=resource_check_results.csv
+          else
+            ./scripts/monitoring/resource_check.sh
+          fi
+
+      - name: Upload Resource Check Results
+        if: ${{ github.event.inputs.generate_report != 'false' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: resource-check-results
+          path: resource_check_results.csv
+          retention-days: 30
+
+      - name: Notify on Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,workflow
+          text: 'AWS Resource Check ${{ job.status }} after deployment'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

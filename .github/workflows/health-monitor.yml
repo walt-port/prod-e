@@ -1,0 +1,94 @@
+name: Health Monitoring
+# Runs hourly health checks on the infrastructure
+# For complete documentation, see docs/ci-cd.md
+
+on:
+  schedule:
+    # Run every hour at minute 0
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      notify:
+        description: 'Send notifications'
+        type: boolean
+        default: true
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Run Health Check
+        id: health_check
+        run: |
+          chmod +x scripts/monitoring/monitor-health.sh
+          ./scripts/monitoring/monitor-health.sh --once > health_check_results.txt
+          cat health_check_results.txt
+
+          # Check if there are any PROBLEM or CRITICAL messages
+          if grep -E "PROBLEM|CRITICAL" health_check_results.txt; then
+            echo "problems_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "problems_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Health Check Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: health-check-results
+          path: health_check_results.txt
+          retention-days: 7
+
+      - name: Notify on Slack
+        if: ${{ steps.health_check.outputs.problems_detected == 'true' && (github.event.inputs.notify != 'false') }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          fields: repo,message,commit,author,action,eventName,workflow
+          text: '⚠️ Health monitoring detected issues! Please check the workflow for details.'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+      - name: Create GitHub Issue for Health Problems
+        if: ${{ steps.health_check.outputs.problems_detected == 'true' && (github.event.inputs.notify != 'false') }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const health_results = fs.readFileSync('health_check_results.txt', 'utf8');
+
+            const date = new Date().toISOString();
+            const issueBody = `
+            ## Health Check Alert - ${date}
+
+            Health monitoring has detected issues with the infrastructure:
+
+            \`\`\`
+            ${health_results}
+            \`\`\`
+
+            [View the full workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `⚠️ Health Check Alert - ${date}`,
+              body: issueBody,
+              labels: ['health-alert', 'priority']
+            });
