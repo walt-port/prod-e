@@ -543,7 +543,7 @@ check_lambda() {
   print_header "CHECKING LAMBDA FUNCTIONS"
 
   # List Lambda functions
-  FUNCTIONS=$(aws lambda list-functions --region $AWS_REGION --query "Functions[?contains(FunctionName, 'prod-e')].[FunctionName,Runtime,LastModified,State]" --output text)
+  FUNCTIONS=$(aws lambda list-functions --region $AWS_REGION --query "Functions[?contains(FunctionName, 'prod-e') || contains(FunctionName, 'grafana')].[FunctionName,Runtime,LastModified,State]" --output text)
 
   if [[ -z "$FUNCTIONS" ]]; then
     print_error "No Lambda functions found for the project"
@@ -573,7 +573,7 @@ check_lambda() {
 
   # Check Lambda event source mappings
   print_info "Checking Lambda event source mappings..."
-  EVENT_MAPPINGS=$(aws lambda list-event-source-mappings --region $AWS_REGION --query "EventSourceMappings[?contains(FunctionArn, 'prod-e')].[UUID,EventSourceArn,State]" --output text)
+  EVENT_MAPPINGS=$(aws lambda list-event-source-mappings --region $AWS_REGION --query "EventSourceMappings[?contains(FunctionArn, 'prod-e') || contains(FunctionArn, 'grafana')].[UUID,EventSourceArn,State]" --output text)
 
   if [[ -z "$EVENT_MAPPINGS" ]]; then
     print_info "No event source mappings found"
