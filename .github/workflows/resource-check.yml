@@ -39,6 +39,8 @@ jobs:
       - name: Run Resource Check
         run: |
           chmod +x scripts/monitoring/resource_check.sh
+          # Set environment variable to handle existing resources if needed
+          export SKIP_EXISTING_RESOURCES=true
           if [[ "${{ github.event.inputs.generate_report || 'true' }}" == "true" ]]; then
             ./scripts/monitoring/resource_check.sh --csv=resource_check_results.csv
           else

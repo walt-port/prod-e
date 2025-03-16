@@ -1,74 +1,140 @@
 import { Construct } from 'constructs';
+import * as fs from 'fs';
+import * as path from 'path';
 import { IamRole } from '../.gen/providers/aws/iam-role';
 import { IamRolePolicy } from '../.gen/providers/aws/iam-role-policy';
 import { IamRolePolicyAttachment } from '../.gen/providers/aws/iam-role-policy-attachment';
 import { LambdaFunction } from '../.gen/providers/aws/lambda-function';
 import { S3Bucket } from '../.gen/providers/aws/s3-bucket';
+import { S3Object } from '../.gen/providers/aws/s3-object';
+import { ResourceExistenceOptions } from './main';
 
 export class Backup extends Construct {
   public bucket: S3Bucket;
   public lambda: LambdaFunction;
   public backupRole: IamRole;
+  private checkResourceExists: (serviceName: string, resourceName: string) => boolean;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, options: ResourceExistenceOptions) {
     super(scope, id);
 
-    this.bucket = new S3Bucket(this, 'backup-bucket', {
-      bucket: 'prod-e-backups',
-      tags: { Name: 'prod-e-backups' },
-    });
+    this.checkResourceExists = options.checkResourceExists;
+
+    // Create S3 bucket for backups if it doesn't exist
+    const bucketExists = this.checkResourceExists('s3', 'prod-e-backups');
+
+    if (!bucketExists) {
+      this.bucket = new S3Bucket(this, 'backup-bucket', {
+        bucket: 'prod-e-backups',
+        tags: { Name: 'prod-e-backups', Project: 'prod-e' },
+      });
+    } else {
+      // Reference existing bucket
+      this.bucket = new S3Bucket(this, 'backup-bucket', {
+        bucket: 'prod-e-backups',
+        tags: { Name: 'prod-e-backups', Project: 'prod-e' },
+      });
+    }
+
+    // Create a dummy backup.zip file if it doesn't exist
+    const dummyZipPath = path.join(__dirname, '../dummy-backup.zip');
+    if (!fs.existsSync(dummyZipPath)) {
+      // Create an empty dummy zip file using the content of the JS file
+      try {
+        const jsContent = fs.readFileSync(path.join(__dirname, '../dummy-backup.js'), 'utf8');
+        fs.writeFileSync(dummyZipPath, jsContent);
+      } catch (error) {
+        console.error('Could not create dummy zip file:', error);
+      }
+    }
+
+    // Upload the dummy zip to S3
+    const s3ObjectExists = this.checkResourceExists('s3', 'prod-e-backups/backup.zip');
+    if (!s3ObjectExists) {
+      new S3Object(this, 'backup-zip', {
+        bucket: this.bucket.bucket,
+        key: 'backup.zip',
+        source: dummyZipPath,
+        sourceHash: fs.readFileSync(dummyZipPath).toString(),
+      });
+    }
+
+    // Check if backup role exists
+    const backupRoleExists = this.checkResourceExists('iam', 'grafana-backup-role');
 
     // Create Lambda execution role
-    this.backupRole = new IamRole(this, 'grafana-backup-role', {
-      assumeRolePolicy: JSON.stringify({
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Principal: { Service: 'lambda.amazonaws.com' },
-            Action: 'sts:AssumeRole',
-          },
-        ],
-      }),
-      tags: { Name: 'grafana-backup-role' },
-    });
+    if (!backupRoleExists) {
+      this.backupRole = new IamRole(this, 'grafana-backup-role', {
+        assumeRolePolicy: JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: { Service: 'lambda.amazonaws.com' },
+              Action: 'sts:AssumeRole',
+            },
+          ],
+        }),
+        tags: { Name: 'grafana-backup-role', Project: 'prod-e' },
+      });
 
-    // Attach managed policies using IamRolePolicyAttachment instead of managedPolicyArns
-    new IamRolePolicyAttachment(this, 'lambda-basic-execution-policy', {
-      role: this.backupRole.name,
-      policyArn: 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-    });
+      // Attach managed policies using IamRolePolicyAttachment
+      new IamRolePolicyAttachment(this, 'lambda-basic-execution-policy', {
+        role: this.backupRole.name,
+        policyArn: 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+      });
 
-    new IamRolePolicyAttachment(this, 'lambda-vpc-access-policy', {
-      role: this.backupRole.name,
-      policyArn: 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole',
-    });
+      new IamRolePolicyAttachment(this, 'lambda-vpc-access-policy', {
+        role: this.backupRole.name,
+        policyArn: 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole',
+      });
 
-    // Create policy for S3 access
-    new IamRolePolicy(this, 'grafana-backup-policy', {
-      role: this.backupRole.id,
-      policy: JSON.stringify({
-        Version: '2012-10-17',
-        Statement: [
-          { Effect: 'Allow', Action: ['s3:PutObject'], Resource: `${this.bucket.arn}/*` },
-          {
-            Effect: 'Allow',
-            Action: ['elasticfilesystem:ClientMount', 'elasticfilesystem:ClientWrite'],
-            Resource: '*', // We should narrow this in production
-          },
-        ],
-      }),
-    });
+      // Create policy for S3 access
+      new IamRolePolicy(this, 'grafana-backup-policy', {
+        role: this.backupRole.id,
+        policy: JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            { Effect: 'Allow', Action: ['s3:PutObject'], Resource: `${this.bucket.arn}/*` },
+            {
+              Effect: 'Allow',
+              Action: ['elasticfilesystem:ClientMount', 'elasticfilesystem:ClientWrite'],
+              Resource: '*', // We should narrow this in production
+            },
+          ],
+        }),
+      });
+    } else {
+      // Reference existing role by ARN
+      this.backupRole = new IamRole(this, 'grafana-backup-role', {
+        name: 'grafana-backup-role',
+        assumeRolePolicy: JSON.stringify({
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: { Service: 'lambda.amazonaws.com' },
+              Action: 'sts:AssumeRole',
+            },
+          ],
+        }),
+      });
+    }
 
+    // Check if Lambda function exists
+    const lambdaExists = this.checkResourceExists('lambda', 'prod-e-backup');
+
+    // Create or update the Lambda function
+    // If it exists, we'll update it with the new runtime
     this.lambda = new LambdaFunction(this, 'backup-lambda', {
       functionName: 'prod-e-backup',
-      runtime: 'nodejs14.x',
+      runtime: 'nodejs20.x', // Using the updated runtime
       handler: 'index.handler',
       s3Bucket: this.bucket.bucket,
-      s3Key: 'backup.zip', // Placeholder - update with real zip
+      s3Key: 'backup.zip',
       role: this.backupRole.arn,
       timeout: 300,
-      tags: { Name: 'prod-e-backup-lambda' },
+      tags: { Name: 'prod-e-backup-lambda', Project: 'prod-e' },
     });
   }
 }

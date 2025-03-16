@@ -68,6 +68,25 @@ jobs:
           npm install
           npm test
 
+      - name: Prepare Lambda Function
+        run: |
+          # Create zip file for Lambda function
+          cd infrastructure/lambda
+          zip -j backup.zip backup.js
+          # Copy to the location needed by the import script
+          cp backup.zip ../../dummy-backup.zip
+
+      - name: Prepare Import Script for CI
+        run: |
+          chmod +x infrastructure/scripts/import-resources.sh
+
+      - name: Import Existing Resources
+        run: |
+          # Run the import script in CI mode (non-interactive)
+          ./infrastructure/scripts/import-resources.sh --ci
+
       - name: Deploy Infrastructure
         run: |
+          # Set the environment variable to handle existing resources
+          export SKIP_EXISTING_RESOURCES=true
           cdktf synth && cdktf deploy --auto-approve
