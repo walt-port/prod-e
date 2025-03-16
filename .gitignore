@@ -7,6 +7,9 @@ dist/
 !jest.config.js
 !setup.js
 !backend/**/*.js
+!scripts/**/*.js
+!lambda/**/*.js
+!config/**/*.js
 
 # Terraform/CDKTF
 cdktf.out
@@ -16,9 +19,9 @@ terraform.tfstate
 terraform.tfstate.backup
 infrastructure/terraform/*.tfstate
 infrastructure/terraform/*.tfstate.backup
-terraform-state-policy.json
-.gen
+infrastructure/terraform/
 .terraform
+.gen
 *.tfplan
 *.tfvars
 override.tf
@@ -29,52 +32,55 @@ override.tf.json
 # Environment & secrets
 .env
 **/.env
+.env.*
+!.env.example
 *.pem
 *.key
+*.crt
+**/secrets/
 
 # IDE & local
 .cursor
 .vscode
 .context_updates/
+.idea/
 
 # Logs
 *.log
-
-# Node.js dependencies
-node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-
-# Environment variables
-.env
-.env.local
-.env.development
-.env.test
-.env.production
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Build artifacts
 dist/
 build/
 coverage/
-
-# Logs
-logs/
-*.log
+*.zip
+!infrastructure/lambda/*.zip
+!infrastructure/deployments/*.zip
 
 # Operating System Files
 .DS_Store
 Thumbs.db
-
-# IDE specific files
-.idea/
-.vscode/
-*.sublime-*
 *.swp
 *.swo
 
+# Python virtual environment
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
 # Temporary files
-temp/
-task-def-*.json
-healthcheck.json
+/temp/*
+!/temp/.gitkeep
+
+# One-time scripts that should not be tracked
+scripts/one-time/
+
+# Allow all audits and tests
+!audits/**/*
+!**/__tests__/**/*
 
