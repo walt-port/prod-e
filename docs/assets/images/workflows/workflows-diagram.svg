@@ -21,79 +21,75 @@
       <stop offset="0%" style="stop-color:#cc5de8;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#ae3ec9;stop-opacity:1" />
     </linearGradient>
-  </defs>
-
-  <!-- Background rectangle -->
-  <rect width="800" height="450" fill="#f8f9fa" rx="5" ry="5" />
-  <text x="400" y="30" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle" fill="#343a40">GitHub Workflows Architecture</text>
-  <text x="400" y="55" font-family="Arial" font-size="14" text-anchor="middle" fill="#6c757d">Production Experience Showcase</text>
-
-  <!-- Deployment Workflow -->
-  <g transform="translate(400, 120)">
-    <rect x="-100" y="-40" width="200" height="80" rx="10" ry="10" fill="url(#gradient-blue)" filter="url(#shadow)" />
-    <text x="0" y="-15" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Deploy</text>
-    <text x="0" y="10" font-family="Arial" font-size="12" text-anchor="middle" fill="white">deploy.yml</text>
-    <text x="0" y="30" font-family="Arial" font-size="10" text-anchor="middle" fill="white">Triggered: Push to main, manual</text>
-  </g>
-
-  <!-- Health Monitoring Workflow -->
-  <g transform="translate(200, 250)">
-    <rect x="-100" y="-40" width="200" height="80" rx="10" ry="10" fill="url(#gradient-green)" filter="url(#shadow)" />
-    <text x="0" y="-15" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Health Monitoring</text>
-    <text x="0" y="10" font-family="Arial" font-size="12" text-anchor="middle" fill="white">health-monitor.yml</text>
-    <text x="0" y="30" font-family="Arial" font-size="10" text-anchor="middle" fill="white">Triggered: Hourly, manual</text>
-  </g>
-
-  <!-- Resource Check Workflow -->
-  <g transform="translate(400, 350)">
-    <rect x="-100" y="-40" width="200" height="80" rx="10" ry="10" fill="url(#gradient-orange)" filter="url(#shadow)" />
-    <text x="0" y="-15" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Resource Check</text>
-    <text x="0" y="10" font-family="Arial" font-size="12" text-anchor="middle" fill="white">resource-check.yml</text>
-    <text x="0" y="30" font-family="Arial" font-size="10" text-anchor="middle" fill="white">Triggered: After deploy, manual</text>
-  </g>
-
-  <!-- Cleanup Workflow -->
-  <g transform="translate(600, 250)">
-    <rect x="-100" y="-40" width="200" height="80" rx="10" ry="10" fill="url(#gradient-purple)" filter="url(#shadow)" />
-    <text x="0" y="-15" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">AWS Cleanup</text>
-    <text x="0" y="10" font-family="Arial" font-size="12" text-anchor="middle" fill="white">cleanup.yml</text>
-    <text x="0" y="30" font-family="Arial" font-size="10" text-anchor="middle" fill="white">Triggered: Weekly, manual</text>
-  </g>
-
-  <!-- Arrows connecting workflows -->
-  <!-- Deploy to Resource Check arrow -->
-  <path d="M400,160 Q400,270 400,310" stroke="#6c757d" stroke-width="2" fill="none" marker-end="url(#arrowhead)" />
-
-  <!-- Define the arrowhead marker -->
-  <defs>
+    <linearGradient id="gradient-red" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f03e3e;stop-opacity:1" />
+    </linearGradient>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#6c757d" />
     </marker>
   </defs>
 
-  <!-- Relationships -->
-  <line x1="270" y1="250" x2="330" y1="250" stroke="#6c757d" stroke-width="1" stroke-dasharray="5,5" />
-  <line x1="470" y1="250" x2="530" y1="250" stroke="#6c757d" stroke-width="1" stroke-dasharray="5,5" />
+  <!-- Background rectangle -->
+  <rect width="800" height="450" fill="#f8f9fa" rx="5" ry="5" />
+  <text x="400" y="30" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle" fill="#343a40">GitHub Workflows Architecture</text>
+  <text x="400" y="55" font-family="Arial" font-size="14" text-anchor="middle" fill="#6c757d">Production Experience Automation</text>
 
-  <!-- Legend -->
-  <g transform="translate(130, 130)">
-    <rect x="-120" y="-30" width="240" height="110" rx="5" ry="5" fill="white" stroke="#e9ecef" stroke-width="1" />
-    <text x="0" y="-15" font-family="Arial" font-size="12" font-weight="bold" text-anchor="middle" fill="#343a40">Legend</text>
+  <!-- Main Workflow Groups -->
+  <!-- Deploy Workflow -->
+  <g transform="translate(200, 150)">
+    <rect x="-100" y="-50" width="200" height="100" rx="10" ry="10" fill="url(#gradient-blue)" filter="url(#shadow)" />
+    <text x="0" y="-25" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Deploy Workflow</text>
+    <text x="0" y="0" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Triggered on:</text>
+    <text x="0" y="20" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- Push to main</text>
+    <text x="0" y="40" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- Manual trigger</text>
+  </g>
 
-    <circle cx="-95" cy="10" r="6" fill="url(#gradient-blue)" />
-    <text x="-80" y="14" font-family="Arial" font-size="12" fill="#343a40">Deployment Workflow</text>
+  <!-- Resource Check Workflow -->
+  <g transform="translate(500, 150)">
+    <rect x="-100" y="-50" width="200" height="100" rx="10" ry="10" fill="url(#gradient-green)" filter="url(#shadow)" />
+    <text x="0" y="-25" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Resource Check</text>
+    <text x="0" y="0" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Triggered on:</text>
+    <text x="0" y="20" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- After Deploy Success</text>
+    <text x="0" y="40" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- Manual trigger</text>
+  </g>
 
-    <circle cx="-95" cy="35" r="6" fill="url(#gradient-green)" />
-    <text x="-80" y="39" font-family="Arial" font-size="12" fill="#343a40">Monitoring Workflow</text>
+  <!-- Cleanup Workflow -->
+  <g transform="translate(200, 300)">
+    <rect x="-100" y="-50" width="200" height="100" rx="10" ry="10" fill="url(#gradient-orange)" filter="url(#shadow)" />
+    <text x="0" y="-25" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Cleanup Workflow</text>
+    <text x="0" y="0" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Triggered on:</text>
+    <text x="0" y="20" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- Weekly schedule</text>
+    <text x="0" y="40" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- Manual trigger</text>
+  </g>
 
-    <circle cx="-95" cy="60" r="6" fill="url(#gradient-orange)" />
-    <text x="-80" y="64" font-family="Arial" font-size="12" fill="#343a40">Resource Check Workflow</text>
+  <!-- Monitoring Workflow -->
+  <g transform="translate(500, 300)">
+    <rect x="-100" y="-50" width="200" height="100" rx="10" ry="10" fill="url(#gradient-purple)" filter="url(#shadow)" />
+    <text x="0" y="-25" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Health Monitor</text>
+    <text x="0" y="0" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Triggered on:</text>
+    <text x="0" y="20" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- Hourly schedule</text>
+    <text x="0" y="40" font-family="Arial" font-size="12" text-anchor="middle" fill="white">- Manual trigger</text>
+  </g>
 
-    <line x1="20" y1="10" x2="50" y1="10" stroke="#6c757d" stroke-width="2" />
-    <text x="75" y="14" font-family="Arial" font-size="12" fill="#343a40">Triggers</text>
+  <!-- Connections -->
+  <!-- Deploy to Resource Check -->
+  <line x1="300" y1="150" x2="400" y2="150" stroke="#6c757d" stroke-width="2" marker-end="url(#arrowhead)" />
 
-    <line x1="20" y1="35" x2="50" y1="35" stroke="#6c757d" stroke-width="1" stroke-dasharray="5,5" />
-    <text x="75" y="39" font-family="Arial" font-size="12" fill="#343a40">Related</text>
+  <!-- Deploy to Cleanup (dotted line showing optional path) -->
+  <line x1="200" y1="200" x2="200" y2="250" stroke="#6c757d" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)" />
+
+  <!-- Health Monitor to Slack Notification -->
+  <line x1="600" y1="300" x2="650" y2="350" stroke="#6c757d" stroke-width="2" marker-end="url(#arrowhead)" />
+
+  <!-- Resource Check to Slack Notification -->
+  <line x1="550" y1="200" x2="650" y2="350" stroke="#6c757d" stroke-width="2" marker-end="url(#arrowhead)" />
+
+  <!-- Notification System -->
+  <g transform="translate(650, 350)">
+    <rect x="-70" y="-25" width="140" height="50" rx="10" ry="10" fill="url(#gradient-red)" filter="url(#shadow)" />
+    <text x="0" y="-5" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle" fill="white">Notifications</text>
+    <text x="0" y="15" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Slack</text>
   </g>
 
   <!-- Footer -->
