@@ -1,0 +1,84 @@
+name: AWS Resource Cleanup
+# Automated cleanup of unused AWS resources to reduce costs and maintain a clean environment
+
+on:
+  schedule:
+    # Run weekly on Sunday at 2:00 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no deletions)'
+        type: boolean
+        default: true
+      keep_latest:
+        description: 'Number of latest versions to keep'
+        type: number
+        default: 5
+      fix_grafana:
+        description: 'Fix Grafana tasks'
+        type: boolean
+        default: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Run Resource Check
+        run: |
+          chmod +x scripts/resource_check.sh
+          ./scripts/resource_check.sh --csv=resource_check_results.csv
+          cat resource_check_results.csv
+
+      - name: Fix Grafana Tasks
+        if: ${{ github.event.inputs.fix_grafana != 'false' }}
+        run: |
+          chmod +x scripts/fix-grafana-tasks.sh
+          if [ "${{ github.event.inputs.dry_run || 'true' }}" == "true" ]; then
+            echo "Running Grafana fix in DRY RUN mode"
+            ./scripts/fix-grafana-tasks.sh
+          else
+            echo "Running Grafana fix in FORCE mode - tasks will be stopped"
+            ./scripts/fix-grafana-tasks.sh --force
+          fi
+
+      - name: Run Resource Cleanup
+        run: |
+          chmod +x scripts/cleanup-resources.sh
+          if [ "${{ github.event.inputs.dry_run || 'true' }}" == "true" ]; then
+            echo "Running in DRY RUN mode"
+            ./scripts/cleanup-resources.sh --keep=${{ github.event.inputs.keep_latest || 5 }}
+          else
+            echo "Running in FORCE mode - resources will be deleted"
+            ./scripts/cleanup-resources.sh --force --keep=${{ github.event.inputs.keep_latest || 5 }}
+          fi
+
+      - name: Upload Resource Check Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: resource-check-results
+          path: resource_check_results.csv
+          retention-days: 30
+
+      - name: Notify on Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,workflow
+          text: 'AWS Resource Cleanup ${{ job.status }}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

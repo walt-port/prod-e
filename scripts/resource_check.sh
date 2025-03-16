@@ -11,27 +11,78 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+GRAY='\033[0;90m'
 NC='\033[0m' # No Color
+
+# CSV output option
+CSV_OUTPUT=false
+CSV_FILE="resource_check_results.csv"
 
 # Print header with section name
 print_header() {
   echo -e "\n${BLUE}======== $1 ========${NC}\n"
+  if [ "$CSV_OUTPUT" = true ]; then
+    echo "Section,$1" >> $CSV_FILE
+  fi
 }
 
 # Print success message
 print_success() {
   echo -e "${GREEN}✓ $1${NC}"
+  if [ "$CSV_OUTPUT" = true ]; then
+    echo "Success,$1" >> $CSV_FILE
+  fi
 }
 
 # Print error message
 print_error() {
   echo -e "${RED}✗ $1${NC}"
+  if [ "$CSV_OUTPUT" = true ]; then
+    echo "Error,$1" >> $CSV_FILE
+  fi
 }
 
 # Print warning/info message
 print_info() {
   echo -e "${YELLOW}ℹ $1${NC}"
+  if [ "$CSV_OUTPUT" = true ]; then
+    echo "Info,$1" >> $CSV_FILE
+  fi
 }
+
+# Print inactive resource message
+print_inactive() {
+  echo -e "${GRAY}• $1${NC}"
+  if [ "$CSV_OUTPUT" = true ]; then
+    echo "Inactive,$1" >> $CSV_FILE
+  fi
+}
+
+# Process command line arguments
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    --region=*) AWS_REGION="${1#*=}" ;;
+    --csv) CSV_OUTPUT=true ;;
+    --csv=*) CSV_OUTPUT=true; CSV_FILE="${1#*=}" ;;
+    --help|-h)
+      echo "Usage: $0 [options]"
+      echo "Options:"
+      echo "  --region=REGION Set AWS region (default: us-west-2)"
+      echo "  --csv           Output results to CSV file (default: resource_check_results.csv)"
+      echo "  --csv=FILENAME  Output results to specified CSV file"
+      echo "  --help, -h      Display this help message"
+      exit 0
+      ;;
+    *) echo "Unknown parameter: $1"; exit 1 ;;
+  esac
+  shift
+done
+
+# Initialize CSV file if needed
+if [ "$CSV_OUTPUT" = true ]; then
+  echo "Type,Resource,Details" > $CSV_FILE
+  echo "CSV output will be written to $CSV_FILE"
+fi
 
 # Check AWS CLI configuration
 check_aws_config() {
@@ -43,6 +94,7 @@ check_aws_config() {
     print_success "AWS CLI is configured correctly"
     print_info "Account ID: $ACCOUNT_ID"
     print_info "User: $USER_ARN"
+    print_info "Region: $AWS_REGION"
   else
     print_error "AWS CLI is not configured correctly"
     exit 1
@@ -87,6 +139,20 @@ check_vpc() {
       print_success "NAT Gateway found: $NAT"
     fi
   fi
+
+  # Check for unused Elastic IPs
+  print_info "Checking for unused Elastic IPs..."
+  UNUSED_EIPS=$(aws ec2 describe-addresses --query "Addresses[?AssociationId==null].[AllocationId,PublicIp]" --output text --region $AWS_REGION)
+
+  if [[ -z "$UNUSED_EIPS" ]]; then
+    print_success "No unused Elastic IPs found"
+  else
+    echo "$UNUSED_EIPS" | while read -r line; do
+      EIP_ID=$(echo $line | awk '{print $1}')
+      EIP_IP=$(echo $line | awk '{print $2}')
+      print_inactive "Unused Elastic IP: $EIP_IP ($EIP_ID)"
+    done
+  fi
 }
 
 # Check RDS resources
@@ -116,6 +182,18 @@ check_rds() {
   else
     echo "$SUBNET_GROUPS" | while read -r name status; do
       print_success "$name: $status"
+    done
+  fi
+
+  # Check for DB snapshots
+  print_info "Checking for RDS snapshots..."
+  SNAPSHOTS=$(aws rds describe-db-snapshots --snapshot-type manual --query "DBSnapshots[*].[DBSnapshotIdentifier,SnapshotCreateTime,Status,DBInstanceIdentifier]" --output text --region $AWS_REGION)
+
+  if [[ -z "$SNAPSHOTS" ]]; then
+    print_success "No manual DB snapshots found"
+  else
+    echo "$SNAPSHOTS" | while read -r id time status instance; do
+      print_info "Snapshot: $id from $instance created at $time ($status)"
     done
   fi
 }
@@ -173,6 +251,35 @@ check_ecs() {
         done
       done
     fi
+
+    # Check task definitions
+    print_info "Checking for task definitions..."
+
+    # Check all task definition families
+    FAMILIES=$(aws ecs list-task-definition-families --status ACTIVE --query "families" --output text --region $AWS_REGION)
+
+    for family in $FAMILIES; do
+      # Count total revisions for this family
+      TOTAL_REVISIONS=$(aws ecs list-task-definitions --family-prefix $family --status ACTIVE --query "length(taskDefinitionArns)" --output text --region $AWS_REGION)
+
+      # Get the active revision
+      ACTIVE_REVISION=""
+      for service in $SERVICES; do
+        SERVICE_NAME=$(echo $service | awk -F/ '{print $NF}')
+        SERVICE_TASK_DEF=$(aws ecs describe-services --cluster prod-e-cluster --services $SERVICE_NAME --query "services[0].taskDefinition" --output text --region $AWS_REGION)
+
+        if [[ "$SERVICE_TASK_DEF" == *"$family"* ]]; then
+          ACTIVE_REVISION=$(echo $SERVICE_TASK_DEF | awk -F: '{print $NF}')
+          break
+        fi
+      done
+
+      if [[ -n "$ACTIVE_REVISION" ]]; then
+        print_success "Family: $family has $TOTAL_REVISIONS revisions (active: $ACTIVE_REVISION)"
+      else
+        print_inactive "Family: $family has $TOTAL_REVISIONS revisions (no active service)"
+      fi
+    done
   fi
 }
 
@@ -207,6 +314,31 @@ check_alb() {
         print_success "  $name: $protocol:$port ($target_type)"
       done
     fi
+
+    # Check for each target group's health
+    echo "Checking target group health status:"
+    TARGET_GROUP_ARNS=$(aws elbv2 describe-target-groups --load-balancer-arn "$ALB_ARN" --query "TargetGroups[*].TargetGroupArn" --output text --region $AWS_REGION)
+
+    for tg_arn in $TARGET_GROUP_ARNS; do
+      TG_NAME=$(aws elbv2 describe-target-groups --target-group-arns $tg_arn --query "TargetGroups[0].TargetGroupName" --output text --region $AWS_REGION)
+
+      # Get health status
+      TARGETS_HEALTH=$(aws elbv2 describe-target-health --target-group-arn $tg_arn --query "TargetHealthDescriptions[*].[Target.Id,Target.Port,TargetHealth.State]" --output text --region $AWS_REGION)
+
+      if [[ -z "$TARGETS_HEALTH" ]]; then
+        print_info "  $TG_NAME: No targets registered"
+      else
+        echo "$TARGETS_HEALTH" | while read -r id port state; do
+          if [[ "$state" == "healthy" ]]; then
+            print_success "  $TG_NAME: Target $id:$port is $state"
+          elif [[ "$state" == "draining" ]]; then
+            print_inactive "  $TG_NAME: Target $id:$port is $state"
+          else
+            print_error "  $TG_NAME: Target $id:$port is $state"
+          fi
+        done
+      fi
+    done
   fi
 }
 
@@ -232,6 +364,13 @@ check_ecr() {
         TAG=$(echo "$LATEST_IMAGE" | awk '{print $1}')
         PUSHED_AT=$(echo "$LATEST_IMAGE" | awk '{print $2}')
         print_info "  Latest image: ${TAG:-untagged} pushed at $PUSHED_AT"
+
+        # Count total images in the repository
+        IMAGE_COUNT=$(aws ecr describe-images --repository-name "$name" --query "length(imageDetails)" --output text --region $AWS_REGION 2>/dev/null || echo "0")
+
+        if [ "$IMAGE_COUNT" -gt 1 ]; then
+          print_info "  Total images: $IMAGE_COUNT"
+        fi
       fi
     done
   fi
@@ -281,7 +420,7 @@ check_monitoring() {
   print_header "CHECKING MONITORING SERVICES"
 
   # Check Prometheus
-  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text)
+  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text 2>/dev/null)
 
   if [[ -z "$PROM_SERVICE" ]]; then
     print_error "Prometheus service not found"
@@ -295,7 +434,7 @@ check_monitoring() {
   fi
 
   # Check Grafana
-  GRAFANA_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services grafana-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text)
+  GRAFANA_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services grafana-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text 2>/dev/null)
 
   if [[ -z "$GRAFANA_SERVICE" ]]; then
     print_error "Grafana service not found"
@@ -306,6 +445,37 @@ check_monitoring() {
     else
       print_error "Grafana: DEGRADED ($running/$desired tasks running)"
     fi
+  fi
+
+  # Get ALB DNS name for endpoint checks
+  ALB_DNS=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(LoadBalancerName, 'application')].DNSName" --output text --region $AWS_REGION)
+
+  if [[ -n "$ALB_DNS" ]]; then
+    # Try to access Grafana endpoint
+    GRAFANA_URL="http://$ALB_DNS/grafana/"
+    print_info "Testing Grafana endpoint: $GRAFANA_URL"
+
+    GRAFANA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 5 $GRAFANA_URL 2>/dev/null)
+
+    if [[ "$GRAFANA_STATUS" == "200" || "$GRAFANA_STATUS" == "302" ]]; then
+      print_success "Grafana endpoint is accessible (HTTP $GRAFANA_STATUS)"
+    else
+      print_error "Grafana endpoint returned HTTP $GRAFANA_STATUS"
+    fi
+
+    # Try to access Prometheus metrics endpoint via Grafana
+    PROM_URL="http://$ALB_DNS/grafana/api/datasources/proxy/1/api/v1/query?query=up"
+    print_info "Testing Prometheus metrics via Grafana proxy"
+
+    PROM_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 5 $PROM_URL 2>/dev/null)
+
+    if [[ "$PROM_STATUS" == "200" || "$PROM_STATUS" == "401" ]]; then
+      print_success "Prometheus metrics endpoint is accessible (HTTP $PROM_STATUS)"
+    else
+      print_error "Prometheus metrics endpoint returned HTTP $PROM_STATUS"
+    fi
+  else
+    print_error "Could not determine ALB DNS name for endpoint checks"
   fi
 }
 
@@ -394,8 +564,125 @@ check_lambda() {
       # Get recent invocations
       INVOCATIONS=$(aws lambda get-function --function-name "$name" --region $AWS_REGION --query "Configuration.LastUpdateStatus" --output text)
       print_info "  Last update status: $INVOCATIONS"
+
+      # Check function versions
+      VERSIONS=$(aws lambda list-versions-by-function --function-name "$name" --region $AWS_REGION --query "length(Versions)" --output text)
+      print_info "  Function versions: $VERSIONS"
     done
   fi
+
+  # Check Lambda event source mappings
+  print_info "Checking Lambda event source mappings..."
+  EVENT_MAPPINGS=$(aws lambda list-event-source-mappings --region $AWS_REGION --query "EventSourceMappings[?contains(FunctionArn, 'prod-e')].[UUID,EventSourceArn,State]" --output text)
+
+  if [[ -z "$EVENT_MAPPINGS" ]]; then
+    print_info "No event source mappings found"
+  else
+    echo "$EVENT_MAPPINGS" | while read -r uuid source state; do
+      if [[ "$state" == "Enabled" ]]; then
+        print_success "Event mapping: $uuid is $state (source: $source)"
+      else
+        print_inactive "Event mapping: $uuid is $state (source: $source)"
+      fi
+    done
+  fi
+}
+
+# Check for unused security groups
+check_security_groups() {
+  print_header "CHECKING SECURITY GROUPS"
+
+  # Get all security groups
+  SECURITY_GROUPS=$(aws ec2 describe-security-groups --region $AWS_REGION --query "SecurityGroups[*].[GroupId,GroupName,Description]" --output text)
+
+  echo "Found $(echo "$SECURITY_GROUPS" | wc -l) security groups:"
+
+  echo "$SECURITY_GROUPS" | while read -r id name desc; do
+    # Skip default security groups
+    if [[ "$name" == "default" ]]; then
+      print_inactive "$id: $name - $desc (default)"
+      continue
+    fi
+
+    # Check if the security group is in use
+    IN_USE=false
+
+    # Check EC2 instances
+    EC2_USAGE=$(aws ec2 describe-instances --filters "Name=instance.group-id,Values=$id" --query "Reservations[*].Instances[*].InstanceId" --output text --region $AWS_REGION)
+
+    # Check ENIs
+    ENI_USAGE=$(aws ec2 describe-network-interfaces --filters "Name=group-id,Values=$id" --query "NetworkInterfaces[*].NetworkInterfaceId" --output text --region $AWS_REGION)
+
+    # Check Load Balancers
+    LB_USAGE=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?SecurityGroups[?contains(@, '$id')]].LoadBalancerArn" --output text --region $AWS_REGION)
+
+    # Check RDS instances
+    RDS_USAGE=$(aws rds describe-db-instances --query "DBInstances[?VpcSecurityGroups[?VpcSecurityGroupId=='$id']].DBInstanceIdentifier" --output text --region $AWS_REGION)
+
+    # Check Lambda functions
+    LAMBDA_USAGE=$(aws lambda list-functions --query "Functions[?VpcConfig.SecurityGroupIds[?contains(@, '$id')]].FunctionName" --output text --region $AWS_REGION)
+
+    # If any of these are non-empty, the security group is in use
+    if [[ -n "$EC2_USAGE" || -n "$ENI_USAGE" || -n "$LB_USAGE" || -n "$RDS_USAGE" || -n "$LAMBDA_USAGE" ]]; then
+      IN_USE=true
+    fi
+
+    if [ "$IN_USE" = true ]; then
+      print_success "$id: $name - $desc (in use)"
+    else
+      print_inactive "$id: $name - $desc (not in use)"
+    fi
+  done
+}
+
+# Check for orphaned resources
+check_orphaned_resources() {
+  print_header "CHECKING FOR ORPHANED RESOURCES"
+
+  # Check for unattached EBS volumes
+  print_info "Checking for unattached EBS volumes..."
+  VOLUMES=$(aws ec2 describe-volumes --filters "Name=status,Values=available" --query "Volumes[*].{ID:VolumeId,Size:Size,Created:CreateTime}" --output json --region $AWS_REGION)
+
+  if [ "$(echo $VOLUMES | jq '. | length')" == "0" ]; then
+    print_success "No unattached EBS volumes found"
+  else
+    echo $VOLUMES | jq -c '.[]' | while read -r volume; do
+      VOLUME_ID=$(echo $volume | jq -r '.ID')
+      SIZE=$(echo $volume | jq -r '.Size')
+      CREATED=$(echo $volume | jq -r '.Created')
+      print_inactive "Unattached EBS volume: $VOLUME_ID (${SIZE}GB, created $CREATED)"
+    done
+  fi
+
+  # Check for unused Elastic IPs
+  print_info "Checking for unallocated Elastic IPs..."
+  UNUSED_EIPS=$(aws ec2 describe-addresses --query "Addresses[?AssociationId==null].[AllocationId,PublicIp]" --output text --region $AWS_REGION)
+
+  if [[ -z "$UNUSED_EIPS" ]]; then
+    print_success "No unallocated Elastic IPs found"
+  else
+    echo "$UNUSED_EIPS" | while read -r line; do
+      EIP_ID=$(echo $line | awk '{print $1}')
+      EIP_IP=$(echo $line | awk '{print $2}')
+      print_inactive "Unallocated Elastic IP: $EIP_IP ($EIP_ID)"
+    done
+  fi
+
+  # Check for old ECS task definitions
+  print_info "Checking for inactive ECS task definitions..."
+  FAMILIES=$(aws ecs list-task-definition-families --status ACTIVE --query "families" --output text --region $AWS_REGION)
+
+  for family in $FAMILIES; do
+    # Get all revisions for this family
+    TASK_DEFS=$(aws ecs list-task-definitions --family-prefix $family --status ACTIVE --query "taskDefinitionArns" --output json --region $AWS_REGION)
+
+    # Count total revisions
+    TOTAL_REVISIONS=$(echo $TASK_DEFS | jq '. | length')
+
+    if [ "$TOTAL_REVISIONS" -gt 5 ]; then
+      print_inactive "Task definition family '$family' has $TOTAL_REVISIONS revisions (consider cleanup)"
+    fi
+  done
 }
 
 # Run all checks
@@ -414,6 +701,8 @@ run_all_checks() {
   check_monitoring
   check_efs
   check_lambda
+  check_security_groups
+  check_orphaned_resources
 
   echo -e "\n${BLUE}===============================================${NC}"
   echo -e "${BLUE}                 CHECK COMPLETE               ${NC}"

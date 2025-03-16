@@ -27,16 +27,17 @@ This document catalogs all documentation in the Production Experience Showcase (
 
 ## Infrastructure Documentation
 
-| Document                                                                           | Purpose                                              | Related Documents                                                                  |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [infrastructure/network-architecture.md](./infrastructure/network-architecture.md) | VPC, subnets, NAT Gateway, and routing               | [infrastructure/multi-az-strategy.md](./infrastructure/multi-az-strategy.md)       |
-| [infrastructure/load-balancer.md](./infrastructure/load-balancer.md)               | ALB, target groups, and listeners                    | [infrastructure/ecs-service.md](./infrastructure/ecs-service.md)                   |
-| [infrastructure/rds-database.md](./infrastructure/rds-database.md)                 | RDS instance, security groups, and subnet groups     | [infrastructure/network-architecture.md](./infrastructure/network-architecture.md) |
-| [infrastructure/ecs-service.md](./infrastructure/ecs-service.md)                   | ECS cluster, task definition, service, health checks | [infrastructure/container-deployment.md](./infrastructure/container-deployment.md) |
-| [infrastructure/multi-az-strategy.md](./infrastructure/multi-az-strategy.md)       | Multi-AZ implementation and future plans             | [infrastructure/network-architecture.md](./infrastructure/network-architecture.md) |
-| [infrastructure/container-deployment.md](./infrastructure/container-deployment.md) | ECR, Docker builds, and container deployment         | [processes/ci-cd.md](./processes/ci-cd.md)                                         |
-| [infrastructure/remote-state.md](./infrastructure/remote-state.md)                 | S3 remote state backend and DynamoDB state locking   | [overview.md](./overview.md)                                                       |
-| [infrastructure/ongoing-budget.md](./infrastructure/ongoing-budget.md)             | Budget analysis and cost management                  | -                                                                                  |
+| Document                                                                           | Purpose                                               | Related Documents                                                                               |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [infrastructure/network-architecture.md](./infrastructure/network-architecture.md) | Documents VPC, subnets, and routing                   | load-balancer.md, multi-az-strategy.md                                                          |
+| [infrastructure/load-balancer.md](./infrastructure/load-balancer.md)               | Documents ALB configuration and target groups         | network-architecture.md, ecs-service.md                                                         |
+| [infrastructure/multi-az-strategy.md](./infrastructure/multi-az-strategy.md)       | Documents multi-AZ implementation                     | network-architecture.md, rds-database.md                                                        |
+| [infrastructure/rds-database.md](./infrastructure/rds-database.md)                 | Documents RDS PostgreSQL configuration                | multi-az-strategy.md                                                                            |
+| [infrastructure/ecs-service.md](./infrastructure/ecs-service.md)                   | Documents ECS cluster and services                    | load-balancer.md                                                                                |
+| [infrastructure/container-deployment.md](./infrastructure/container-deployment.md) | Documents ECR and container builds                    | ecs-service.md, ci-cd.md                                                                        |
+| [infrastructure/remote-state.md](./infrastructure/remote-state.md)                 | Documents S3 state backend and DynamoDB locking       | audits.md                                                                                       |
+| [infrastructure/cleanup-plan.md](./infrastructure/cleanup-plan.md)                 | Documents resource cleanup process and findings       | ecs-service.md, monitoring.md, scripts/fix-grafana-tasks.sh, scripts/cleanup-security-groups.sh |
+| [infrastructure/ongoing-budget.md](./infrastructure/ongoing-budget.md)             | Documents ongoing costs and suggestions for reduction | ecs-service.md, remote-state.md                                                                 |
 
 ## Monitoring Documentation
 

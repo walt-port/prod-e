@@ -6,20 +6,22 @@ This document serves as the main index for all infrastructure documentation in t
 
 ## Available Documentation
 
-| Component                 | Description                                                                    | Document Link                                        |
-| ------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| Network Architecture      | Documentation about VPC, subnets, NAT Gateway, and routing                     | [network-architecture.md](./network-architecture.md) |
-| Application Load Balancer | Documentation about ALB, target groups, and listeners                          | [load-balancer.md](./load-balancer.md)               |
-| RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups           | [rds-database.md](./rds-database.md)                 |
-| ECS Fargate Service       | Documentation about ECS cluster, task definition, service, and health checks   | [ecs-service.md](./ecs-service.md)                   |
-| Multi-AZ Strategy         | Documentation of current multi-AZ implementation and future plans              | [multi-az-strategy.md](./multi-az-strategy.md)       |
-| Container Deployment      | Documentation for ECR, Docker builds, and container deployment                 | [container-deployment.md](./container-deployment.md) |
-| Testing                   | Comprehensive testing documentation including approach, coverage, and examples | [testing.md](./testing.md)                           |
-| Monitoring                | Documentation for Prometheus and Grafana implementation                        | [monitoring.md](./monitoring.md)                     |
-| CI/CD                     | Documentation for GitHub Actions CI/CD implementation                          | [ci-cd.md](./ci-cd.md)                               |
-| Remote State Backend      | Documentation for S3 remote state backend and DynamoDB state locking           | [remote_state.md](./remote_state.md)                 |
-| Infrastructure Audits     | Documentation for infrastructure and codebase audits                           | [../audits/overview.md](../audits/overview.md)       |
-| Audit Processes           | Documentation for infrastructure and codebase audit processes                  | [audits.md](./audits.md)                             |
+| Component                 | Description                                                                    | Document Link                                                      |
+| ------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Network Architecture      | Documentation about VPC, subnets, NAT Gateway, and routing                     | [network-architecture.md](./network-architecture.md)               |
+| Application Load Balancer | Documentation about ALB, target groups, and listeners                          | [load-balancer.md](./load-balancer.md)                             |
+| RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups           | [rds-database.md](./rds-database.md)                               |
+| ECS Fargate Service       | Documentation about ECS cluster, task definition, service, and health checks   | [ecs-service.md](./ecs-service.md)                                 |
+| Multi-AZ Strategy         | Documentation of current multi-AZ implementation and future plans              | [multi-az-strategy.md](./multi-az-strategy.md)                     |
+| Container Deployment      | Documentation for ECR, Docker builds, and container deployment                 | [container-deployment.md](./container-deployment.md)               |
+| Testing                   | Comprehensive testing documentation including approach, coverage, and examples | [testing.md](./testing.md)                                         |
+| Monitoring                | Documentation for Prometheus and Grafana implementation                        | [monitoring.md](./monitoring.md)                                   |
+| CI/CD                     | Documentation for GitHub Actions CI/CD implementation                          | [ci-cd.md](./ci-cd.md)                                             |
+| Remote State Backend      | Documentation for S3 remote state backend and DynamoDB state locking           | [remote_state.md](./remote_state.md)                               |
+| Resource Cleanup          | Documentation for AWS resource cleanup process and findings                    | [infrastructure/cleanup-plan.md](./infrastructure/cleanup-plan.md) |
+| Scripts                   | Documentation for maintenance, cleanup, and deployment scripts                 | [scripts.md](./scripts.md)                                         |
+| Infrastructure Audits     | Documentation for infrastructure and codebase audits                           | [../audits/overview.md](../audits/overview.md)                     |
+| Audit Processes           | Documentation for infrastructure and codebase audit processes                  | [audits.md](./audits.md)                                           |
 
 ## Infrastructure Overview
 
