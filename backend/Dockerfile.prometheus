@@ -2,7 +2,7 @@
 FROM prom/prometheus:latest
 
 # Copy Prometheus configuration
-COPY prometheus.yml /etc/prometheus/
+COPY prometheus.yml /prometheus/
 
 # Expose port
 EXPOSE 9090
@@ -13,6 +13,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 
 # Set command with proper path prefix configuration
 CMD [ "/bin/prometheus", \
-    "--config.file=/etc/prometheus/prometheus.yml", \
+    "--config.file=/prometheus/prometheus.yml", \
     "--web.external-url=/prometheus", \
     "--web.route-prefix=/" ]
