@@ -65,7 +65,7 @@ jobs:
           ARGS=""
           if [ "${{ github.event.inputs.dry_run || 'true' }}" == "true" ]; then
             echo "Running in DRY RUN mode - no actual deletions will occur"
-            ARGS="--dry-run"
+            # The script runs in dry-run mode by default
           else
             echo "Running in FORCE mode - resources will be deleted"
             ARGS="--force"
@@ -74,13 +74,21 @@ jobs:
           # Add keep parameter
           ARGS="$ARGS --keep=${{ github.event.inputs.keep_latest || '5' }}"
 
+          # Add verbose for detailed output
+          ARGS="$ARGS --verbose"
+
           # Add resource types if specified
           if [ -n "${{ github.event.inputs.resource_types }}" ]; then
-            ARGS="$ARGS --resources=${{ github.event.inputs.resource_types }}"
+            # Handle resource types in a way the script supports
+            echo "Resource types specified: ${{ github.event.inputs.resource_types }}"
+            # Currently the script doesn't support filtering by resource type
           fi
 
+          # Create output directory
+          mkdir -p reports
+
           # Run with detailed output
-          ./scripts/maintenance/cleanup-resources.sh $ARGS --output=reports/cleanup_results.txt
+          ./scripts/maintenance/cleanup-resources.sh $ARGS > reports/cleanup_results.txt
 
           # Check exit code
           if [ $? -ne 0 ]; then
