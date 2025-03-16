@@ -112,6 +112,12 @@ jobs:
             # Create detailed report for unhealthy services
             echo "Creating detailed health report..."
             {
+              echo "---"
+              echo "title: Health Check Failed - $(date +%Y-%m-%d)"
+              echo "labels: alert, monitoring"
+              echo "assignees: walt-port"
+              echo "---"
+              echo ""
               echo "# Health Check Report - $(date)"
               echo "## Overall Status: UNHEALTHY"
               echo ""
