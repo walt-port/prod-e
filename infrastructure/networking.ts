@@ -5,6 +5,8 @@ import { NatGateway } from '../.gen/providers/aws/nat-gateway';
 import { AwsProvider } from '../.gen/providers/aws/provider';
 import { RouteTable } from '../.gen/providers/aws/route-table';
 import { RouteTableAssociation } from '../.gen/providers/aws/route-table-association';
+import { SecurityGroup } from '../.gen/providers/aws/security-group';
+import { SecurityGroupRule } from '../.gen/providers/aws/security-group-rule';
 import { Subnet } from '../.gen/providers/aws/subnet';
 import { Vpc } from '../.gen/providers/aws/vpc';
 
@@ -14,6 +16,7 @@ export class Networking extends Construct {
   public privateSubnets: Subnet[];
   public internetGateway: InternetGateway;
   public natGateway: NatGateway;
+  public albSecurityGroup: SecurityGroup;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -59,7 +62,7 @@ export class Networking extends Construct {
 
     // NAT Gateway (in first public subnet)
     this.natGateway = new NatGateway(this, 'nat', {
-      allocationId: new Eip(this, 'nat-eip', { vpc: true }).id,
+      allocationId: new Eip(this, 'nat-eip', { domain: 'vpc' }).id,
       subnetId: this.publicSubnets[0].id,
       tags: { Name: 'prod-e-nat' },
     });
@@ -71,6 +74,12 @@ export class Networking extends Construct {
       tags: { Name: 'prod-e-public-rt' },
     });
 
+    const privateRt = new RouteTable(this, 'private-rt', {
+      vpcId: this.vpc.id,
+      route: [{ cidrBlock: '0.0.0.0/0', natGatewayId: this.natGateway.id }],
+      tags: { Name: 'prod-e-private-rt' },
+    });
+
     this.publicSubnets.forEach(
       (subnet, i) =>
         new RouteTableAssociation(this, `public-rta-${i}`, {
@@ -78,5 +87,43 @@ export class Networking extends Construct {
           routeTableId: publicRt.id,
         })
     );
+
+    this.privateSubnets.forEach(
+      (subnet, i) =>
+        new RouteTableAssociation(this, `private-rta-${i}`, {
+          subnetId: subnet.id,
+          routeTableId: privateRt.id,
+        })
+    );
+
+    // Security Group for ALB
+    this.albSecurityGroup = new SecurityGroup(this, 'alb-security-group', {
+      name: 'alb-security-group',
+      description: 'Security group for the Application Load Balancer',
+      vpcId: this.vpc.id,
+      tags: { Name: 'alb-sg' },
+    });
+
+    // Add inbound rule to allow HTTP traffic from anywhere
+    new SecurityGroupRule(this, 'alb-http-inbound', {
+      type: 'ingress',
+      fromPort: 80,
+      toPort: 80,
+      protocol: 'tcp',
+      cidrBlocks: ['0.0.0.0/0'], // Allow traffic from anywhere
+      securityGroupId: this.albSecurityGroup.id,
+      description: 'Allow HTTP traffic from anywhere',
+    });
+
+    // Add outbound rule to allow all traffic
+    new SecurityGroupRule(this, 'alb-all-outbound', {
+      type: 'egress',
+      fromPort: 0,
+      toPort: 0,
+      protocol: '-1', // All protocols
+      cidrBlocks: ['0.0.0.0/0'], // Allow traffic to anywhere
+      securityGroupId: this.albSecurityGroup.id,
+      description: 'Allow all outbound traffic',
+    });
   }
 }
