@@ -62,7 +62,7 @@ const archive = archiver('zip', {
 output.on('close', function () {
   console.log(`Lambda code ZIP file created at ${outputFile}`);
   console.log(`To deploy this Lambda function, use:`);
-  console.log(`aws lambda update-function-code --function-name prod-e-${functionName} \\`);
+  console.log(`aws lambda update-function-code --function-name prod-e-backup \\`);
   console.log(`  --zip-file fileb://${outputFile}`);
 });
 

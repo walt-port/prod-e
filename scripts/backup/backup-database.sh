@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 
 # Configuration variables
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-S3_BACKUP_BUCKET="prod-e-database-backups"
+S3_BACKUP_BUCKET="prod-e-backups"
 EXPORT_TASK_ROLE="prod-e-rds-export-role"
 MAX_SNAPSHOTS_TO_KEEP=7
 

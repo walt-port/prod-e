@@ -50,11 +50,11 @@ print_info() {
   fi
 }
 
-# Print inactive resource message
-print_inactive() {
-  echo -e "${GRAY}• $1${NC}"
+# Print detail message (indented gray text)
+print_detail() {
+  echo -e "${GRAY}  → $1${NC}"
   if [ "$CSV_OUTPUT" = true ]; then
-    echo "Inactive,$1" >> $CSV_FILE
+    echo "Detail,$1" >> $CSV_FILE
   fi
 }
 
@@ -63,13 +63,13 @@ while [[ "$#" -gt 0 ]]; do
   case $1 in
     --region=*) AWS_REGION="${1#*=}" ;;
     --csv) CSV_OUTPUT=true ;;
-    --csv=*) CSV_OUTPUT=true; CSV_FILE="${1#*=}" ;;
+    --output=*) CSV_FILE="${1#*=}" ;;
     --help|-h)
       echo "Usage: $0 [options]"
       echo "Options:"
       echo "  --region=REGION Set AWS region (default: us-west-2)"
       echo "  --csv           Output results to CSV file (default: resource_check_results.csv)"
-      echo "  --csv=FILENAME  Output results to specified CSV file"
+      echo "  --output=FILENAME Output results to specified CSV file"
       echo "  --help, -h      Display this help message"
       exit 0
       ;;
@@ -83,6 +83,13 @@ if [ "$CSV_OUTPUT" = true ]; then
   echo "Type,Resource,Details" > $CSV_FILE
   echo "CSV output will be written to $CSV_FILE"
 fi
+
+# Print script header
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}    PRODUCTION EXPERIENCE RESOURCE CHECK     ${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo -e "Starting check at $(date)"
+echo -e "${GRAY}Region: $AWS_REGION${NC}\n"
 
 # Check AWS CLI configuration
 check_aws_config() {
@@ -106,37 +113,84 @@ check_vpc() {
   print_header "CHECKING VPC RESOURCES"
 
   # Get VPC
-  VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Project,Values=prod-e" --query "Vpcs[0].VpcId" --output text --region $AWS_REGION)
+  VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=prod-e-vpc" --query "Vpcs[0].VpcId" --output text --region $AWS_REGION)
 
   if [[ "$VPC_ID" == "None" || -z "$VPC_ID" ]]; then
-    print_error "VPC not found"
+    print_error "VPC not found with tag Project=prod-e"
   else
     print_success "VPC found: $VPC_ID"
 
+    # Check subnets
+    SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].[SubnetId,CidrBlock,AvailabilityZone]" --output text --region $AWS_REGION)
+
+    if [[ -z "$SUBNETS" ]]; then
+      print_error "No subnets found in VPC $VPC_ID"
+    else
+      SUBNET_COUNT=$(echo "$SUBNETS" | wc -l)
+      print_success "Found $SUBNET_COUNT subnets in VPC $VPC_ID"
+
+      echo "$SUBNETS" | while read -r SUBNET_ID CIDR AZ; do
+        print_detail "Subnet: $SUBNET_ID, CIDR: $CIDR, AZ: $AZ"
+      done
+    fi
+
     # Check Internet Gateway
     IGW=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query "InternetGateways[0].InternetGatewayId" --output text --region $AWS_REGION)
+
     if [[ "$IGW" == "None" || -z "$IGW" ]]; then
-      print_error "Internet Gateway not found"
+      print_error "No Internet Gateway attached to VPC $VPC_ID"
     else
       print_success "Internet Gateway found: $IGW"
     fi
 
-    # Check Subnets
-    SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].[SubnetId,Tags[?Key=='Name'].Value|[0],AvailabilityZone]" --output text --region $AWS_REGION)
-    echo -e "Subnets:"
-    echo "$SUBNETS" | while read -r line; do
-      SUBNET_ID=$(echo $line | awk '{print $1}')
-      SUBNET_NAME=$(echo $line | awk '{print $2}')
-      AZ=$(echo $line | awk '{print $3}')
-      print_success "  $SUBNET_NAME ($SUBNET_ID) in $AZ"
-    done
+    # Check NAT Gateways
+    NAT_GATEWAYS=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$VPC_ID" --query "NatGateways[*].[NatGatewayId,State]" --output text --region $AWS_REGION)
 
-    # Check NAT Gateway
-    NAT=$(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$VPC_ID" --query "NatGateways[?State=='available'].NatGatewayId" --output text --region $AWS_REGION)
-    if [[ "$NAT" == "None" || -z "$NAT" ]]; then
-      print_error "NAT Gateway not found or not available"
+    if [[ -z "$NAT_GATEWAYS" ]]; then
+      print_error "No NAT Gateways found in VPC $VPC_ID"
     else
-      print_success "NAT Gateway found: $NAT"
+      NAT_COUNT=$(echo "$NAT_GATEWAYS" | wc -l)
+      print_success "Found $NAT_COUNT NAT Gateway(s) in VPC $VPC_ID"
+
+      echo "$NAT_GATEWAYS" | while read -r NAT_ID STATE; do
+        print_detail "NAT Gateway: $NAT_ID, State: $STATE"
+      done
+    fi
+
+    # Check Route Tables
+    ROUTE_TABLES=$(aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$VPC_ID" --query "RouteTables[*].[RouteTableId]" --output text --region $AWS_REGION)
+
+    if [[ -z "$ROUTE_TABLES" ]]; then
+      print_error "No route tables found in VPC $VPC_ID"
+    else
+      RT_COUNT=$(echo "$ROUTE_TABLES" | wc -l)
+      print_success "Found $RT_COUNT route table(s) in VPC $VPC_ID"
+
+      echo "$ROUTE_TABLES" | while read -r RT_ID; do
+        ROUTES=$(aws ec2 describe-route-tables --route-table-id $RT_ID --query "RouteTables[0].Routes[*].[DestinationCidrBlock,GatewayId,NatGatewayId]" --output text --region $AWS_REGION)
+        print_detail "Route Table: $RT_ID"
+        echo "$ROUTES" | while read -r DEST GW NAT; do
+          if [[ -n "$GW" && "$GW" != "None" ]]; then
+            print_detail "  → Route: $DEST via $GW"
+          elif [[ -n "$NAT" && "$NAT" != "None" ]]; then
+            print_detail "  → Route: $DEST via NAT $NAT"
+          fi
+        done
+      done
+    fi
+
+    # Check Security Groups
+    SEC_GROUPS=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$VPC_ID" --query "SecurityGroups[*].[GroupId,GroupName]" --output text --region $AWS_REGION)
+
+    if [[ -z "$SEC_GROUPS" ]]; then
+      print_error "No security groups found in VPC $VPC_ID"
+    else
+      SG_COUNT=$(echo "$SEC_GROUPS" | wc -l)
+      print_success "Found $SG_COUNT security group(s) in VPC $VPC_ID"
+
+      echo "$SEC_GROUPS" | while read -r SG_ID SG_NAME; do
+        print_detail "Security Group: $SG_ID, Name: $SG_NAME"
+      done
     fi
   fi
 
@@ -150,7 +204,7 @@ check_vpc() {
     echo "$UNUSED_EIPS" | while read -r line; do
       EIP_ID=$(echo $line | awk '{print $1}')
       EIP_IP=$(echo $line | awk '{print $2}')
-      print_inactive "Unused Elastic IP: $EIP_IP ($EIP_ID)"
+      print_detail "Unused Elastic IP: $EIP_IP ($EIP_ID)"
     done
   fi
 }
@@ -277,7 +331,7 @@ check_ecs() {
       if [[ -n "$ACTIVE_REVISION" ]]; then
         print_success "Family: $family has $TOTAL_REVISIONS revisions (active: $ACTIVE_REVISION)"
       else
-        print_inactive "Family: $family has $TOTAL_REVISIONS revisions (no active service)"
+        print_detail "Family: $family has $TOTAL_REVISIONS revisions (no active service)"
       fi
     done
   fi
@@ -332,7 +386,7 @@ check_alb() {
           if [[ "$state" == "healthy" ]]; then
             print_success "  $TG_NAME: Target $id:$port is $state"
           elif [[ "$state" == "draining" ]]; then
-            print_inactive "  $TG_NAME: Target $id:$port is $state"
+            print_detail "  $TG_NAME: Target $id:$port is $state"
           else
             print_error "  $TG_NAME: Target $id:$port is $state"
           fi
@@ -396,7 +450,7 @@ check_terraform_state() {
       print_error "Terraform state file not found in S3 bucket"
     else
       print_success "Terraform state file exists"
-      print_info "  $STATE_FILE"
+      print_detail "  $STATE_FILE"
     fi
   fi
 
@@ -411,7 +465,7 @@ check_terraform_state() {
 
     # Check table status
     TABLE_STATUS=$(aws dynamodb describe-table --table-name "$DYNAMO_TABLE" --query "Table.TableStatus" --output text --region $AWS_REGION)
-    print_info "  Table status: $TABLE_STATUS"
+    print_detail "  Table status: $TABLE_STATUS"
   fi
 }
 
@@ -420,7 +474,7 @@ check_monitoring() {
   print_header "CHECKING MONITORING SERVICES"
 
   # Check Prometheus
-  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text 2>/dev/null)
+  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prometheus-service --region $AWS_REGION --query "services[0].[serviceName,desiredCount,runningCount]" --output text 2>/dev/null)
 
   if [[ -z "$PROM_SERVICE" ]]; then
     print_error "Prometheus service not found"
@@ -453,7 +507,7 @@ check_monitoring() {
   if [[ -n "$ALB_DNS" ]]; then
     # Try to access Grafana endpoint
     GRAFANA_URL="http://$ALB_DNS/grafana/"
-    print_info "Testing Grafana endpoint: $GRAFANA_URL"
+    print_detail "Testing Grafana endpoint: $GRAFANA_URL"
 
     GRAFANA_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 5 $GRAFANA_URL 2>/dev/null)
 
@@ -465,7 +519,7 @@ check_monitoring() {
 
     # Try to access Prometheus metrics endpoint via Grafana
     PROM_URL="http://$ALB_DNS/grafana/api/datasources/proxy/1/api/v1/query?query=up"
-    print_info "Testing Prometheus metrics via Grafana proxy"
+    print_detail "Testing Prometheus metrics via Grafana proxy"
 
     PROM_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 5 $PROM_URL 2>/dev/null)
 
@@ -524,7 +578,7 @@ check_efs() {
       ACCESS_POINTS=$(aws efs describe-access-points --file-system-id $fs_id --query "AccessPoints[*].[AccessPointId,LifeCycleState]" --output text --region $AWS_REGION)
 
       if [[ -z "$ACCESS_POINTS" ]]; then
-        print_info "  No access points found for $FS_ID"
+        print_detail "  No access points found for $FS_ID"
       else
         echo "$ACCESS_POINTS" | while read -r ap_id ap_state; do
           if [[ "$ap_state" == "available" ]]; then
@@ -559,30 +613,30 @@ check_lambda() {
       CONFIG=$(aws lambda get-function-configuration --function-name "$name" --region $AWS_REGION --query "[MemorySize,Timeout]" --output text)
       MEMORY=$(echo "$CONFIG" | awk '{print $1}')
       TIMEOUT=$(echo "$CONFIG" | awk '{print $2}')
-      print_info "  Memory: ${MEMORY}MB, Timeout: ${TIMEOUT}s"
+      print_detail "Memory: ${MEMORY}MB, Timeout: ${TIMEOUT}s"
 
       # Get recent invocations
       INVOCATIONS=$(aws lambda get-function --function-name "$name" --region $AWS_REGION --query "Configuration.LastUpdateStatus" --output text)
-      print_info "  Last update status: $INVOCATIONS"
+      print_detail "Last update status: $INVOCATIONS"
 
       # Check function versions
       VERSIONS=$(aws lambda list-versions-by-function --function-name "$name" --region $AWS_REGION --query "length(Versions)" --output text)
-      print_info "  Function versions: $VERSIONS"
+      print_detail "Function versions: $VERSIONS"
     done
   fi
 
   # Check Lambda event source mappings
-  print_info "Checking Lambda event source mappings..."
+  print_detail "Checking Lambda event source mappings..."
   EVENT_MAPPINGS=$(aws lambda list-event-source-mappings --region $AWS_REGION --query "EventSourceMappings[?contains(FunctionArn, 'prod-e') || contains(FunctionArn, 'grafana')].[UUID,EventSourceArn,State]" --output text)
 
   if [[ -z "$EVENT_MAPPINGS" ]]; then
-    print_info "No event source mappings found"
+    print_detail "No event source mappings found"
   else
     echo "$EVENT_MAPPINGS" | while read -r uuid source state; do
       if [[ "$state" == "Enabled" ]]; then
         print_success "Event mapping: $uuid is $state (source: $source)"
       else
-        print_inactive "Event mapping: $uuid is $state (source: $source)"
+        print_detail "Event mapping: $uuid is $state (source: $source)"
       fi
     done
   fi
@@ -600,7 +654,7 @@ check_security_groups() {
   echo "$SECURITY_GROUPS" | while read -r id name desc; do
     # Skip default security groups
     if [[ "$name" == "default" ]]; then
-      print_inactive "$id: $name - $desc (default)"
+      print_detail "$id: $name - $desc (default)"
       continue
     fi
 
@@ -630,7 +684,7 @@ check_security_groups() {
     if [ "$IN_USE" = true ]; then
       print_success "$id: $name - $desc (in use)"
     else
-      print_inactive "$id: $name - $desc (not in use)"
+      print_detail "$id: $name - $desc (not in use)"
     fi
   done
 }
@@ -640,7 +694,7 @@ check_orphaned_resources() {
   print_header "CHECKING FOR ORPHANED RESOURCES"
 
   # Check for unattached EBS volumes
-  print_info "Checking for unattached EBS volumes..."
+  print_detail "Checking for unattached EBS volumes..."
   VOLUMES=$(aws ec2 describe-volumes --filters "Name=status,Values=available" --query "Volumes[*].{ID:VolumeId,Size:Size,Created:CreateTime}" --output json --region $AWS_REGION)
 
   if [ "$(echo $VOLUMES | jq '. | length')" == "0" ]; then
@@ -650,12 +704,12 @@ check_orphaned_resources() {
       VOLUME_ID=$(echo $volume | jq -r '.ID')
       SIZE=$(echo $volume | jq -r '.Size')
       CREATED=$(echo $volume | jq -r '.Created')
-      print_inactive "Unattached EBS volume: $VOLUME_ID (${SIZE}GB, created $CREATED)"
+      print_detail "Unattached EBS volume: $VOLUME_ID (${SIZE}GB, created $CREATED)"
     done
   fi
 
   # Check for unused Elastic IPs
-  print_info "Checking for unallocated Elastic IPs..."
+  print_detail "Checking for unallocated Elastic IPs..."
   UNUSED_EIPS=$(aws ec2 describe-addresses --query "Addresses[?AssociationId==null].[AllocationId,PublicIp]" --output text --region $AWS_REGION)
 
   if [[ -z "$UNUSED_EIPS" ]]; then
@@ -664,12 +718,12 @@ check_orphaned_resources() {
     echo "$UNUSED_EIPS" | while read -r line; do
       EIP_ID=$(echo $line | awk '{print $1}')
       EIP_IP=$(echo $line | awk '{print $2}')
-      print_inactive "Unallocated Elastic IP: $EIP_IP ($EIP_ID)"
+      print_detail "Unallocated Elastic IP: $EIP_IP ($EIP_ID)"
     done
   fi
 
   # Check for old ECS task definitions
-  print_info "Checking for inactive ECS task definitions..."
+  print_detail "Checking for inactive ECS task definitions..."
   FAMILIES=$(aws ecs list-task-definition-families --status ACTIVE --query "families" --output text --region $AWS_REGION)
 
   for family in $FAMILIES; do
@@ -680,7 +734,7 @@ check_orphaned_resources() {
     TOTAL_REVISIONS=$(echo $TASK_DEFS | jq '. | length')
 
     if [ "$TOTAL_REVISIONS" -gt 5 ]; then
-      print_inactive "Task definition family '$family' has $TOTAL_REVISIONS revisions (consider cleanup)"
+      print_detail "Task definition family '$family' has $TOTAL_REVISIONS revisions (consider cleanup)"
     fi
   done
 }

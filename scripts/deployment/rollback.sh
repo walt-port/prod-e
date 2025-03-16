@@ -23,9 +23,10 @@ usage() {
   echo ""
   echo "Options:"
   echo "  -c, --cluster NAME       ECS cluster name (default: prod-e-cluster)"
-  echo "  -t, --tag TAG            Previous container image tag to rollback to"
-  echo "  -r, --repository NAME    ECR repository name"
+  echo "  -s, --service NAME       Service to rollback (backend, grafana, prometheus, all)"
+  echo "  -t, --tag TAG            Specific image tag to rollback to"
   echo "  -n, --tf-state-bucket    Terraform state bucket name (default: prod-e-terraform-state)"
+  echo "  -r, --repo NAME          ECR repository name (overrides default mapping)"
   echo "  -a, --auto-approve       Skip confirmation prompts"
   echo "  -f, --force              Force rollback even if health checks pass"
   echo "  -h, --help               Display this help message"
@@ -33,9 +34,9 @@ usage() {
   echo "SERVICE_NAME can be one of: backend, grafana, prometheus, or 'all' to check everything"
   echo ""
   echo "Examples:"
-  echo "  $0 backend                           Roll back backend service using previous task definition"
-  echo "  $0 -t v1.0.0 -r prod-e-backend backend  Roll back to specific image tag v1.0.0"
-  echo "  $0 --auto-approve all                Roll back all services without confirmation"
+  echo "  $0 backend               Roll back backend service to previous version"
+  echo "  $0 -t v1.0.0 backend     Roll back backend to specific image tag v1.0.0"
+  echo "  $0 all                   Roll back all services to previous versions"
 }
 
 # Process command line arguments
@@ -53,16 +54,20 @@ while [[ $# -gt 0 ]]; do
       CLUSTER_NAME="$2"
       shift 2
       ;;
+    -s|--service)
+      SERVICE_NAME="$2"
+      shift 2
+      ;;
     -t|--tag)
       IMAGE_TAG="$2"
       shift 2
       ;;
-    -r|--repository)
-      ECR_REPO="$2"
-      shift 2
-      ;;
     -n|--tf-state-bucket)
       TF_STATE_BUCKET="$2"
+      shift 2
+      ;;
+    -r|--repo)
+      ECR_REPO="$2"
       shift 2
       ;;
     -a|--auto-approve)
@@ -97,39 +102,50 @@ if [ -z "$SERVICE_NAME" ]; then
   exit 1
 fi
 
-# Map service name to ECS service and ECR repository
-map_service_to_ecs() {
-  local svc=$1
-  case $svc in
+# Get service name from cluster (or default)
+get_ecs_service_name() {
+  local service=$1
+
+  case "$service" in
     backend)
-      echo "prod-e-backend-service"
+      # The backend service name
+      echo "backend-service"
       ;;
     grafana)
-      echo "prod-e-grafana-service"
+      # The Grafana service name
+      echo "grafana-service"
       ;;
     prometheus)
-      echo "prod-e-prom-service"
+      # The Prometheus service name
+      echo "prometheus-service"
       ;;
     *)
-      echo ""
+      echo "Unknown service: $service"
+      exit 1
       ;;
   esac
 }
 
-map_service_to_repo() {
-  local svc=$1
-  case $svc in
+# Get ECR repository name for a service
+get_ecr_repo_name() {
+  local service=$1
+
+  case "$service" in
     backend)
+      # The backend repository name
       echo "prod-e-backend"
       ;;
     grafana)
+      # The Grafana repository name
       echo "prod-e-grafana"
       ;;
     prometheus)
+      # The Prometheus repository name
       echo "prod-e-prometheus"
       ;;
     *)
-      echo ""
+      echo "Unknown service: $service"
+      exit 1
       ;;
   esac
 }
@@ -146,7 +162,7 @@ echo -e "${GREEN}ECS cluster $CLUSTER_NAME found${NC}"
 # Check service health
 check_service_health() {
   local service_name=$1
-  local ecs_service=$(map_service_to_ecs "$service_name")
+  local ecs_service=$(get_ecs_service_name "$service_name")
 
   if [ -z "$ecs_service" ]; then
     echo -e "${RED}Unknown service: $service_name${NC}"
@@ -191,7 +207,7 @@ check_service_health() {
 # Perform the rollback
 rollback_service() {
   local service_name=$1
-  local ecs_service=$(map_service_to_ecs "$service_name")
+  local ecs_service=$(get_ecs_service_name "$service_name")
 
   if [ -z "$ecs_service" ]; then
     echo -e "${RED}Unknown service: $service_name${NC}"
@@ -217,7 +233,7 @@ rollback_service() {
 
   # If image tag is provided, use it for rollback
   if [ -n "$IMAGE_TAG" ]; then
-    local repo=${ECR_REPO:-$(map_service_to_repo "$service_name")}
+    local repo=${ECR_REPO:-$(get_ecr_repo_name "$service_name")}
 
     if [ -z "$repo" ]; then
       echo -e "${RED}Could not determine ECR repository for $service_name${NC}"

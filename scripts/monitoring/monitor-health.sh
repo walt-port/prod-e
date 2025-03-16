@@ -311,29 +311,38 @@ check_endpoints() {
 
   # Test Prometheus endpoint with a direct check to the task IP or via the path if configured
   # First check if we have a running task
-  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prod-e-prom-service --region $AWS_REGION --query "services[0].status" --output text)
+  check_prometheus
+}
+
+check_prometheus() {
+  print_step "Checking Prometheus service"
+
+  # Check if Prometheus service exists and is active
+  PROM_SERVICE=$(aws ecs describe-services --cluster prod-e-cluster --services prometheus-service --region $AWS_REGION --query "services[0].status" --output text)
 
   if [[ "$PROM_SERVICE" == "ACTIVE" ]]; then
-    # Check if the Prometheus task is healthy
-    PROM_TASK=$(aws ecs list-tasks --cluster prod-e-cluster --service-name prod-e-prom-service --region $AWS_REGION | jq -r '.taskArns[0]')
-    if [[ -n "$PROM_TASK" ]]; then
+    # Get the task ARN for the Prometheus service
+    PROM_TASK=$(aws ecs list-tasks --cluster prod-e-cluster --service-name prometheus-service --region $AWS_REGION | jq -r '.taskArns[0]')
+    if [[ -n "$PROM_TASK" && "$PROM_TASK" != "null" ]]; then
       HEALTH_STATUS=$(aws ecs describe-tasks --cluster prod-e-cluster --tasks $PROM_TASK --region $AWS_REGION | jq -r '.tasks[0].containers[0].healthStatus')
-      echo -n "Endpoint Prometheus: "
+
       if [[ "$HEALTH_STATUS" == "HEALTHY" ]]; then
-        echo -e "${GREEN}HEALTHY (Task health: $HEALTH_STATUS)${NC}"
+        print_success "Prometheus service is healthy"
+        return 0
       else
-        echo -e "${RED}PROBLEM (Task health: $HEALTH_STATUS)${NC}"
-        send_alert "Prometheus task is not healthy ($HEALTH_STATUS)" "warning"
+        print_error "Prometheus service is not healthy ($HEALTH_STATUS)"
+        send_alert "Prometheus service is not healthy: $HEALTH_STATUS" "warning"
+        return 1
       fi
     else
-      echo -n "Endpoint Prometheus: "
-      echo -e "${RED}PROBLEM (No running tasks found)${NC}"
-      send_alert "No running Prometheus tasks found" "critical"
+      print_error "No running Prometheus tasks found"
+      send_alert "No running Prometheus tasks found" "warning"
+      return 1
     fi
   else
-    echo -n "Endpoint Prometheus: "
-    echo -e "${RED}NOT RUNNING - Prometheus service is not active${NC}"
-    send_alert "Prometheus service is not active" "critical"
+    print_error "Prometheus service is not active ($PROM_SERVICE)"
+    send_alert "Prometheus service is not active: $PROM_SERVICE" "critical"
+    return 1
   fi
 }
 
