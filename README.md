@@ -10,7 +10,7 @@
 
 A platform demonstrating DevOps/SRE skills by building a monitoring and alerting dashboard system with modern infrastructure practices. This project addresses the common "production experience" barrier in job searches by creating a practical, functional system with industry-standard technologies.
 
-[Architecture Overview](#-architecture) | [Quick Start](#-quick-start) | [Tech Stack](#-technology-stack) | [Documentation](#-documentation-explorer) | [Testing](#-testing)
+[Architecture](#-architecture) | [Quick Start](#-quick-start) | [Tech Stack](#-technology-stack) | [Documentation](#-documentation-explorer) | [Automation](#-automation-workflows) | [Testing](#-testing)
 
 ## 📋 Project Overview
 
@@ -113,7 +113,7 @@ For detailed setup instructions and development workflow, see our [Deployment Gu
 
 The infrastructure is deployed across multiple availability zones (us-west-2a and us-west-2b) for high availability with a comprehensive monitoring stack:
 
-![System Architecture Diagram](docs/assets/images/architecture/system-overview.png)
+![System Architecture](docs/assets/images/monitoring-architecture.svg)
 
 ### Key Components
 
@@ -172,9 +172,24 @@ The project features a comprehensive monitoring stack:
 - **Custom metrics** for application performance monitoring
 - **System metrics** for infrastructure health
 
-![Monitoring Architecture](docs/assets/images/monitoring-architecture.svg)
-
 For detailed information about the monitoring setup, see our [Monitoring Setup](docs/processes/monitoring-setup.md).
+
+## 🔄 Automation Workflows
+
+Our GitHub workflows automate key operational tasks to ensure reliability and efficiency:
+
+![GitHub Workflows Architecture](docs/assets/images/workflows/workflows-diagram.svg)
+
+### Automated Workflow Components
+
+- **Deploy Workflow**: Triggers on push to main branch, handles infrastructure deployment
+- **Resource Check**: Verifies AWS resources after deployment and on schedule
+- **Health Monitoring**: Runs hourly health checks against all services
+- **AWS Cleanup**: Weekly cleanup of unused resources to optimize costs
+
+These workflows help maintain operational excellence while reducing manual intervention.
+
+For comprehensive workflow documentation, see [GitHub Workflows](docs/processes/github-workflows.md).
 
 ## 📚 Documentation Explorer
 
@@ -220,8 +235,6 @@ Our comprehensive documentation covers every aspect of the project, from infrast
     <td width="33%"><a href="docs/infrastructure/ongoing-budget.md"><strong>💰 AWS Budget Analysis</strong></a><br>Current costs, optimizations, and resource inventory</td>
   </tr>
 </table>
-
-![GitHub Workflows Architecture](docs/assets/images/workflows/workflows-diagram.svg)
 
 ### 📑 Documentation Map
 
