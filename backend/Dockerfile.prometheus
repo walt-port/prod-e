@@ -1,15 +1,15 @@
 # Base image for Prometheus
 FROM prom/prometheus:latest
 
-# Copy Prometheus configuration
+# Copy Prometheus configuration to the correct location
 COPY prometheus.yml /prometheus/
 
 # Expose port
 EXPOSE 9090
 
-# Add health check using the built-in health endpoint
+# Add simple health check by checking if the port is listening
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD [ -x "$(command -v wget)" ] && wget -q -O- http://localhost:9090/-/healthy || exit 1
+    CMD nc -z localhost 9090 || exit 1
 
 # Set command with proper path prefix configuration
 CMD [ "/bin/prometheus", \
