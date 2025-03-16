@@ -1,6 +1,6 @@
 # Documentation Inventory
 
-**Version:** 1.4
+**Version:** 1.5
 **Last Updated:** March 16, 2025
 **Owner:** DevOps Team
 
@@ -8,18 +8,19 @@ This document provides a complete inventory of all documentation files in the pr
 
 ## Infrastructure Documentation
 
-| Document Title        | File Path                               | Description                                                           | Related Documents                           |
-| --------------------- | --------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------- |
-| Infrastructure        | docs/infrastructure.md                  | Overview of modular infrastructure components and architecture        | All infrastructure documents                |
-| Architecture Overview | infrastructure/architecture-overview.md | High-level architectural design and component relationships           | network-architecture.md, load-balancer.md   |
-| Network Architecture  | infrastructure/network-architecture.md  | VPC, subnets, security groups, and network flow                       | architecture-overview.md                    |
-| Load Balancer         | infrastructure/load-balancer.md         | Application Load Balancer configuration, target groups, and listeners | network-architecture.md, ecs-service.md     |
-| RDS Database          | infrastructure/rds-database.md          | RDS instance configuration, subnet groups, security, and backups      | network-architecture.md, database-config.md |
-| ECS Service           | infrastructure/ecs-service.md           | ECS cluster, task definitions, services, and scaling                  | container-deployment.md, load-balancer.md   |
-| Container Deployment  | infrastructure/container-deployment.md  | Container build process, ECR repositories, and deployment             | ecs-service.md                              |
-| Remote State          | infrastructure/remote-state.md          | S3 state storage, DynamoDB locking, and state management              | architecture-overview.md                    |
-| Budget Analysis       | infrastructure/ongoing-budget.md        | Cost analysis, budget considerations, and optimization                | resource-tagging.md                         |
-| Resource Tagging      | infrastructure/resource-tagging.md      | Tagging strategy, implementation, and enforcement                     | ongoing-budget.md                           |
+| Document Title        | File Path                                  | Description                                                           | Related Documents                           |
+| --------------------- | ------------------------------------------ | --------------------------------------------------------------------- | ------------------------------------------- |
+| Infrastructure        | docs/infrastructure.md                     | Overview of modular infrastructure components and architecture        | All infrastructure documents                |
+| Refactoring Summary   | docs/infrastructure/refactoring-summary.md | Summary of infrastructure code refactoring from monolithic to modular | infrastructure.md                           |
+| Architecture Overview | infrastructure/architecture-overview.md    | High-level architectural design and component relationships           | network-architecture.md, load-balancer.md   |
+| Network Architecture  | infrastructure/network-architecture.md     | VPC, subnets, security groups, and network flow                       | architecture-overview.md                    |
+| Load Balancer         | infrastructure/load-balancer.md            | Application Load Balancer configuration, target groups, and listeners | network-architecture.md, ecs-service.md     |
+| RDS Database          | infrastructure/rds-database.md             | RDS instance configuration, subnet groups, security, and backups      | network-architecture.md, database-config.md |
+| ECS Service           | infrastructure/ecs-service.md              | ECS cluster, task definitions, services, and scaling                  | container-deployment.md, load-balancer.md   |
+| Container Deployment  | infrastructure/container-deployment.md     | Container build process, ECR repositories, and deployment             | ecs-service.md                              |
+| Remote State          | infrastructure/remote-state.md             | S3 state storage, DynamoDB locking, and state management              | architecture-overview.md                    |
+| Budget Analysis       | infrastructure/ongoing-budget.md           | Cost analysis, budget considerations, and optimization                | resource-tagging.md                         |
+| Resource Tagging      | infrastructure/resource-tagging.md         | Tagging strategy, implementation, and enforcement                     | ongoing-budget.md                           |
 
 ## Process Documentation
 
@@ -81,4 +82,4 @@ The documentation inventory is updated when:
 ---
 
 **Last Updated**: 2025-03-16
-**Version**: 1.4
+**Version**: 1.5
