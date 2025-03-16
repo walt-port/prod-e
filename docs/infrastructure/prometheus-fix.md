@@ -197,3 +197,27 @@ To validate the fixes:
 1. **Monitoring Health Check Improvement**: Review and potentially adjust the health check settings for the Prometheus target group to address the remaining unhealthy target
 2. **Documentation Updates**: Update all relevant documentation to reflect the new architecture and configuration
 3. **Infrastructure as Code**: Consider incorporating these changes into the infrastructure as code (Terraform/CloudFormation) to ensure persistence across deployments
+
+## Progress Update (2025-03-16)
+
+### Completed Tasks
+
+1. ✅ Updated Grafana datasource configuration to use internal ECS service name
+2. ✅ Rebuilt and pushed Grafana Docker image with updated configuration
+3. ✅ Forced new deployment of Grafana service
+4. ✅ Cleaned up unused security groups
+5. ✅ Updated ALB health check settings for Prometheus target group
+6. ✅ Updated documentation inventory
+
+### Remaining Issues
+
+1. ❌ One Prometheus target (10.0.4.217) still shows as unhealthy with timeout errors
+2. ❌ Direct access to Prometheus API through ALB still returns 404 errors
+3. ❌ Grafana proxy to Prometheus not returning data
+
+### Next Actions
+
+1. Investigate Prometheus container configuration to ensure it's properly handling requests at the correct path
+2. Consider rebuilding the Prometheus container with updated configuration
+3. Review network connectivity between Grafana and Prometheus services
+4. Implement additional monitoring to track the health of the services
