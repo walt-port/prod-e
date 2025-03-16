@@ -1,5 +1,5 @@
 name: AWS Resource Cleanup
-# Automated cleanup of unused AWS resources to reduce costs and maintain a clean environment
+# Weekly cleanup of unused AWS resources to reduce costs and maintain a clean environment
 
 on:
   schedule:
@@ -15,16 +15,17 @@ on:
         description: 'Number of latest versions to keep'
         type: number
         default: 5
-      fix_grafana:
-        description: 'Fix Grafana tasks'
-        type: boolean
-        default: true
+      resource_types:
+        description: 'Comma-separated list of resource types to clean (leave empty for all)'
+        type: string
+        required: false
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -33,43 +34,108 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Run Resource Check
+      - name: Install dependencies
         run: |
-          chmod +x scripts/resource_check.sh
-          ./scripts/resource_check.sh --csv=resource_check_results.csv
-          cat resource_check_results.csv
+          sudo apt-get update
+          sudo apt-get install -y jq awscli
 
-      - name: Fix Grafana Tasks
-        if: ${{ github.event.inputs.fix_grafana != 'false' }}
+      - name: Verify script exists
         run: |
-          chmod +x scripts/fix-grafana-tasks.sh
-          if [ "${{ github.event.inputs.dry_run || 'true' }}" == "true" ]; then
-            echo "Running Grafana fix in DRY RUN mode"
-            ./scripts/fix-grafana-tasks.sh
-          else
-            echo "Running Grafana fix in FORCE mode - tasks will be stopped"
-            ./scripts/fix-grafana-tasks.sh --force
+          if [ ! -f "scripts/maintenance/cleanup-resources.sh" ]; then
+            echo "Error: Cleanup script not found at scripts/maintenance/cleanup-resources.sh"
+            exit 1
           fi
+          chmod +x scripts/maintenance/cleanup-resources.sh
 
-      - name: Run Resource Cleanup
+      - name: Run pre-cleanup resource check
+        id: pre_check
         run: |
-          chmod +x scripts/cleanup-resources.sh
+          echo "Running pre-cleanup resource check..."
+          mkdir -p reports
+          chmod +x scripts/monitoring/resource_check.sh
+          ./scripts/monitoring/resource_check.sh --csv=reports/pre_cleanup_resources.csv
+          echo "Pre-cleanup resource check completed."
+
+      - name: Run cleanup
+        id: cleanup
+        run: |
+          echo "Starting resource cleanup process..."
+
+          # Create script arguments based on inputs
+          ARGS=""
           if [ "${{ github.event.inputs.dry_run || 'true' }}" == "true" ]; then
-            echo "Running in DRY RUN mode"
-            ./scripts/cleanup-resources.sh --keep=${{ github.event.inputs.keep_latest || 5 }}
+            echo "Running in DRY RUN mode - no actual deletions will occur"
+            ARGS="--dry-run"
           else
             echo "Running in FORCE mode - resources will be deleted"
-            ./scripts/cleanup-resources.sh --force --keep=${{ github.event.inputs.keep_latest || 5 }}
+            ARGS="--force"
           fi
 
-      - name: Upload Resource Check Results
+          # Add keep parameter
+          ARGS="$ARGS --keep=${{ github.event.inputs.keep_latest || '5' }}"
+
+          # Add resource types if specified
+          if [ -n "${{ github.event.inputs.resource_types }}" ]; then
+            ARGS="$ARGS --resources=${{ github.event.inputs.resource_types }}"
+          fi
+
+          # Run with detailed output
+          ./scripts/maintenance/cleanup-resources.sh $ARGS --output=reports/cleanup_results.txt
+
+          # Check exit code
+          if [ $? -ne 0 ]; then
+            echo "Cleanup process encountered errors"
+            cat reports/cleanup_results.txt
+            echo "cleanup_success=false" >> $GITHUB_OUTPUT
+          else
+            echo "Cleanup process completed successfully"
+            cat reports/cleanup_results.txt
+            echo "cleanup_success=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run post-cleanup resource check
+        if: always()
+        run: |
+          echo "Running post-cleanup resource check..."
+          chmod +x scripts/monitoring/resource_check.sh
+          ./scripts/monitoring/resource_check.sh --csv=reports/post_cleanup_resources.csv
+          echo "Post-cleanup resource check completed."
+
+      - name: Generate summary report
+        if: always()
+        run: |
+          echo "Generating cleanup summary report..."
+
+          # Create summary file
+          cat > reports/cleanup_summary.md << EOL
+          # AWS Resource Cleanup Summary
+
+          Run date: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          Mode: ${{ github.event.inputs.dry_run == 'true' && 'DRY RUN' || 'FORCE' }}
+          Keep latest versions: ${{ github.event.inputs.keep_latest || '5' }}
+
+          ## Cleanup Results
+
+          \`\`\`
+          $(cat reports/cleanup_results.txt || echo "No cleanup results available")
+          \`\`\`
+
+          ## Resource Changes
+
+          $(if [ -f reports/pre_cleanup_resources.csv ] && [ -f reports/post_cleanup_resources.csv ]; then
+            echo "Resources before cleanup: $(grep -v '^Type' reports/pre_cleanup_resources.csv | wc -l)"
+            echo "Resources after cleanup: $(grep -v '^Type' reports/post_cleanup_resources.csv | wc -l)"
+          else
+            echo "Resource count comparison not available"
+          fi)
+          EOL
+
+      - name: Upload cleanup results
+        if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: resource-check-results
-          path: resource_check_results.csv
+          name: cleanup-reports
+          path: reports/
           retention-days: 30
 
       - name: Notify on Slack
@@ -78,7 +144,10 @@ jobs:
         with:
           status: ${{ job.status }}
           fields: repo,message,commit,author,action,eventName,workflow
-          text: 'AWS Resource Cleanup ${{ job.status }}'
+          text: |
+            AWS Resource Cleanup ${{ job.status }}
+            Mode: ${{ github.event.inputs.dry_run == 'true' && 'DRY RUN' || 'FORCE' }}
+            ${{ steps.cleanup.outputs.cleanup_success == 'true' && 'Successfully completed' || 'Completed with issues' }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         continue-on-error: true
