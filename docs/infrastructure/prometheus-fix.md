@@ -67,6 +67,69 @@ A new service configuration was created to register the service with the load ba
 - Health check grace period: `120` seconds
 - Load balancer configuration with target group, container name, and port
 
+### 1. Grafana Datasource Configuration Fix
+
+The Grafana datasource configuration was updated to use the ALB URL for Prometheus:
+
+```yaml
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    url: http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/prometheus
+    isDefault: true
+    editable: false
+```
+
+This change allows Grafana to access Prometheus through the ALB using the same path prefix that external users would use.
+
+Implementation steps:
+
+1. Modified the `datasources.yml` file in the Grafana provisioning configuration
+2. Rebuilt and pushed the Grafana Docker image to ECR
+3. Forced a new deployment of the Grafana service to use the updated configuration
+
+### 2. Prometheus Path Configuration Fix
+
+The critical issue was that Prometheus needed to be configured to handle the `/prometheus` path prefix:
+
+```bash
+# Original command that was accidentally removed in a previous update
+"--web.external-url=/prometheus"
+"--web.route-prefix=/"
+
+# Corrected command with both parameters set to ensure path compatibility
+"--web.external-url=/prometheus"
+"--web.route-prefix=/prometheus"
+```
+
+This configuration is essential because:
+
+1. The ALB routes `/prometheus/*` requests to the Prometheus service
+2. Without these flags, Prometheus doesn't know how to handle requests with this prefix
+3. Setting both flags to match ensures that Prometheus handles the path prefix correctly
+
+Implementation steps:
+
+1. Created a script (`scripts/one-time/fix-prometheus-path-v2.sh`) to update the task definition
+2. Updated the target group health check path to match the new prefix
+3. Deployed the updated task definition with correct command flags
+
+### 3. Security Group Cleanup
+
+Three unused security groups were identified and safely deleted:
+
+- `prom-security-group (sg-0017d666e5148acac)`
+- `ecs-security-group (sg-0a70331071c677329)`
+- `db-security-group (sg-095f444f62444fc95)`
+
+One security group, `efs-mount-security-group (sg-0be700337c9fb39cf)`, was found to be in use by an EFS mount target and was preserved.
+
+A script (`scripts/cleanup-security-groups.sh`) was created to safely check and delete security groups, ensuring that:
+
+- Groups are not associated with any network interfaces
+- Groups are not referenced by rules in other security groups
+
 ## Implementation Steps
 
 1. Built and pushed the improved Prometheus Docker image:
@@ -149,19 +212,19 @@ This document outlines the issues and fixes implemented for the Prometheus monit
 
 ### 1. Grafana Datasource Configuration Fix
 
-The Grafana datasource configuration was updated to use the internal ECS service name for Prometheus:
+The Grafana datasource configuration was updated to use the ALB URL for Prometheus:
 
 ```yaml
 apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
-    url: http://prod-e-prom-service:9090
+    url: http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/prometheus
     isDefault: true
     editable: false
 ```
 
-This change allows Grafana to directly communicate with the Prometheus service within the ECS cluster using the service discovery mechanism provided by AWS ECS.
+This change allows Grafana to access Prometheus through the ALB using the same path prefix that external users would use.
 
 Implementation steps:
 
@@ -169,7 +232,33 @@ Implementation steps:
 2. Rebuilt and pushed the Grafana Docker image to ECR
 3. Forced a new deployment of the Grafana service to use the updated configuration
 
-### 2. Security Group Cleanup
+### 2. Prometheus Path Configuration Fix
+
+The critical issue was that Prometheus needed to be configured to handle the `/prometheus` path prefix:
+
+```bash
+# Original command that was accidentally removed in a previous update
+"--web.external-url=/prometheus"
+"--web.route-prefix=/"
+
+# Corrected command with both parameters set to ensure path compatibility
+"--web.external-url=/prometheus"
+"--web.route-prefix=/prometheus"
+```
+
+This configuration is essential because:
+
+1. The ALB routes `/prometheus/*` requests to the Prometheus service
+2. Without these flags, Prometheus doesn't know how to handle requests with this prefix
+3. Setting both flags to match ensures that Prometheus handles the path prefix correctly
+
+Implementation steps:
+
+1. Created a script (`scripts/one-time/fix-prometheus-path-v2.sh`) to update the task definition
+2. Updated the target group health check path to match the new prefix
+3. Deployed the updated task definition with correct command flags
+
+### 3. Security Group Cleanup
 
 Three unused security groups were identified and safely deleted:
 
