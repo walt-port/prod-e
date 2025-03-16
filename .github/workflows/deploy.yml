@@ -72,9 +72,15 @@ jobs:
         run: |
           # Create zip file for Lambda function
           cd infrastructure/lambda
+          rm -f backup.zip  # Remove existing zip file if it exists
           zip -j backup.zip backup.js
+          # Verify zip file was created correctly
+          ls -la backup.zip
+          unzip -l backup.zip
           # Copy to the location needed by the import script
-          cp backup.zip ../../dummy-backup.zip
+          rm -f ../../dummy-backup.zip  # Remove existing destination file if it exists
+          cp backup.zip ../../dummy-backup.zip || echo "Warning: Copy failed, but continuing..."
+          ls -la ../../dummy-backup.zip
 
       - name: Prepare Import Script for CI
         run: |
