@@ -43,34 +43,66 @@ jobs:
           # Create results directory
           mkdir -p ./health-results
 
-          # Check API Gateway endpoints
-          API_URL=$(aws cloudformation describe-stacks --stack-name prod-e-api --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" --output text)
-          echo "Checking API endpoint: $API_URL"
+          # Initialize variables with default values
+          API_URL=""
+          PROMETHEUS_URL=""
+          HEALTH_STATUS="000"
+          PROMETHEUS_STATUS="000"
 
-          # Test API health endpoint
-          HEALTH_STATUS=$(curl -s -o ./health-results/api-health.json -w "%{http_code}" $API_URL/health || echo "000")
-          echo "API Health Status: $HEALTH_STATUS"
+          # Check API Gateway endpoints - Handle missing stack gracefully
+          echo "Checking for API Gateway stack..."
+          if aws cloudformation describe-stacks --stack-name prod-e-api &>/dev/null; then
+            API_URL=$(aws cloudformation describe-stacks --stack-name prod-e-api --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" --output text)
+            echo "API endpoint found: $API_URL"
 
-          # Check Prometheus metrics endpoint
-          PROMETHEUS_URL=$(aws cloudformation describe-stacks --stack-name prod-e-monitoring --query "Stacks[0].Outputs[?OutputKey=='PrometheusEndpoint'].OutputValue" --output text)
-          echo "Checking Prometheus endpoint: $PROMETHEUS_URL"
+            if [[ -n "$API_URL" ]]; then
+              # Test API health endpoint
+              HEALTH_STATUS=$(curl -s -o ./health-results/api-health.json -w "%{http_code}" $API_URL/health || echo "000")
+              echo "API Health Status: $HEALTH_STATUS"
+            else
+              echo "API endpoint not found in stack outputs"
+            fi
+          else
+            echo "API Gateway stack 'prod-e-api' does not exist or is not accessible"
+            echo "Stack not deployed" > ./health-results/api-health.json
+          fi
 
-          PROMETHEUS_STATUS=$(curl -s -o ./health-results/prometheus-health.json -w "%{http_code}" $PROMETHEUS_URL/api/v1/query?query=up || echo "000")
-          echo "Prometheus Status: $PROMETHEUS_STATUS"
+          # Check Prometheus metrics endpoint - Handle missing stack gracefully
+          echo "Checking for Prometheus stack..."
+          if aws cloudformation describe-stacks --stack-name prod-e-monitoring &>/dev/null; then
+            PROMETHEUS_URL=$(aws cloudformation describe-stacks --stack-name prod-e-monitoring --query "Stacks[0].Outputs[?OutputKey=='PrometheusEndpoint'].OutputValue" --output text)
+            echo "Checking Prometheus endpoint: $PROMETHEUS_URL"
 
-          # Check CloudWatch metrics for Lambda functions
-          echo "Checking Lambda invocation metrics..."
-          aws cloudwatch get-metric-statistics \
-            --namespace AWS/Lambda \
-            --metric-name Errors \
-            --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
-            --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
-            --period 3600 \
-            --statistics Sum \
-            --dimensions Name=FunctionName,Value=prod-e-api-handler > ./health-results/lambda-errors.json
+            if [[ -n "$PROMETHEUS_URL" ]]; then
+              PROMETHEUS_STATUS=$(curl -s -o ./health-results/prometheus-health.json -w "%{http_code}" $PROMETHEUS_URL/api/v1/query?query=up || echo "000")
+              echo "Prometheus Status: $PROMETHEUS_STATUS"
+            else
+              echo "Prometheus endpoint not found in stack outputs"
+            fi
+          else
+            echo "Prometheus stack 'prod-e-monitoring' does not exist or is not accessible"
+            echo "Stack not deployed" > ./health-results/prometheus-health.json
+          fi
 
-          # Determine overall health status
-          if [[ "$HEALTH_STATUS" == "200" && "$PROMETHEUS_STATUS" == "200" ]]; then
+          # Check CloudWatch metrics for Lambda functions - Only if Lambda likely exists
+          echo "Checking for Lambda function..."
+          if aws lambda get-function --function-name prod-e-api-handler &>/dev/null; then
+            echo "Checking Lambda invocation metrics..."
+            aws cloudwatch get-metric-statistics \
+              --namespace AWS/Lambda \
+              --metric-name Errors \
+              --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
+              --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+              --period 3600 \
+              --statistics Sum \
+              --dimensions Name=FunctionName,Value=prod-e-api-handler > ./health-results/lambda-errors.json
+          else
+            echo "Lambda function 'prod-e-api-handler' does not exist or is not accessible"
+            echo "{\"Error\": \"Lambda function not found\"}" > ./health-results/lambda-errors.json
+          fi
+
+          # Determine overall health status - Consider missing resources as unhealthy
+          if [[ ! -z "$API_URL" && "$HEALTH_STATUS" == "200" && ! -z "$PROMETHEUS_URL" && "$PROMETHEUS_STATUS" == "200" ]]; then
             OVERALL_STATUS="healthy"
             echo "status=healthy" >> $GITHUB_OUTPUT
           else
@@ -84,12 +116,28 @@ jobs:
               echo "## Overall Status: UNHEALTHY"
               echo ""
               echo "## Service Status"
-              echo "- API Gateway: $([ $HEALTH_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($HEALTH_STATUS)")"
-              echo "- Prometheus: $([ $PROMETHEUS_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($PROMETHEUS_STATUS)")"
+
+              # API Status with more detailed reporting
+              if [[ -z "$API_URL" ]]; then
+                echo "- API Gateway: ❌ Stack Not Deployed"
+              else
+                echo "- API Gateway: $([ $HEALTH_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($HEALTH_STATUS)")"
+              fi
+
+              # Prometheus Status with more detailed reporting
+              if [[ -z "$PROMETHEUS_URL" ]]; then
+                echo "- Prometheus: ❌ Stack Not Deployed"
+              else
+                echo "- Prometheus: $([ $PROMETHEUS_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($PROMETHEUS_STATUS)")"
+              fi
+
               echo ""
               echo "## Details"
 
-              if [[ "$HEALTH_STATUS" != "200" ]]; then
+              if [[ -z "$API_URL" ]]; then
+                echo "### API Gateway Issues"
+                echo "CloudFormation stack 'prod-e-api' was not found or is not accessible."
+              elif [[ "$HEALTH_STATUS" != "200" ]]; then
                 echo "### API Gateway Issues"
                 echo "Response code: $HEALTH_STATUS"
                 if [[ -f "./health-results/api-health.json" ]]; then
@@ -100,7 +148,10 @@ jobs:
                 fi
               fi
 
-              if [[ "$PROMETHEUS_STATUS" != "200" ]]; then
+              if [[ -z "$PROMETHEUS_URL" ]]; then
+                echo "### Prometheus Issues"
+                echo "CloudFormation stack 'prod-e-monitoring' was not found or is not accessible."
+              elif [[ "$PROMETHEUS_STATUS" != "200" ]]; then
                 echo "### Prometheus Issues"
                 echo "Response code: $PROMETHEUS_STATUS"
                 if [[ -f "./health-results/prometheus-health.json" ]]; then
