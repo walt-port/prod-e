@@ -1,6 +1,7 @@
 import { Construct } from 'constructs';
 import { Lb as ApplicationLoadBalancer } from '../.gen/providers/aws/lb';
 import { LbListener as AlbListener } from '../.gen/providers/aws/lb-listener';
+import { LbListenerRule } from '../.gen/providers/aws/lb-listener-rule';
 import { LbTargetGroup } from '../.gen/providers/aws/lb-target-group';
 import { Networking } from './networking';
 
@@ -95,6 +96,43 @@ export class Alb extends Construct {
             messageBody: 'Healthy',
             statusCode: '200',
           },
+        },
+      ],
+    });
+
+    // Add listener rules for each target group
+    new LbListenerRule(this, 'grafana-rule', {
+      listenerArn: this.listener.arn,
+      priority: 10,
+      condition: [
+        {
+          pathPattern: {
+            values: ['/grafana*'],
+          },
+        },
+      ],
+      action: [
+        {
+          type: 'forward',
+          targetGroupArn: this.grafanaTargetGroup.arn,
+        },
+      ],
+    });
+
+    new LbListenerRule(this, 'prometheus-rule', {
+      listenerArn: this.listener.arn,
+      priority: 20,
+      condition: [
+        {
+          pathPattern: {
+            values: ['/metrics*'],
+          },
+        },
+      ],
+      action: [
+        {
+          type: 'forward',
+          targetGroupArn: this.prometheusTargetGroup.arn,
         },
       ],
     });

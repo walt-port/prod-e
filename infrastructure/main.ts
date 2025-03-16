@@ -24,10 +24,10 @@ export class ProdEStack extends TerraformStack {
 
     // Configure remote state backend
     new S3Backend(this, {
-      bucket: 'prod-e-tfstate',
+      bucket: 'prod-e-terraform-state',
       key: 'terraform.tfstate',
       region: 'us-west-2',
-      dynamodbTable: 'prod-e-tfstate-lock',
+      dynamodbTable: 'prod-e-terraform-lock',
     });
     console.log('S3Backend configured');
 
