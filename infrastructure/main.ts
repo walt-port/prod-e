@@ -73,11 +73,11 @@ export class ProdEStack extends TerraformStack {
     const options: ResourceExistenceOptions = { checkResourceExists };
 
     // Create infrastructure components with conditional creation
-    const networking = new Networking(this, 'networking', options);
-    const alb = new Alb(this, 'alb', networking, options);
-    const ecs = new Ecs(this, 'ecs', networking, alb, options);
-    const rds = new Rds(this, 'rds', networking, options);
-    const monitoring = new Monitoring(this, 'monitoring', networking, alb, ecs, options);
+    const networking = new Networking(this, 'networking');
+    const alb = new Alb(this, 'alb', networking);
+    const ecs = new Ecs(this, 'ecs', networking, alb);
+    const rds = new Rds(this, 'rds', networking);
+    const monitoring = new Monitoring(this, 'monitoring', networking, alb, ecs);
     const backup = new Backup(this, 'backup', options);
 
     // Outputs
