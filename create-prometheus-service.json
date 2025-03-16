@@ -1,0 +1,31 @@
+{
+  "cluster": "prod-e-cluster",
+  "serviceName": "prod-e-prom-service",
+  "taskDefinition": "prom-task:7",
+  "desiredCount": 1,
+  "launchType": "FARGATE",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": ["subnet-0a4f105c0fe0bc819", "subnet-0351197a7afcfef6d"],
+      "securityGroups": ["sg-00f42963e977bd05b"],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:us-west-2:043309339649:targetgroup/prometheus-tg/2bfa005f80f6fc46",
+      "containerName": "prometheus",
+      "containerPort": 9090
+    }
+  ],
+  "healthCheckGracePeriodSeconds": 120,
+  "schedulingStrategy": "REPLICA",
+  "deploymentConfiguration": {
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    },
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 100
+  }
+}

@@ -1,4 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
 scrape_configs:
-  - job_name: 'prod-e'
+  - job_name: 'prod-e-backend'
+    metrics_path: '/metrics'
     static_configs:
-      - targets: ['application-load-balancer-98932456.us-west-2.elb.amazonaws.com:3000'] # ALB DNS from Terraform output
+      - targets: ['application-load-balancer-98932456.us-west-2.elb.amazonaws.com:3000'] # ALB DNS for backend service
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090'] # Self-monitoring
