@@ -199,7 +199,7 @@ jobs:
           search_existing: open
 
       - name: Notify on Slack
-        if: steps.health_check.outputs.status == 'unhealthy' && (github.event_name == 'schedule' || github.event.inputs.notify == 'true')
+        if: steps.health_check.outputs.status == 'unhealthy' && (github.event_name == 'schedule' || github.event.inputs.notify == 'true') && secrets.SLACK_WEBHOOK_URL != ''
         uses: 8398a7/action-slack@v3
         with:
           status: custom
