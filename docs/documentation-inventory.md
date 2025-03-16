@@ -52,11 +52,12 @@ This document catalogs all documentation in the Production Experience Showcase (
 
 ## Process Documentation
 
-| Document                                       | Purpose                                     | Related Documents                                                                  |
-| ---------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [processes/ci-cd.md](./processes/ci-cd.md)     | GitHub Actions CI/CD implementation         | [infrastructure/container-deployment.md](./infrastructure/container-deployment.md) |
-| [processes/testing.md](./processes/testing.md) | Testing approach, coverage, and examples    | [processes/ci-cd.md](./processes/ci-cd.md)                                         |
-| [processes/audits.md](./processes/audits.md)   | Infrastructure and codebase audit processes | [../audits/overview.md](../audits/overview.md)                                     |
+| Document                                                         | Purpose                                                        | Related Documents                                                                  |
+| ---------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [processes/ci-cd.md](./processes/ci-cd.md)                       | GitHub Actions CI/CD implementation                            | [infrastructure/container-deployment.md](./infrastructure/container-deployment.md) |
+| [processes/github-workflows.md](./processes/github-workflows.md) | Automated monitoring, resource checking, and cleanup workflows | [scripts.md](./scripts.md), [processes/ci-cd.md](./processes/ci-cd.md)             |
+| [processes/testing.md](./processes/testing.md)                   | Testing approach, coverage, and examples                       | [processes/ci-cd.md](./processes/ci-cd.md)                                         |
+| [processes/audits.md](./processes/audits.md)                     | Infrastructure and codebase audit processes                    | [../audits/overview.md](../audits/overview.md)                                     |
 
 ## User Guides
 
@@ -82,10 +83,10 @@ This document catalogs all documentation in the Production Experience Showcase (
 
 ## Script Documentation
 
-| Document                                                     | Purpose                                | Related Documents                            |
-| ------------------------------------------------------------ | -------------------------------------- | -------------------------------------------- |
-| [../scripts/README.md](../scripts/README.md)                 | Scripts directory overview             | -                                            |
-| [../scripts/RESOURCE_CHECK.md](../scripts/RESOURCE_CHECK.md) | Resource checking script documentation | [../scripts/README.md](../scripts/README.md) |
+| Document                                     | Purpose                        | Related Documents                            |
+| -------------------------------------------- | ------------------------------ | -------------------------------------------- |
+| [../scripts/README.md](../scripts/README.md) | Scripts directory overview     | [scripts.md](./scripts.md)                   |
+| [scripts.md](./scripts.md)                   | Detailed scripts documentation | [../scripts/README.md](../scripts/README.md) |
 
 ## Documentation Standards
 
@@ -112,5 +113,5 @@ Based on the inventory, the following documentation gaps have been identified:
 
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.1
+**Last Updated**: 2025-03-16
+**Version**: 1.3

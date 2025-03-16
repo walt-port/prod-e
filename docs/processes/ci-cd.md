@@ -1,126 +1,109 @@
-# CI/CD Implementation
+# CI/CD Process
+
+**Version:** 1.1
+**Last Updated:** March 16, 2025
+**Owner:** DevOps Team
 
 ## Overview
 
-This document outlines the Continuous Integration and Continuous Deployment (CI/CD) strategy for the Production Experience Showcase project. The implementation uses GitHub Actions to automate building, testing, and deploying the application whenever changes are pushed to the main branch.
+This document outlines the Continuous Integration and Continuous Deployment (CI/CD) process for the Production Experience Showcase. The CI/CD pipeline automates the build, test, and deployment processes to ensure consistent and reliable software delivery.
 
-## Current Status
+## CI/CD Pipeline
 
-### Implemented Components:
+The CI/CD pipeline is implemented using GitHub Actions and consists of the following stages:
 
-- ✅ GitHub Actions workflow configuration
-- ✅ Automated Docker image builds for backend
-- ✅ Automated Docker image builds for Prometheus
-- ✅ Automated testing
-- ✅ Automated infrastructure deployment
+1. **Code Validation**
 
-## Architecture
+   - Linting
+   - Unit Testing
+   - Integration Testing
+   - Security Scanning
 
-The CI/CD pipeline consists of the following components:
+2. **Build**
 
-### GitHub Actions
+   - Compile code
+   - Create artifacts
+   - Build Docker images
 
-GitHub Actions serves as the automation platform with the following responsibilities:
+3. **Deployment**
 
-- Triggering workflows based on repository events (e.g., pushes to main)
-- Building and tagging Docker images
-- Running automated tests
-- Deploying infrastructure changes
+   - Deploy to AWS using CDK
+   - Configure infrastructure
+   - Update services
 
-### AWS Services
+4. **Post-Deployment**
+   - Resource verification
+   - Health checks
+   - Smoke tests
 
-The deployment targets the following AWS services:
+## Related Workflows
 
-- Amazon ECR: For storing Docker images
-- Amazon ECS: For running containerized applications
-- AWS CloudWatch: For logging and monitoring
-- Other AWS resources defined in the CDKTF configuration
+Our CI/CD process is supported by several GitHub Actions workflows:
 
-## Workflow Details
+### Main Workflows
 
-### Trigger
+- **Deploy Workflow** (`deploy.yml`): Handles the main deployment process
+- **Resource Check Workflow** (`resource-check.yml`): Verifies AWS resources after deployment
+- **Health Monitoring Workflow** (`health-monitor.yml`): Regularly checks service health
+- **Cleanup Workflow** (`cleanup.yml`): Manages unused AWS resources
 
-The deployment workflow is triggered automatically when:
+For detailed information about these workflows, see the [GitHub Workflows](github-workflows.md) documentation.
 
-- Code is pushed to the `main` branch
+![GitHub Workflows Architecture](../assets/images/workflows/workflows-diagram.svg)
 
-### Pipeline Steps
+## Deployment Process
 
-1. **Checkout Code**: Retrieves the latest code from the repository
-2. **Setup Environment**: Sets up Node.js and installs the CDKTF CLI
-3. **Install Dependencies**: Installs project dependencies
-4. **Configure AWS**: Sets up AWS credentials for authentication
-5. **Build Images**:
-   - Builds the backend Docker image
-   - Builds the Prometheus Docker image
-   - Tags images with the latest tag
-6. **Push Images**:
-   - Pushes backend image to ECR
-   - Pushes Prometheus image to ECR
-7. **Run Tests**: Executes the backend test suite
-8. **Deploy Infrastructure**: Uses CDKTF to deploy infrastructure changes
+### Prerequisites
 
-### Authentication and Secrets
+- AWS credentials configured as GitHub secrets
+- Required permissions for CDK deployment
+- Passing tests and security scans
 
-The workflow uses GitHub Secrets to securely store and access sensitive information:
+### Deployment Steps
 
-- `AWS_ACCESS_KEY_ID`: Access key for AWS authentication
-- `AWS_SECRET_ACCESS_KEY`: Secret key for AWS authentication
+1. **Trigger Deployment**
 
-## Security Considerations
+   - Automatically on push to main branch
+   - Manually via workflow dispatch
 
-1. **AWS Credentials**:
+2. **Pre-Deployment Checks**
 
-   - Use an IAM user with the minimum required permissions
-   - Consider using AWS OIDC (OpenID Connect) to avoid storing long-lived credentials
-   - Regularly rotate credentials
+   - Run linting and tests
+   - Verify dependencies
+   - Check security vulnerabilities
 
-2. **Docker Images**:
+3. **CDK Deployment**
 
-   - Scan images for vulnerabilities before deployment
-   - Use specific tags rather than `latest` in production
+   - Synthesize CloudFormation templates
+   - Deploy infrastructure changes
+   - Update application code
 
-3. **Code Security**:
-   - Implement branch protection rules to prevent direct pushes to main
-   - Consider adding code scanning and security analysis steps
+4. **Post-Deployment Verification**
+   - Run resource check workflow
+   - Verify service health
+   - Run smoke tests
 
-## Best Practices
+## Rollback Process
 
-1. **Pipeline Design**:
+In case of deployment failures:
 
-   - Keep workflows modular and maintainable
-   - Follow the principle of least privilege for all service accounts
-   - Include appropriate timeout and failure handling
+1. **Automatic Rollback**
 
-2. **Testing**:
+   - CDK automatically rolls back failed deployments
+   - Failed health checks trigger alerts
 
-   - Run tests before deployment to catch issues early
-   - Consider adding integration and end-to-end tests
-   - Implement test coverage thresholds
+2. **Manual Rollback**
+   - Redeploy previous version
+   - Run verification checks
 
-3. **Infrastructure as Code**:
-   - Validate infrastructure changes before applying
-   - Consider adding a manual approval step for critical environments
-   - Implement drift detection
+## Monitoring and Alerting
 
-## Future Enhancements
+- **Health Monitoring**: Hourly checks of all services
+- **Resource Verification**: After each deployment
+- **Alerting Channels**: GitHub Issues and Slack notifications
 
-1. **Environment Expansion**:
+## Related Documentation
 
-   - Add support for multiple environments (dev, staging, prod)
-   - Implement environment-specific configuration
-
-2. **Advanced Testing**:
-
-   - Add integration tests between components
-   - Implement smoke tests after deployment
-
-3. **Notifications**:
-   - Add Slack/email notifications for deployment status
-   - Implement alerts for deployment failures
-
-## Resources
-
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [AWS credentials with GitHub Actions](https://github.com/aws-actions/configure-aws-credentials)
-- [CDKTF CLI Documentation](https://developer.hashicorp.com/terraform/cdktf/cli-reference)
+- [GitHub Workflows](github-workflows.md)
+- [AWS Resource Management](aws-resource-management.md)
+- [Monitoring Setup](monitoring-setup.md)

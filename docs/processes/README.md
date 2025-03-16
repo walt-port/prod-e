@@ -1,22 +1,38 @@
 # Process Documentation
 
-## Overview
+This directory contains documentation for the operational processes of the Production Experience Showcase.
 
-This directory contains documentation related to the development, testing, and operational processes of the Production Experience Showcase project. It includes details about CI/CD pipelines, testing strategies, and audit procedures.
+## Available Documentation
 
-## Contents
+### Core Processes
 
-- [CI/CD Pipeline](./ci-cd.md) - Documentation for GitHub Actions CI/CD implementation
-- [Testing Strategy](./testing.md) - Documentation for testing approach, coverage, and examples
-- [Audit Process](./audits.md) - Documentation for infrastructure and codebase audit processes
+- [CI/CD Process](ci-cd.md) - Continuous Integration and Deployment workflow
+- [GitHub Workflows](github-workflows.md) - Automated GitHub Actions workflows
+- [AWS Resource Management](aws-resource-management.md) - AWS resource provisioning and management
+- [Monitoring Setup](monitoring-setup.md) - Monitoring infrastructure and practices
 
-## Related Documentation
+### Additional Processes
 
-- [Infrastructure Documentation](../infrastructure/) - Documentation related to the infrastructure managed by these processes
-- [Deployment Guide](../guides/deployment-guide.md) - Guide for the deployment process
-- [Audit Documentation](../../audits/) - Detailed audit-related documentation and templates
+- [Testing](testing.md) - Testing strategies and practices
+- [Audits](audits.md) - Audit procedures and compliance
 
----
+## Diagrams
 
-**Last Updated**: 2025-03-15
-**Version**: 1.0
+The following diagrams are available to help visualize the processes:
+
+- [GitHub Workflows Architecture](../assets/images/workflows/workflows-diagram.svg)
+- [Monitoring Architecture](../assets/images/monitoring-architecture.svg)
+
+## Document Maintenance
+
+All process documentation should be:
+
+1. Reviewed quarterly
+2. Updated when processes change
+3. Version controlled with clear update history
+4. Accessible to all team members
+
+## Last Updated
+
+**Date:** March 16, 2025
+**Version:** 1.0

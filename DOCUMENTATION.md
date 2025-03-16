@@ -39,6 +39,7 @@ This document serves as the central index for all documentation in the Productio
 ## Process Documentation
 
 - [CI/CD Pipeline](./docs/processes/ci-cd.md) - GitHub Actions CI/CD implementation
+- [GitHub Workflows](./docs/processes/github-workflows.md) - Automated monitoring, resource checking, and cleanup workflows
 - [Testing Strategy](./docs/processes/testing.md) - Testing approach, coverage, and examples
 - [Audit Process](./docs/processes/audits.md) - Infrastructure and codebase audit processes
 
@@ -69,7 +70,7 @@ This document serves as the central index for all documentation in the Productio
 ## Scripts & Utilities
 
 - [Scripts README](./scripts/README.md) - Scripts directory overview
-- [Resource Check Documentation](./scripts/RESOURCE_CHECK.md) - Resource checking script documentation
+- [Scripts Documentation](./docs/scripts.md) - Detailed documentation for utility scripts
 
 ## Documentation Standards
 
@@ -88,5 +89,5 @@ This document serves as the central index for all documentation in the Productio
 
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.1
+**Last Updated**: 2025-03-16
+**Version**: 1.3

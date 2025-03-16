@@ -4,7 +4,7 @@ name: Health Monitoring
 
 on:
   schedule:
-    # Run every hour at minute 0
+    # Run hourly at minute 0
     - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
@@ -15,11 +15,14 @@ on:
 
 jobs:
   health-check:
+    name: Monitor Service Health
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -28,67 +31,139 @@ jobs:
 
       - name: Install dependencies
         run: |
+          npm ci
           sudo apt-get update
           sudo apt-get install -y jq curl
 
-      - name: Run Health Check
+      - name: Run health check
         id: health_check
         run: |
-          chmod +x scripts/monitoring/monitor-health.sh
-          ./scripts/monitoring/monitor-health.sh --once > health_check_results.txt
-          cat health_check_results.txt
+          echo "Running health check at $(date)"
 
-          # Check if there are any PROBLEM or CRITICAL messages
-          if grep -E "PROBLEM|CRITICAL" health_check_results.txt; then
-            echo "problems_detected=true" >> $GITHUB_OUTPUT
+          # Create results directory
+          mkdir -p ./health-results
+
+          # Check API Gateway endpoints
+          API_URL=$(aws cloudformation describe-stacks --stack-name prod-e-api --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" --output text)
+          echo "Checking API endpoint: $API_URL"
+
+          # Test API health endpoint
+          HEALTH_STATUS=$(curl -s -o ./health-results/api-health.json -w "%{http_code}" $API_URL/health || echo "000")
+          echo "API Health Status: $HEALTH_STATUS"
+
+          # Check Prometheus metrics endpoint
+          PROMETHEUS_URL=$(aws cloudformation describe-stacks --stack-name prod-e-monitoring --query "Stacks[0].Outputs[?OutputKey=='PrometheusEndpoint'].OutputValue" --output text)
+          echo "Checking Prometheus endpoint: $PROMETHEUS_URL"
+
+          PROMETHEUS_STATUS=$(curl -s -o ./health-results/prometheus-health.json -w "%{http_code}" $PROMETHEUS_URL/api/v1/query?query=up || echo "000")
+          echo "Prometheus Status: $PROMETHEUS_STATUS"
+
+          # Check CloudWatch metrics for Lambda functions
+          echo "Checking Lambda invocation metrics..."
+          aws cloudwatch get-metric-statistics \
+            --namespace AWS/Lambda \
+            --metric-name Errors \
+            --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
+            --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+            --period 3600 \
+            --statistics Sum \
+            --dimensions Name=FunctionName,Value=prod-e-api-handler > ./health-results/lambda-errors.json
+
+          # Determine overall health status
+          if [[ "$HEALTH_STATUS" == "200" && "$PROMETHEUS_STATUS" == "200" ]]; then
+            OVERALL_STATUS="healthy"
+            echo "::set-output name=status::healthy"
           else
-            echo "problems_detected=false" >> $GITHUB_OUTPUT
+            OVERALL_STATUS="unhealthy"
+            echo "::set-output name=status::unhealthy"
+
+            # Create detailed report for unhealthy services
+            echo "Creating detailed health report..."
+            {
+              echo "# Health Check Report - $(date)"
+              echo "## Overall Status: UNHEALTHY"
+              echo ""
+              echo "## Service Status"
+              echo "- API Gateway: $([ $HEALTH_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($HEALTH_STATUS)")"
+              echo "- Prometheus: $([ $PROMETHEUS_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($PROMETHEUS_STATUS)")"
+              echo ""
+              echo "## Details"
+
+              if [[ "$HEALTH_STATUS" != "200" ]]; then
+                echo "### API Gateway Issues"
+                echo "Response code: $HEALTH_STATUS"
+                if [[ -f "./health-results/api-health.json" ]]; then
+                  echo "Response body:"
+                  echo '```json'
+                  cat ./health-results/api-health.json
+                  echo '```'
+                fi
+              fi
+
+              if [[ "$PROMETHEUS_STATUS" != "200" ]]; then
+                echo "### Prometheus Issues"
+                echo "Response code: $PROMETHEUS_STATUS"
+                if [[ -f "./health-results/prometheus-health.json" ]]; then
+                  echo "Response body:"
+                  echo '```json'
+                  cat ./health-results/prometheus-health.json
+                  echo '```'
+                fi
+              fi
+            } > ./health-results/health-report.md
           fi
 
-      - name: Upload Health Check Results
+          echo "Health check completed with status: $OVERALL_STATUS"
+
+      - name: Upload health check results
         uses: actions/upload-artifact@v3
         with:
           name: health-check-results
-          path: health_check_results.txt
+          path: ./health-results/
           retention-days: 7
 
+      - name: Create GitHub issue for unhealthy services
+        if: steps.health_check.outputs.status == 'unhealthy' && (github.event_name == 'schedule' || github.event.inputs.notify == 'true')
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEALTH_REPORT_PATH: ./health-results/health-report.md
+        with:
+          filename: ${{ env.HEALTH_REPORT_PATH }}
+          update_existing: true
+          search_existing: open
+
       - name: Notify on Slack
-        if: ${{ steps.health_check.outputs.problems_detected == 'true' && (github.event.inputs.notify != 'false') }}
+        if: steps.health_check.outputs.status == 'unhealthy' && (github.event_name == 'schedule' || github.event.inputs.notify == 'true')
         uses: 8398a7/action-slack@v3
         with:
-          status: failure
+          status: custom
           fields: repo,message,commit,author,action,eventName,workflow
-          text: '⚠️ Health monitoring detected issues! Please check the workflow for details.'
+          custom_payload: |
+            {
+              "attachments": [
+                {
+                  "color": "danger",
+                  "title": "❌ Health Check Failed",
+                  "text": "One or more services are unhealthy. See GitHub issue for details.",
+                  "fields": [
+                    {
+                      "title": "Repository",
+                      "value": "${{ github.repository }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Workflow",
+                      "value": "${{ github.workflow }}",
+                      "short": true
+                    }
+                  ],
+                  "footer": "GitHub Actions",
+                  "footer_icon": "https://github.githubassets.com/favicon.ico",
+                  "ts": ${{ env.TIMESTAMP }}
+                }
+              ]
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        continue-on-error: true
-
-      - name: Create GitHub Issue for Health Problems
-        if: ${{ steps.health_check.outputs.problems_detected == 'true' && (github.event.inputs.notify != 'false') }}
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const health_results = fs.readFileSync('health_check_results.txt', 'utf8');
-
-            const date = new Date().toISOString();
-            const issueBody = `
-            ## Health Check Alert - ${date}
-
-            Health monitoring has detected issues with the infrastructure:
-
-            \`\`\`
-            ${health_results}
-            \`\`\`
-
-            [View the full workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            `;
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `⚠️ Health Check Alert - ${date}`,
-              body: issueBody,
-              labels: ['health-alert', 'priority']
-            });
+          TIMESTAMP: ${{ env.TIMESTAMP || steps.timestamp.outputs.timestamp }}

@@ -2,228 +2,242 @@
 
 ## Overview
 
-This document provides details about the various scripts used for AWS resource management, monitoring, and cleanup in the prod-e project.
+This document provides detailed information about the utility scripts used in the Production Experience Showcase project. These scripts automate various tasks related to infrastructure management, monitoring, deployment, and maintenance.
 
-## Maintenance Scripts
+## Table of Contents
 
-### fix-grafana-tasks.sh
+- [Monitoring Scripts](#monitoring-scripts)
+- [Deployment Scripts](#deployment-scripts)
+- [Maintenance Scripts](#maintenance-scripts)
+- [Backup Scripts](#backup-scripts)
+- [Usage Examples](#usage-examples)
+- [Best Practices](#best-practices)
 
-**Purpose**: Identifies and fixes issues with Grafana service tasks in ECS.
-
-**Location**: `scripts/fix-grafana-tasks.sh`
-
-**Usage**:
-
-```bash
-./scripts/fix-grafana-tasks.sh [OPTIONS]
-```
-
-**Options**:
-
-- `--force`: Actually stop unhealthy or outdated tasks (default is dry run)
-- `--region=REGION`: Specify the AWS region (default: us-west-2)
-- `--cluster=CLUSTER`: Specify the ECS cluster (default: prod-e-cluster)
-- `--service=SERVICE`: Specify the ECS service (default: grafana-service)
-- `--help`: Display help message
-
-**Description**:
-This script addresses common issues with the Grafana service in ECS by identifying and stopping:
-
-1. Tasks that are in an UNHEALTHY state
-2. Tasks that are using old task definitions
-3. Excess tasks beyond the desired count
-
-By default, it runs in dry-run mode, showing what would be done without making changes. Use the `--force` flag to actually stop the identified tasks.
-
-### cleanup-security-groups.sh
-
-**Purpose**: Identifies unused security groups that can be safely deleted.
-
-**Location**: `scripts/cleanup-security-groups.sh`
-
-**Usage**:
-
-```bash
-./scripts/cleanup-security-groups.sh [OPTIONS]
-```
-
-**Options**:
-
-- `--force`: Actually delete unused security groups (default is dry run)
-- `--region=REGION`: Specify the AWS region (default: us-west-2)
-- `--project=TAG`: Project tag to filter security groups (default: prod-e)
-- `--help`: Display help message
-
-**Description**:
-This script analyzes security groups in your AWS account to identify those that are not in use by any resources. It checks for references from:
-
-- EC2 instances
-- Load balancers (classic and application)
-- RDS instances
-- ECS services
-- Lambda functions
-- Other security groups (inbound rules)
-
-By default, it runs in dry-run mode, showing what would be deleted without making changes. Use the `--force` flag to actually delete the unused security groups after verification.
-
-### resource_check.sh
-
-**Purpose**: Performs a comprehensive check of all AWS resources in the prod-e project.
-
-**Location**: `scripts/resource_check.sh`
-
-**Usage**:
-
-```bash
-./scripts/resource_check.sh
-```
-
-**Description**:
-This script provides a detailed assessment of the health and configuration of all AWS resources used in the prod-e project including:
-
-1. VPC resources (subnets, internet gateways, NAT gateways)
-2. RDS instances and database configurations
-3. ECS resources (clusters, services, tasks, task definitions)
-4. Load balancer configurations and target health
-5. ECR repositories and image information
-6. Terraform state management
-7. Monitoring services (Prometheus, Grafana)
-8. EFS resources
-9. Lambda functions (including grafana-backup)
-10. Security groups
-11. Orphaned or unused resources
-
-The script outputs a comprehensive report with color-coded status indicators for easy identification of issues.
+## Monitoring Scripts
 
 ### monitor-health.sh
 
-**Purpose**: Monitors the health of critical services and endpoints.
+Located in `scripts/monitoring/monitor-health.sh`, this script performs continuous health monitoring of all services.
 
-**Location**: `scripts/monitor-health.sh`
+#### Features
 
-**Usage**:
+- Monitors ECS services health
+- Checks Prometheus and Grafana endpoints
+- Verifies database connectivity
+- Supports both continuous monitoring and one-time checks
+
+#### Usage
 
 ```bash
-./scripts/monitor-health.sh [OPTIONS]
+# Run continuously with default interval (5 min)
+./scripts/monitoring/monitor-health.sh
+
+# Run a single health check
+./scripts/monitoring/monitor-health.sh --once
+
+# Specify a custom interval (in seconds)
+./scripts/monitoring/monitor-health.sh --interval 60
 ```
 
-**Options**:
+### resource_check.sh
 
-- `--once`: Run the health check once and exit (default is continuous monitoring)
-- `--notify`: Enable SNS notifications for alerts
-- `--interval=SECONDS`: Set the check interval in seconds (default: 60)
-- `--region=REGION`: Specify the AWS region (default: us-west-2)
-- `--help`: Display help message
+Located in `scripts/monitoring/resource_check.sh`, this script performs comprehensive checks of AWS resources.
 
-**Description**:
-This script monitors the health of critical infrastructure components including:
+#### Features
 
-1. ECS services (prod-e-service, prod-e-prom-service, grafana-service)
-2. RDS database instances
-3. Load balancer and target groups
-4. API endpoints
-5. Grafana and Prometheus services
+- Inventories all AWS resources in the account
+- Identifies resource state and health issues
+- Generates CSV reports for analysis
+- Detects orphaned resources
+- Provides cost estimates
 
-By default, it runs continuously at specified intervals. Use the `--once` flag to run a single check.
+#### Usage
+
+```bash
+# Basic resource check
+./scripts/monitoring/resource_check.sh
+
+# Generate CSV report
+./scripts/monitoring/resource_check.sh --csv=resource_report.csv
+
+# Check specific resource types
+./scripts/monitoring/resource_check.sh --resources=ec2,rds,ecs
+```
+
+## Deployment Scripts
+
+### build-and-push.sh
+
+Located in `scripts/deployment/build-and-push.sh`, this script automates building and pushing Docker images to ECR.
+
+#### Features
+
+- Builds Docker images for multiple services
+- Tags images with appropriate version information
+- Pushes images to Amazon ECR
+- Updates service definitions if requested
+
+#### Usage
+
+```bash
+# Build and push all images
+./scripts/deployment/build-and-push.sh
+
+# Build and push specific service
+./scripts/deployment/build-and-push.sh --service backend
+```
+
+### create-lambda-zip.js
+
+Located in `scripts/deployment/create-lambda-zip.js`, this script creates deployment packages for AWS Lambda functions.
+
+#### Features
+
+- Bundles Lambda function code into ZIP files
+- Includes dependencies correctly
+- Handles different environments (dev, test, prod)
+- Optimizes package size
+
+#### Usage
+
+```bash
+# Create deployment package for all functions
+node scripts/deployment/create-lambda-zip.js
+
+# Create deployment package for specific function
+node scripts/deployment/create-lambda-zip.js --function backup
+```
+
+### rollback.sh
+
+Located in `scripts/deployment/rollback.sh`, this script provides functionality to roll back to previous deployment versions.
+
+#### Features
+
+- Rolls back ECS services to previous task definitions
+- Supports targeted rollback of specific services
+- Includes verification steps
+- Provides status reporting
+
+#### Usage
+
+```bash
+# Roll back all services to previous version
+./scripts/deployment/rollback.sh
+
+# Roll back specific service
+./scripts/deployment/rollback.sh --service backend
+```
+
+## Maintenance Scripts
 
 ### cleanup-resources.sh
 
-**Purpose**: Cleans up unused or old AWS resources to optimize costs.
+Located in `scripts/maintenance/cleanup-resources.sh`, this script automates the cleanup of unused AWS resources.
 
-**Location**: `scripts/cleanup-resources.sh`
+#### Features
 
-**Usage**:
+- Identifies unused or idle resources
+- Supports dry-run mode for safety
+- Cleans up resources based on age and usage patterns
+- Generates detailed reports
+
+#### Usage
 
 ```bash
-./scripts/cleanup-resources.sh [OPTIONS]
+# Dry run (no changes made)
+./scripts/maintenance/cleanup-resources.sh --dry-run
+
+# Perform actual cleanup
+./scripts/maintenance/cleanup-resources.sh --force
+
+# Keep latest 5 versions, delete older resources
+./scripts/maintenance/cleanup-resources.sh --force --keep=5
 ```
 
-**Options**:
+### teardown.py
 
-- `--force`: Actually delete resources (default is dry run)
-- `--age=DAYS`: Age threshold in days for resource deletion (default: 7)
-- `--keep=COUNT`: Number of latest versions to keep (default: 5)
-- `--region=REGION`: Specify the AWS region (default: us-west-2)
-- `--help`: Display help message
+Located in `scripts/maintenance/teardown.py`, this script provides a controlled way to tear down infrastructure components.
 
-**Description**:
-This script identifies and optionally deletes:
+#### Features
 
-1. Old ECR images while keeping the latest N versions
-2. Unattached EBS volumes
-3. Old EBS snapshots
-4. Unused CloudWatch log groups
-5. Old ECS task definitions
-6. Unused Lambda function versions
-7. Unused security groups
+- Removes AWS resources in the correct order
+- Supports dry-run mode
+- Handles dependencies between resources
+- Provides detailed output and status
 
-By default, it runs in dry-run mode, showing what would be deleted without making changes.
+#### Usage
+
+```bash
+# Preview teardown (no changes made)
+python scripts/maintenance/teardown.py --dry-run
+
+# Perform complete teardown
+python scripts/maintenance/teardown.py
+
+# Teardown specific components
+python scripts/maintenance/teardown.py --components ecs,alb
+```
 
 ## Backup Scripts
 
 ### backup-database.sh
 
-**Purpose**: Creates and manages backups of the RDS database.
+Located in `scripts/backup/backup-database.sh`, this script automates database backups.
 
-**Location**: `scripts/backup-database.sh`
+#### Features
 
-**Usage**:
+- Creates RDS snapshots
+- Exports data for long-term storage
+- Manages snapshot rotation
+- Supports scheduled execution
 
-```bash
-./scripts/backup-database.sh [OPTIONS]
-```
-
-**Options**:
-
-- `--instance=NAME`: Database instance identifier (default: postgres-instance)
-- `--keep=N`: Number of snapshots to keep (default: 7)
-- `--bucket=NAME`: S3 bucket for exports (default: prod-e-db-backups)
-- `--region=REGION`: AWS region (default: us-west-2)
-- `--help`: Display help message
-
-**Description**:
-This script creates RDS snapshots and exports them to S3. It manages the lifecycle of snapshots, keeping only the specified number of most recent ones and deleting older snapshots to save storage costs.
-
-## CI/CD Scripts
-
-### deploy.sh
-
-**Purpose**: Manages deployments of the application.
-
-**Location**: `scripts/deploy.sh`
-
-**Usage**:
+#### Usage
 
 ```bash
-./scripts/deploy.sh [OPTIONS]
+# Perform a backup
+./scripts/backup/backup-database.sh
+
+# Specify retention period
+./scripts/backup/backup-database.sh --retention 30
 ```
 
-**Options**:
+## Usage Examples
 
-- `--environment=ENV`: Target environment (dev, staging, prod)
-- `--help`: Display help message
+### Regular Maintenance Tasks
 
-**Description**:
-This script orchestrates the deployment process, including:
+```bash
+# Weekly maintenance routine
+./scripts/monitoring/resource_check.sh --csv=weekly_report.csv
+./scripts/maintenance/cleanup-resources.sh --dry-run
+# Review report, then run:
+./scripts/maintenance/cleanup-resources.sh --force --keep=5
+```
 
-1. Building Docker images
-2. Pushing to ECR
-3. Updating ECS service task definitions
-4. Initiating deployments
-5. Verifying deployment health
+### Deployment Workflow
 
-## Implementation Notes
+```bash
+# Build and deploy
+./scripts/deployment/build-and-push.sh
+# If issues occur:
+./scripts/deployment/rollback.sh
+```
 
-These scripts follow best practices for AWS resource management:
+## Best Practices
 
-- Run in dry-run mode by default for safety
-- Provide clear output about actions and changes
-- Include proper error handling
-- Use AWS CLI with appropriate permissions
+1. **Always use dry-run mode first** for destructive operations
+2. **Schedule regular executions** of monitoring and maintenance scripts
+3. **Keep execution logs** for auditing and troubleshooting
+4. **Review script output thoroughly** before taking action
+5. **Ensure proper AWS credentials** are configured before running scripts
 
 ## Related Documentation
 
-- [Infrastructure Documentation](./infrastructure/README.md)
-- [AWS Resource Cleanup Plan](./infrastructure/cleanup-plan.md)
-- [ECS Service Documentation](./infrastructure/ecs-service.md)
-- [Monitoring Documentation](./monitoring/README.md)
+- [Infrastructure Documentation](infrastructure/README.md)
+- [Monitoring Documentation](monitoring/README.md)
+- [CI/CD Pipeline](processes/ci-cd.md)
+
+---
+
+**Last Updated**: 2025-03-16
+**Version**: 1.0
