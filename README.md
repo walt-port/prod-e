@@ -10,7 +10,7 @@
 
 A platform demonstrating DevOps/SRE skills by building a monitoring and alerting dashboard system with modern infrastructure practices. This project addresses the common "production experience" barrier in job searches by creating a practical, functional system with industry-standard technologies.
 
-[Architecture Overview](#-architecture) | [Quick Start](#-quick-start) | [Tech Stack](#-technology-stack) | [Documentation](#-documentation) | [Testing](#-testing)
+[Architecture Overview](#-architecture) | [Quick Start](#-quick-start) | [Tech Stack](#-technology-stack) | [Documentation](#-documentation-explorer) | [Testing](#-testing)
 
 ## 📋 Project Overview
 
@@ -172,7 +172,7 @@ The project features a comprehensive monitoring stack:
 - **Custom metrics** for application performance monitoring
 - **System metrics** for infrastructure health
 
-<img src="docs/assets/images/monitoring-architecture.svg" alt="Monitoring Architecture" width="650">
+![Monitoring Architecture](docs/assets/images/monitoring-architecture.svg)
 
 For detailed information about the monitoring setup, see our [Monitoring Setup](docs/processes/monitoring-setup.md).
 
@@ -180,23 +180,35 @@ For detailed information about the monitoring setup, see our [Monitoring Setup](
 
 Our comprehensive documentation covers every aspect of the project, from infrastructure to operations:
 
-<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-<a href="docs/infrastructure/README.md" style="display: block; width: 200px; padding: 15px; text-align: center; background-color: #f8f9fa; border-radius: 8px; text-decoration: none; color: inherit;">
-    <h3>🏗️ Infrastructure</h3>
-    <p>Network architecture, AWS resources, multi-AZ setup</p>
-</a>
-<a href="docs/processes/monitoring-setup.md" style="display: block; width: 200px; padding: 15px; text-align: center; background-color: #f8f9fa; border-radius: 8px; text-decoration: none; color: inherit;">
-    <h3>📊 Monitoring</h3>
-    <p>Prometheus, Grafana, metrics collection</p>
-</a>
-<a href="docs/processes/github-workflows.md" style="display: block; width: 200px; padding: 15px; text-align: center; background-color: #f8f9fa; border-radius: 8px; text-decoration: none; color: inherit;">
-    <h3>⚙️ GitHub Workflows</h3>
-    <p>Health monitoring, resource checks, cleanup</p>
-</a>
-<a href="docs/processes/ci-cd.md" style="display: block; width: 200px; padding: 15px; text-align: center; background-color: #f8f9fa; border-radius: 8px; text-decoration: none; color: inherit;">
-    <h3>🚀 CI/CD</h3>
-    <p>Deployment, testing, automation</p>
-</a>
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="25%">
+        <a href="docs/infrastructure/README.md">
+          <h3>🏗️ Infrastructure</h3>
+          <p>Network, AWS resources, multi-AZ setup</p>
+        </a>
+      </td>
+      <td align="center" width="25%">
+        <a href="docs/processes/monitoring-setup.md">
+          <h3>📊 Monitoring</h3>
+          <p>Prometheus, Grafana, metrics</p>
+        </a>
+      </td>
+      <td align="center" width="25%">
+        <a href="docs/processes/github-workflows.md">
+          <h3>⚙️ GitHub Workflows</h3>
+          <p>Health checks, resource verification</p>
+        </a>
+      </td>
+      <td align="center" width="25%">
+        <a href="docs/processes/ci-cd.md">
+          <h3>🚀 CI/CD</h3>
+          <p>Deployment, testing, automation</p>
+        </a>
+      </td>
+    </tr>
+  </table>
 </div>
 
 ### 🌟 Featured Documentation
