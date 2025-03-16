@@ -24,9 +24,6 @@ This directory contains various scripts used for managing the Production Experie
 
   - `backup-database.sh` - Performs database backups
 
-- `one-time/` - One-time scripts for specific tasks (not intended for regular use)
-  - Various one-time infrastructure fixes and tests
-
 ## Usage
 
 See the scripts documentation in the `/docs/scripts.md` file for detailed usage instructions.
