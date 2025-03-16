@@ -13,6 +13,11 @@ on:
         type: boolean
         default: true
 
+# Add permissions needed for issue creation
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   health-check:
     name: Monitor Service Health
