@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload Resource Check Results
         if: ${{ github.event.inputs.generate_report != 'false' }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: resource-check-results
           path: resource_check_results.csv

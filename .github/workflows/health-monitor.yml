@@ -72,10 +72,10 @@ jobs:
           # Determine overall health status
           if [[ "$HEALTH_STATUS" == "200" && "$PROMETHEUS_STATUS" == "200" ]]; then
             OVERALL_STATUS="healthy"
-            echo "::set-output name=status::healthy"
+            echo "status=healthy" >> $GITHUB_OUTPUT
           else
             OVERALL_STATUS="unhealthy"
-            echo "::set-output name=status::unhealthy"
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
 
             # Create detailed report for unhealthy services
             echo "Creating detailed health report..."
@@ -115,8 +115,11 @@ jobs:
 
           echo "Health check completed with status: $OVERALL_STATUS"
 
+          # Add timestamp for Slack notification
+          echo "TIMESTAMP=$(date +%s)" >> $GITHUB_ENV
+
       - name: Upload health check results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: health-check-results
           path: ./health-results/
@@ -166,4 +169,4 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          TIMESTAMP: ${{ env.TIMESTAMP || steps.timestamp.outputs.timestamp }}
+          TIMESTAMP: ${{ env.TIMESTAMP }}
