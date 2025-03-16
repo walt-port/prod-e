@@ -1,12 +1,9 @@
 import { Construct } from 'constructs';
-import * as fs from 'fs';
-import * as path from 'path';
 import { IamRole } from '../.gen/providers/aws/iam-role';
 import { IamRolePolicy } from '../.gen/providers/aws/iam-role-policy';
 import { IamRolePolicyAttachment } from '../.gen/providers/aws/iam-role-policy-attachment';
 import { LambdaFunction } from '../.gen/providers/aws/lambda-function';
 import { S3Bucket } from '../.gen/providers/aws/s3-bucket';
-import { S3Object } from '../.gen/providers/aws/s3-object';
 import { ResourceExistenceOptions } from './main';
 
 export class Backup extends Construct {
@@ -33,29 +30,6 @@ export class Backup extends Construct {
       this.bucket = new S3Bucket(this, 'backup-bucket', {
         bucket: 'prod-e-backups',
         tags: { Name: 'prod-e-backups', Project: 'prod-e' },
-      });
-    }
-
-    // Create a dummy backup.zip file if it doesn't exist
-    const dummyZipPath = path.join(__dirname, '../dummy-backup.zip');
-    if (!fs.existsSync(dummyZipPath)) {
-      // Create an empty dummy zip file using the content of the JS file
-      try {
-        const jsContent = fs.readFileSync(path.join(__dirname, '../dummy-backup.js'), 'utf8');
-        fs.writeFileSync(dummyZipPath, jsContent);
-      } catch (error) {
-        console.error('Could not create dummy zip file:', error);
-      }
-    }
-
-    // Upload the dummy zip to S3
-    const s3ObjectExists = this.checkResourceExists('s3', 'prod-e-backups/backup.zip');
-    if (!s3ObjectExists) {
-      new S3Object(this, 'backup-zip', {
-        bucket: this.bucket.bucket,
-        key: 'backup.zip',
-        source: dummyZipPath,
-        sourceHash: fs.readFileSync(dummyZipPath).toString(),
       });
     }
 
@@ -124,16 +98,14 @@ export class Backup extends Construct {
     // Check if Lambda function exists
     const lambdaExists = this.checkResourceExists('lambda', 'prod-e-backup');
 
-    // Create or update the Lambda function
-    // If it exists, we'll update it with the new runtime
+    // Using filename property instead of code object
     this.lambda = new LambdaFunction(this, 'backup-lambda', {
       functionName: 'prod-e-backup',
-      runtime: 'nodejs20.x', // Using the updated runtime
+      runtime: 'nodejs20.x',
       handler: 'index.handler',
-      s3Bucket: this.bucket.bucket,
-      s3Key: 'backup.zip',
       role: this.backupRole.arn,
       timeout: 300,
+      filename: '/tmp/placeholder-lambda.zip', // Use a placeholder path for synthesis
       tags: { Name: 'prod-e-backup-lambda', Project: 'prod-e' },
     });
   }
