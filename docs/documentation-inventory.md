@@ -1,6 +1,6 @@
 # Documentation Inventory
 
-**Version:** 1.3
+**Version:** 1.4
 **Last Updated:** March 16, 2025
 **Owner:** DevOps Team
 
@@ -10,6 +10,7 @@ This document provides a complete inventory of all documentation files in the pr
 
 | Document Title        | File Path                               | Description                                                           | Related Documents                           |
 | --------------------- | --------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------- |
+| Infrastructure        | docs/infrastructure.md                  | Overview of modular infrastructure components and architecture        | All infrastructure documents                |
 | Architecture Overview | infrastructure/architecture-overview.md | High-level architectural design and component relationships           | network-architecture.md, load-balancer.md   |
 | Network Architecture  | infrastructure/network-architecture.md  | VPC, subnets, security groups, and network flow                       | architecture-overview.md                    |
 | Load Balancer         | infrastructure/load-balancer.md         | Application Load Balancer configuration, target groups, and listeners | network-architecture.md, ecs-service.md     |
@@ -80,4 +81,4 @@ The documentation inventory is updated when:
 ---
 
 **Last Updated**: 2025-03-16
-**Version**: 1.3
+**Version**: 1.4
