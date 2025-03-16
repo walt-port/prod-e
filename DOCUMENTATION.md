@@ -1,91 +1,63 @@
-# Production Experience Showcase Documentation
+# Documentation Overview
 
-## Overview
+**Version:** 1.3
+**Last Updated:** March 16, 2025
+**Owner:** DevOps Team
 
-This document serves as the central index for all documentation in the Production Experience Showcase (prod-e) project. It provides organized access to documentation across different categories and serves as the starting point for navigating project documentation.
+This document provides a comprehensive overview of all documentation for the Production Experience Showcase project.
 
-## Table of Contents
+## Documentation Categories
 
-- [Getting Started](#getting-started)
-- [Infrastructure Documentation](#infrastructure-documentation)
-- [Monitoring & Observability](#monitoring--observability)
-- [Process Documentation](#process-documentation)
-- [User Guides](#user-guides)
-- [Audit Documentation](#audit-documentation)
-- [Scripts & Utilities](#scripts--utilities)
-- [Documentation Standards](#documentation-standards)
+### Infrastructure Documentation
 
-## Getting Started
+Documentation related to AWS infrastructure, network configuration, and resource management.
 
-- [Project README](./README.md) - Project overview, technology stack, and implementation progress
-- [Infrastructure Overview](./docs/overview.md) - Main index for infrastructure documentation
+- [Architecture Overview](./docs/infrastructure/architecture-overview.md) - High-level architectural design
+- [Network Configuration](./docs/infrastructure/network-configuration.md) - VPC, subnets, and security groups
+- [Load Balancer Setup](./docs/infrastructure/load-balancer.md) - Application Load Balancer configuration
+- [Database Configuration](./docs/infrastructure/database-config.md) - RDS setup and database schemas
 
-## Infrastructure Documentation
+### Process Documentation
 
-- [Network Architecture](./docs/infrastructure/network-architecture.md) - VPC, subnets, NAT Gateway, and routing
-- [Load Balancer Configuration](./docs/infrastructure/load-balancer.md) - ALB, target groups, and listeners
-- [RDS Database](./docs/infrastructure/rds-database.md) - RDS instance, security groups, and subnet groups
-- [ECS Service](./docs/infrastructure/ecs-service.md) - ECS cluster, task definition, service, health checks
-- [Multi-AZ Strategy](./docs/infrastructure/multi-az-strategy.md) - Multi-AZ implementation and future plans
-- [Container Deployment](./docs/infrastructure/container-deployment.md) - ECR, Docker builds, and container deployment
-- [Remote State Management](./docs/infrastructure/remote-state.md) - S3 remote state backend and DynamoDB state locking
-- [Budget Analysis](./docs/infrastructure/ongoing-budget.md) - Budget analysis and cost management
+Documentation related to development, deployment, and operational processes.
 
-## Monitoring & Observability
-
-- [Monitoring Overview](./docs/monitoring/monitoring.md) - Prometheus and Grafana implementation
-- [Grafana Configuration](./docs/monitoring/grafana.md) - Grafana-specific configuration and dashboards
-
-## Process Documentation
-
-- [CI/CD Pipeline](./docs/processes/ci-cd.md) - GitHub Actions CI/CD implementation
+- [CI/CD Process](./docs/processes/ci-cd.md) - Continuous Integration and Deployment workflow
 - [GitHub Workflows](./docs/processes/github-workflows.md) - Automated monitoring, resource checking, and cleanup workflows
-- [Testing Strategy](./docs/processes/testing.md) - Testing approach, coverage, and examples
+- [AWS Resource Management](./docs/processes/aws-resource-management.md) - AWS resource provisioning and management
+- [Monitoring Setup](./docs/processes/monitoring-setup.md) - Monitoring infrastructure and practices
+- [Testing Strategy](./docs/processes/testing.md) - Testing approach and methodologies
 - [Audit Process](./docs/processes/audits.md) - Infrastructure and codebase audit processes
 
-## User Guides
+### Application Documentation
 
-- [Local Development Setup](./docs/guides/local-development.md) - Setting up a local development environment
-- [Deployment Guide](./docs/guides/deployment-guide.md) - Complete system deployment instructions
-- [Troubleshooting Guide](./docs/guides/troubleshooting.md) - Common issues and resolution steps
+Documentation related to the application components and APIs.
 
-## Audit Documentation
+- [API Reference](./docs/api/api-reference.md) - API endpoints and usage
+- [Frontend Components](./docs/frontend/components.md) - Frontend component documentation
+- [Backend Services](./docs/backend/services.md) - Backend service documentation
 
-- [Audit Overview](./audits/overview.md) - Main index for all audit documentation
-- [Audit README](./audits/README.md) - Audit directory overview
+### User Guides
 
-### Audit Categories
+Documentation intended for users and administrators.
 
-- [Codebase Audits](./audits/codebase/README.md) - Codebase audit reports
-- [Infrastructure Audits](./audits/infrastructure/README.md) - Infrastructure audit reports
-- [Security Audits](./audits/security/README.md) - Security audit reports
+- [User Guide](./docs/guides/user-guide.md) - Guide for end users
+- [Administrator Guide](./docs/guides/admin-guide.md) - Guide for system administrators
+- [Deployment Guide](./docs/guides/deployment-guide.md) - Guide for deploying the application
 
-### Audit Templates
+## Documentation Index
 
-- [Audit Checklist](./audits/templates/audit-checklist.md) - General checklist for audit preparation
-- [Codebase Audit Template](./audits/templates/codebase-audit-template.md) - Template for codebase audits
-- [Infrastructure Audit Template](./audits/templates/infrastructure-audit-template.md) - Template for infrastructure audits
-- [Security Audit Template](./audits/templates/security-audit-template.md) - Template for security audits
+For a complete index of all documentation files, see the [Documentation Inventory](./docs/documentation-inventory.md).
 
-## Scripts & Utilities
+## Document Maintenance
 
-- [Scripts README](./scripts/README.md) - Scripts directory overview
-- [Scripts Documentation](./docs/scripts.md) - Detailed documentation for utility scripts
+- Documentation is reviewed quarterly
+- Updates are made when features or processes change
+- All documentation includes version information and last updated date
+- Documentation is maintained in Markdown format
 
-## Documentation Standards
+## Notes
 
-- [Documentation Inventory](./docs/documentation-inventory.md) - Inventory of all project documentation
-- [Documentation Style Guide](./docs/documentation-style-guide.md) - Standards for documentation format and style
-
-### Documentation Templates
-
-- [General Documentation Template](./docs/templates/general-documentation-template.md) - Template for general documentation
-- [Component Documentation Template](./docs/templates/component-documentation-template.md) - Template for component documentation
-- [Process Documentation Template](./docs/templates/process-documentation-template.md) - Template for process documentation
-
-### Assets
-
-- [Assets README](./docs/assets/README.md) - Guidelines for using documentation assets
+For any questions or suggestions regarding the documentation, please contact the DevOps team.
 
 ---
 

@@ -1,236 +1,94 @@
-# Infrastructure Documentation Overview
+# Infrastructure Documentation
 
-## Introduction
+**Version:** 1.2
+**Last Updated:** March 16, 2025
+**Owner:** DevOps Team
 
-This document serves as the main index for all infrastructure documentation in this project. The project uses Cloud Development Kit for Terraform (CDKTF) with TypeScript to define and deploy AWS infrastructure components.
+## Overview
 
-## Available Documentation
+This document provides a high-level overview of the infrastructure documentation for the Production Experience Showcase. The infrastructure is deployed on AWS using the Cloud Development Kit (CDK) and follows best practices for security, scalability, and reliability.
 
-| Component                 | Description                                                                    | Document Link                                                      |
-| ------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| Network Architecture      | Documentation about VPC, subnets, NAT Gateway, and routing                     | [network-architecture.md](./network-architecture.md)               |
-| Application Load Balancer | Documentation about ALB, target groups, and listeners                          | [load-balancer.md](./load-balancer.md)                             |
-| RDS PostgreSQL Database   | Documentation about RDS instance, security groups, and subnet groups           | [rds-database.md](./rds-database.md)                               |
-| ECS Fargate Service       | Documentation about ECS cluster, task definition, service, and health checks   | [ecs-service.md](./ecs-service.md)                                 |
-| Multi-AZ Strategy         | Documentation of current multi-AZ implementation and future plans              | [multi-az-strategy.md](./multi-az-strategy.md)                     |
-| Container Deployment      | Documentation for ECR, Docker builds, and container deployment                 | [container-deployment.md](./container-deployment.md)               |
-| Testing                   | Comprehensive testing documentation including approach, coverage, and examples | [testing.md](./testing.md)                                         |
-| Monitoring                | Documentation for Prometheus and Grafana implementation                        | [monitoring.md](./monitoring.md)                                   |
-| CI/CD                     | Documentation for GitHub Actions CI/CD implementation                          | [ci-cd.md](./ci-cd.md)                                             |
-| Remote State Backend      | Documentation for S3 remote state backend and DynamoDB state locking           | [remote_state.md](./remote_state.md)                               |
-| Resource Cleanup          | Documentation for AWS resource cleanup process and automated scripts           | [infrastructure/cleanup-plan.md](./infrastructure/cleanup-plan.md) |
-| Operational Monitoring    | Documentation for health checks and resource monitoring                        | [monitoring/operations.md](./monitoring/operations.md)             |
-| Scripts                   | Documentation for maintenance, cleanup, and deployment scripts                 | [scripts.md](./scripts.md)                                         |
-| Infrastructure Audits     | Documentation for infrastructure and codebase audits                           | [../audits/overview.md](../audits/overview.md)                     |
-| Audit Processes           | Documentation for infrastructure and codebase audit processes                  | [audits.md](./audits.md)                                           |
+## Documentation Index
 
-## Infrastructure Overview
+| Document                  | Description                                                       | Link                                                            |
+|--------------------------|-------------------------------------------------------------------|----------------------------------------------------------------|
+| Network Architecture     | Documentation of VPC, subnets, routing, and security groups       | [network-architecture.md](./infrastructure/network-architecture.md) |
+| Load Balancer Configuration | Documentation of Application Load Balancer setup              | [load-balancer.md](./infrastructure/load-balancer.md)           |
+| RDS Database             | Documentation of RDS instance, subnet groups, and security        | [rds-database.md](./infrastructure/rds-database.md)             |
+| ECS Service              | Documentation of ECS cluster, tasks, and services                 | [ecs-service.md](./infrastructure/ecs-service.md)               |
+| Container Deployment     | Documentation of container builds and deployment                  | [container-deployment.md](./infrastructure/container-deployment.md) |
+| Remote State Management  | Documentation of S3 state management and DynamoDB locking         | [remote-state.md](./infrastructure/remote-state.md)             |
+| Budget Analysis          | Documentation of ongoing costs and budget considerations          | [ongoing-budget.md](./infrastructure/ongoing-budget.md)         |
 
-The current infrastructure consists of:
+## Architecture Overview
 
-1. **Base Network Layer**
+The Production Experience Showcase architecture consists of the following key components:
 
-   - VPC with public and private subnets in two availability zones (us-west-2a and us-west-2b)
-   - Internet Gateway for public internet access
-   - NAT Gateway for private subnet outbound internet access
-   - Route tables and associations for both public and private subnets
+### Network Layer
+- VPC with public and private subnets across multiple availability zones
+- Internet Gateway for public subnet internet access
+- Security Groups to control traffic flow
 
-2. **Application Delivery Layer**
+### Application Delivery Layer
+- Application Load Balancer for distributing traffic
+- Target Groups for routing requests to appropriate services
 
-   - Application Load Balancer (ALB) spanning multiple AZs
-   - Target groups for ECS service integration with health checks
-   - Security groups for controlling traffic
+### Compute Layer
+- ECS Fargate for running containerized applications
+- Task Definitions defining container configurations
+- Service Definitions for managing ECS tasks
 
-3. **Data Storage Layer**
+### Data Layer
+- RDS PostgreSQL database for persistent data storage
+- Multi-AZ deployment for high availability
 
-   - PostgreSQL RDS instance with multi-AZ subnet group
-   - Database subnet group spanning multiple AZs
-   - Security groups for database access
+### Monitoring Layer
+- Prometheus for metrics collection
+- CloudWatch for logs and AWS service monitoring
 
-4. **Compute Layer**
+## Infrastructure Design Principles
 
-   - ECS Fargate cluster
-   - ECS Services for the backend application, Prometheus, and Grafana
-   - Task definitions with appropriate CPU and memory allocations
-   - Security groups for service access control
+The infrastructure follows these key design principles:
 
-5. **Monitoring and Operations Layer**
-   - Prometheus for metrics collection and storage
-   - Grafana for metrics visualization and dashboards
-   - Lambda function for Grafana state backup to S3
-   - Automated health monitoring scripts
-   - Resource monitoring and cleanup utilities
+1. **Security-First Approach**
+   - Least privilege access controls
+   - Network segmentation with security groups
+   - Secrets management with AWS Secrets Manager
 
-## Deployment Status
+2. **High Availability**
+   - Multi-AZ deployment for redundancy
+   - Load balancing for request distribution
+   - Automatic instance recovery
 
-The infrastructure has been successfully deployed with the following components:
+3. **Infrastructure as Code**
+   - All infrastructure defined using CDK
+   - Version-controlled infrastructure definitions
+   - Automated deployment through CI/CD pipelines
 
-- VPC (vpc-id): vpc-0fc6af22ecf8449ff
-- ALB DNS name: application-load-balancer-98932456.us-west-2.elb.amazonaws.com
-- ECS cluster: prod-e-cluster
-- RDS endpoint: postgres-instance.cnymcgs0e26q.us-west-2.rds.amazonaws.com:5432
+4. **Cost Optimization**
+   - Resource tagging for cost allocation
+   - Right-sizing of instances and services
+   - Automatic cleanup of unused resources
 
-## Implementation Progress
+## Deployment Workflow
 
-The project is being implemented according to the following timeline:
+Infrastructure deployment follows this general workflow:
 
-- ✅ **Day 1**: Infrastructure Setup
+1. Code changes are pushed to the repository
+2. CI/CD pipeline is triggered
+3. Infrastructure code is synthesized to CloudFormation templates
+4. CloudFormation templates are deployed to AWS
+5. Post-deployment verification checks are performed
 
-  - VPC, subnets, and networking components
-  - RDS PostgreSQL database
-  - ECS Fargate cluster and service
-  - Application Load Balancer
+For more details on the deployment process, see the [CI/CD Process](./processes/ci-cd.md) documentation.
 
-- ✅ **Day 2**: Backend Services
+## Related Documentation
 
-  - Node.js/Express API implementation
-  - Database connectivity
-  - Health check endpoints
-  - Metrics endpoint for Prometheus
-  - Database logging middleware
+- [GitHub Workflows](./processes/github-workflows.md)
+- [AWS Resource Management](./processes/aws-resource-management.md)
+- [Monitoring Setup](./processes/monitoring-setup.md)
 
-- ✅ **Day 2 Continued**: Monitoring Setup (Partial)
+---
 
-  - ✅ Prometheus server implementation on ECS Fargate
-  - ⏳ Grafana dashboard setup (coming soon)
-  - ⏳ Alert configuration
-
-- ✅ **Day 2 Continued**: CI/CD Setup
-
-  - ✅ GitHub Actions workflow configuration
-  - ✅ Automated Docker builds and push to ECR
-  - ✅ Automated testing and deployment
-
-- ✅ **Day 3**: Infrastructure Improvements
-
-  - ✅ Remote state backend with S3 and DynamoDB
-  - ✅ IAM policy for state management
-  - ✅ State locking for concurrent modifications
-
-- ⏳ **Day 3 Continued**: Frontend Dashboard
-
-  - React/TypeScript dashboard
-  - Metrics visualization
-  - Real-time updates
-
-- ⏳ **Day 4**: Polish & Documentation
-  - Final testing and polishing
-  - Complete documentation
-  - Project demonstration
-
-## Deployment Instructions
-
-To deploy this infrastructure:
-
-1. Ensure you have the necessary prerequisites:
-
-   - Node.js (v18+)
-   - Terraform CLI
-   - CDKTF CLI
-   - AWS CLI configured with appropriate credentials
-
-2. Install dependencies:
-
-   ```bash
-   npm install
-   cdktf get
-   ```
-
-3. Synthesize Terraform configuration:
-
-   ```bash
-   npm run synth
-   ```
-
-4. Deploy the infrastructure:
-
-   ```bash
-   npm run deploy
-   ```
-
-## Troubleshooting Common Issues
-
-During deployment, you may encounter the following issues:
-
-1. **RDS Username Reserved Word Error**:
-
-   - Error message: `InvalidParameterValue: MasterUsername admin cannot be used as it is a reserved word used by the engine`
-   - Resolution: Change the username to something other than 'admin' in the configuration
-
-2. **Subnet Requirements for Services**:
-
-   - ALB requires subnets in at least two availability zones
-   - RDS DB subnet group requires subnets in at least two availability zones
-   - Resolution: Add additional subnets in a second AZ
-
-3. **ECS Tasks Cannot Access Internet**:
-   - Error message: "CannotPullContainerError" or similar image pull failures
-   - Resolution: Ensure NAT Gateway is properly configured for private subnets
-
-## Teardown Instructions
-
-There are two options for tearing down the infrastructure:
-
-### Option 1: Using CDKTF (Simple)
-
-This is the recommended approach for most cases:
-
-```bash
-npm run destroy
-```
-
-### Option 2: Using Python Teardown Script (Advanced)
-
-For more control and visibility into the teardown process:
-
-1. Ensure you have Python and boto3 installed:
-
-   ```bash
-   pip install boto3
-   ```
-
-2. Run the teardown script:
-
-   ```bash
-   python scripts/teardown.py
-   ```
-
-3. For a dry run (to see what would be deleted without actually deleting):
-   ```bash
-   python scripts/teardown.py --dry-run
-   ```
-
-See the [scripts README](../scripts/README.md) for more details.
-
-## Environment Configuration
-
-The infrastructure is designed with configuration parameters that can be adjusted in the `config` object in `main.ts`. Key configuration parameters include:
-
-- AWS region: us-west-2
-- VPC CIDR: 10.0.0.0/16
-- Public subnet CIDRs: 10.0.1.0/24, 10.0.3.0/24
-- Private subnet CIDRs: 10.0.2.0/24, 10.0.4.0/24
-- Database settings: instance class, engine version, credentials, etc.
-- ECS settings: CPU, memory, image, container port, etc.
-
-## Recent Updates
-
-| Date       | Component            | Change                                                    |
-| ---------- | -------------------- | --------------------------------------------------------- |
-| 2025-03-15 | Remote State         | Added S3 remote state backend with DynamoDB state locking |
-| 2025-03-14 | Network Architecture | Added NAT Gateway for private subnet internet access      |
-| 2025-03-14 | Multi-AZ             | Added subnets in us-west-2b for high availability         |
-| 2025-03-14 | Health Checks        | Updated ALB target group to use /health endpoint          |
-| 2025-03-14 | Backend              | Added database logging middleware for non-metric requests |
-
-## Future Plans
-
-The infrastructure is designed to be expanded in the future. Planned enhancements include:
-
-- Multi-AZ deployment for high availability (see [multi-az-strategy.md](./multi-az-strategy.md))
-- Proper Node.js/Express API for the ECS service
-- Prometheus and Grafana for monitoring
-- React frontend for visualization
-- CI/CD pipeline with GitHub Actions
-- S3 buckets for static content and file storage
-- CloudWatch for monitoring and alarming
+**Last Updated**: 2025-03-16
+**Version**: 1.2
