@@ -1,15 +1,13 @@
 # Node.js dependencies
 node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Environment variables
 .env
-.env.local
-.env.development
-.env.test
-.env.production
+.env.*
+!.env.example
 
 # Build artifacts
 dist/
@@ -19,6 +17,20 @@ coverage/
 # Logs
 logs/
 *.log
+
+# Cache directories
+.npm/
+.eslintcache
+.cache/
+
+# Testing
+.nyc_output
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
 
 # Operating System Files
 .DS_Store
@@ -30,3 +42,6 @@ Thumbs.db
 *.sublime-*
 *.swp
 *.swo
+
+# Allow all tests
+!tests/
