@@ -2,7 +2,7 @@
 set -e
 
 # Install necessary packages
-npm install -g cdktf-cli
+npm install -g cdktf-cli@0.20.11
 npm ci
 
 # Get dependencies

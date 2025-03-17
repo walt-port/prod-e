@@ -28,27 +28,44 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - name: Debug - Check cdktf.json content
+      - name: Debug - Check environment
         run: |
+          echo "Node version:"
+          node -v
+          echo "NPM version:"
+          npm -v
+          echo "Working directory:"
+          pwd
+          echo "Directory contents:"
+          ls -la
           echo "Content of cdktf.json:"
           cat cdktf.json
           echo "File encoding check:"
           file cdktf.json
+          echo "Check for BOM in cdktf.json:"
+          hexdump -C cdktf.json | head -1
 
       - name: Install cdktf-cli
-        run: npm install -g cdktf-cli
+        run: |
+          npm install -g cdktf-cli@0.20.11
+          echo "CDKTF version:"
+          cdktf --version
 
       - name: Install packages
         run: npm ci
 
-      - name: Clean cdktf.out
-        run: rm -rf cdktf.out
+      - name: Clean cdktf.out and .gen directories
+        run: |
+          rm -rf cdktf.out
+          rm -rf .gen
 
       - name: Run tests
         run: npm test
 
-      - name: Get dependencies with skip-provider-schema-validation
-        run: cdktf get --skip-provider-schema-validation
+      - name: Get dependencies with debug
+        run: |
+          echo "Running cdktf get with debug output..."
+          CDKTF_LOG_LEVEL=debug cdktf get --skip-provider-schema-validation
 
       - name: Synthesize
         run: npm run synth
