@@ -22,7 +22,7 @@ cd ../../..
 
 # Create dummy backup.zip file
 mkdir -p node_modules/backup
-cp -r infrastructure/backup.js node_modules/backup/
+cp infrastructure/lambda/backup.js node_modules/backup/
 cd node_modules/backup
 zip -r backup.zip .
 cp backup.zip ../../

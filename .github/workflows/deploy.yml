@@ -49,12 +49,13 @@ jobs:
       - name: Create Lambda zip file
         run: |
           mkdir -p node_modules/backup
-          cp -r infrastructure/backup.js node_modules/backup/
+          cp infrastructure/lambda/backup.js node_modules/backup/
           cd node_modules/backup
           zip -r backup.zip .
           cp backup.zip ../../
           cd ../../
           mv backup.zip dummy-backup.zip
+          cp dummy-backup.zip cdktf.out/stacks/prod-e/
 
       - name: Copy and execute import script
         run: |
