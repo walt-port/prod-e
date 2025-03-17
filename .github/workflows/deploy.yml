@@ -1,98 +1,157 @@
 name: Deploy Prod-E
-# For detailed documentation on this workflow, see:
-# 1. .github/CICD.md - Quick reference
-# 2. docs/ci-cd.md - Complete documentation
+# Automated deployment workflow for the Production Experience project
+# For complete documentation, see .github/CICD.md
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
+    name: Build and Deploy
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: '1.7.4'
+          terraform_version: 1.4.6
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Install CDKTF
         run: npm install -g cdktf-cli
 
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Generate CDKTF Providers
-        run: cdktf get
-
-      - name: Configure AWS Credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - name: Build and Push Backend
-        run: |
-          cd backend
-          docker build -t prod-e-backend .
-          docker tag prod-e-backend:latest 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-backend:latest
-          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 043309339649.dkr.ecr.us-west-2.amazonaws.com
-          docker push 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-backend:latest
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build and Push Prometheus
+      - name: Build and push Backend Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: prod-e-backend
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          cd backend
-          docker build -f Dockerfile.prometheus -t prod-e-prometheus .
-          docker tag prod-e-prometheus:latest 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest
-          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 043309339649.dkr.ecr.us-west-2.amazonaws.com
-          docker push 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Build and Push Grafana
+      - name: Build and push Prometheus Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: prod-e-prometheus
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          cd backend
-          docker build -f Dockerfile.grafana -t prod-e-grafana .
-          docker tag prod-e-grafana:latest 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-grafana:latest
-          aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 043309339649.dkr.ecr.us-west-2.amazonaws.com
-          docker push 043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-grafana:latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f ./backend/Dockerfile.prometheus ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Run Backend Tests
+      - name: Build and push Grafana Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: prod-e-grafana
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f ./backend/Dockerfile.grafana ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Run backend tests
         run: |
           cd backend
-          npm install
           npm test
 
-      - name: Prepare Lambda Function
+      - name: Prepare Lambda function
         run: |
-          # Create zip file for Lambda function
-          cd infrastructure/lambda
-          rm -f backup.zip  # Remove existing zip file if it exists
-          zip -j backup.zip backup.js
-          # Verify zip file was created correctly
-          ls -la backup.zip
-          unzip -l backup.zip
-          # Copy to the location needed by the import script
-          rm -f ../../dummy-backup.zip  # Remove existing destination file if it exists
-          cp backup.zip ../../dummy-backup.zip || echo "Warning: Copy failed, but continuing..."
-          ls -la ../../dummy-backup.zip
+          cd functions/data-import
+          npm ci
+          npm run build
+          cd ../..
 
-      - name: Prepare Import Script for CI
+      - name: Prepare import script
         run: |
-          chmod +x infrastructure/scripts/import-resources.sh
+          cd scripts/import
+          npm ci
+          cd ../..
 
-      - name: Import Existing Resources
+      - name: Import existing resources
         run: |
-          # Run the import script in CI mode (non-interactive)
-          ./infrastructure/scripts/import-resources.sh --ci
+          cd infrastructure
+          npx cdktf import --app="npm run --silent compile && node cdktf.out/stacks/prod-e"
+          cd ..
 
-      - name: Deploy Infrastructure
+      - name: Deploy with CDKTF
         run: |
-          # Set the environment variable to handle existing resources
-          export SKIP_EXISTING_RESOURCES=true
-          cdktf synth && cdktf deploy --auto-approve
+          cd infrastructure
+          npm run deploy
+          cd ..
+
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment..."
+
+          # Check ALB exists and get DNS name
+          echo "Checking ALB..."
+          ALB_DNS=$(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].DNSName" --output text 2>/dev/null)
+          if [[ -z "$ALB_DNS" || "$ALB_DNS" == "None" ]]; then
+            echo "❌ ERROR: ALB 'prod-e-alb' not found!"
+            exit 1
+          else
+            echo "✅ ALB 'prod-e-alb' found with DNS: $ALB_DNS"
+          fi
+
+          # Check ECS services are active
+          echo "Checking ECS services..."
+          SERVICES_JSON=$(aws ecs describe-services --cluster prod-e-cluster --services backend-service grafana-service prometheus-service)
+
+          # Parse each service status
+          echo "$SERVICES_JSON" | jq -r '.services[] | "\(.serviceName): \(.status) (Desired: \(.desiredCount), Running: \(.runningCount))"'
+
+          # Check if all services are ACTIVE
+          NOT_ACTIVE=$(echo "$SERVICES_JSON" | jq -r '.services[] | select(.status != "ACTIVE") | .serviceName')
+          if [[ -n "$NOT_ACTIVE" ]]; then
+            echo "❌ ERROR: The following services are not ACTIVE:"
+            echo "$NOT_ACTIVE"
+            exit 1
+          else
+            echo "✅ All ECS services are ACTIVE"
+          fi
+
+          # Check RDS instance
+          echo "Checking RDS instance..."
+          DB_STATUS=$(aws rds describe-db-instances --db-instance-identifier prod-e-db --query "DBInstances[0].DBInstanceStatus" --output text 2>/dev/null)
+          if [[ "$DB_STATUS" == "available" ]]; then
+            echo "✅ RDS instance 'prod-e-db' is available"
+          else
+            echo "⚠️ WARNING: RDS instance 'prod-e-db' status is: $DB_STATUS"
+          fi
+
+          echo "Deployment verification completed successfully!"
+
+  resource-check:
+    needs: build-and-deploy
+    uses: ./.github/workflows/resource-check.yml
+    secrets: inherit

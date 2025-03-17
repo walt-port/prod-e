@@ -49,65 +49,67 @@ jobs:
           mkdir -p ./health-results
 
           # Initialize variables with default values
-          API_URL=""
-          PROMETHEUS_URL=""
-          HEALTH_STATUS="000"
+          ALB_DNS=""
+          BACKEND_STATUS="000"
           PROMETHEUS_STATUS="000"
+          GRAFANA_STATUS="000"
 
-          # Check API Gateway endpoints - Handle missing stack gracefully
-          echo "Checking for API Gateway stack..."
-          if aws cloudformation describe-stacks --stack-name prod-e-api &>/dev/null; then
-            API_URL=$(aws cloudformation describe-stacks --stack-name prod-e-api --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" --output text)
-            echo "API endpoint found: $API_URL"
+          # Get the ALB DNS name
+          echo "Getting ALB DNS name..."
+          ALB_DNS=$(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].DNSName" --output text 2>/dev/null)
 
-            if [[ -n "$API_URL" ]]; then
-              # Test API health endpoint
-              HEALTH_STATUS=$(curl -s -o ./health-results/api-health.json -w "%{http_code}" $API_URL/health || echo "000")
-              echo "API Health Status: $HEALTH_STATUS"
-            else
-              echo "API endpoint not found in stack outputs"
-            fi
+          if [[ -n "$ALB_DNS" && "$ALB_DNS" != "None" ]]; then
+            echo "ALB DNS: $ALB_DNS"
+
+            # Test backend health endpoint
+            echo "Checking backend health..."
+            BACKEND_STATUS=$(curl -s -o ./health-results/backend-health.json -w "%{http_code}" "http://${ALB_DNS}/health" --max-time 10 || echo "000")
+            echo "Backend Health Status: $BACKEND_STATUS"
+
+            # Test Prometheus endpoint
+            echo "Checking Prometheus health..."
+            PROMETHEUS_STATUS=$(curl -s -o ./health-results/prometheus-health.json -w "%{http_code}" "http://${ALB_DNS}/prometheus/-/healthy" --max-time 10 || echo "000")
+            echo "Prometheus Status: $PROMETHEUS_STATUS"
+
+            # Test Grafana endpoint
+            echo "Checking Grafana health..."
+            GRAFANA_STATUS=$(curl -s -o ./health-results/grafana-health.json -w "%{http_code}" "http://${ALB_DNS}/grafana/api/health" --max-time 10 || echo "000")
+            echo "Grafana Status: $GRAFANA_STATUS"
           else
-            echo "API Gateway stack 'prod-e-api' does not exist or is not accessible"
-            echo "Stack not deployed" > ./health-results/api-health.json
+            echo "Cannot find ALB 'prod-e-alb'"
+            echo "ALB not found" > ./health-results/alb-status.json
           fi
 
-          # Check Prometheus metrics endpoint - Handle missing stack gracefully
-          echo "Checking for Prometheus stack..."
-          if aws cloudformation describe-stacks --stack-name prod-e-monitoring &>/dev/null; then
-            PROMETHEUS_URL=$(aws cloudformation describe-stacks --stack-name prod-e-monitoring --query "Stacks[0].Outputs[?OutputKey=='PrometheusEndpoint'].OutputValue" --output text)
-            echo "Checking Prometheus endpoint: $PROMETHEUS_URL"
+          # Check ECS services health
+          echo "Checking ECS services..."
+          aws ecs describe-services --cluster prod-e-cluster --services backend-service grafana-service prometheus-service > ./health-results/ecs-services.json
 
-            if [[ -n "$PROMETHEUS_URL" ]]; then
-              PROMETHEUS_STATUS=$(curl -s -o ./health-results/prometheus-health.json -w "%{http_code}" $PROMETHEUS_URL/api/v1/query?query=up || echo "000")
-              echo "Prometheus Status: $PROMETHEUS_STATUS"
-            else
-              echo "Prometheus endpoint not found in stack outputs"
-            fi
-          else
-            echo "Prometheus stack 'prod-e-monitoring' does not exist or is not accessible"
-            echo "Stack not deployed" > ./health-results/prometheus-health.json
-          fi
+          # Extract service status
+          BACKEND_SERVICE_STATUS=$(jq -r '.services[] | select(.serviceName == "backend-service") | .status' ./health-results/ecs-services.json 2>/dev/null || echo "NOT_FOUND")
+          GRAFANA_SERVICE_STATUS=$(jq -r '.services[] | select(.serviceName == "grafana-service") | .status' ./health-results/ecs-services.json 2>/dev/null || echo "NOT_FOUND")
+          PROMETHEUS_SERVICE_STATUS=$(jq -r '.services[] | select(.serviceName == "prometheus-service") | .status' ./health-results/ecs-services.json 2>/dev/null || echo "NOT_FOUND")
 
-          # Check CloudWatch metrics for Lambda functions - Only if Lambda likely exists
-          echo "Checking for Lambda function..."
-          if aws lambda get-function --function-name prod-e-api-handler &>/dev/null; then
-            echo "Checking Lambda invocation metrics..."
-            aws cloudwatch get-metric-statistics \
-              --namespace AWS/Lambda \
-              --metric-name Errors \
-              --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
-              --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
-              --period 3600 \
-              --statistics Sum \
-              --dimensions Name=FunctionName,Value=prod-e-api-handler > ./health-results/lambda-errors.json
-          else
-            echo "Lambda function 'prod-e-api-handler' does not exist or is not accessible"
-            echo "{\"Error\": \"Lambda function not found\"}" > ./health-results/lambda-errors.json
-          fi
+          echo "ECS Service Status:"
+          echo "  - Backend: $BACKEND_SERVICE_STATUS"
+          echo "  - Grafana: $GRAFANA_SERVICE_STATUS"
+          echo "  - Prometheus: $PROMETHEUS_SERVICE_STATUS"
 
-          # Determine overall health status - Consider missing resources as unhealthy
-          if [[ ! -z "$API_URL" && "$HEALTH_STATUS" == "200" && ! -z "$PROMETHEUS_URL" && "$PROMETHEUS_STATUS" == "200" ]]; then
+          # Check RDS database status
+          echo "Checking RDS instance..."
+          aws rds describe-db-instances --db-instance-identifier prod-e-db > ./health-results/rds-status.json 2>/dev/null || echo '{"Error": "RDS instance not found"}' > ./health-results/rds-status.json
+
+          DB_STATUS=$(jq -r '.DBInstances[0].DBInstanceStatus' ./health-results/rds-status.json 2>/dev/null || echo "NOT_FOUND")
+          echo "RDS Status: $DB_STATUS"
+
+          # Determine overall health status
+          if [[ -n "$ALB_DNS" &&
+                "$BACKEND_STATUS" == "200" &&
+                ("$PROMETHEUS_STATUS" == "200" || "$PROMETHEUS_STATUS" == "302" || "$PROMETHEUS_STATUS" == "401") &&
+                ("$GRAFANA_STATUS" == "200" || "$GRAFANA_STATUS" == "302" || "$GRAFANA_STATUS" == "401") &&
+                "$BACKEND_SERVICE_STATUS" == "ACTIVE" &&
+                "$GRAFANA_SERVICE_STATUS" == "ACTIVE" &&
+                "$PROMETHEUS_SERVICE_STATUS" == "ACTIVE" &&
+                ("$DB_STATUS" == "available" || "$DB_STATUS" == "available") ]]; then
             OVERALL_STATUS="healthy"
             echo "status=healthy" >> $GITHUB_OUTPUT
           else
@@ -128,41 +130,64 @@ jobs:
               echo ""
               echo "## Service Status"
 
-              # API Status with more detailed reporting
-              if [[ -z "$API_URL" ]]; then
-                echo "- API Gateway: ❌ Stack Not Deployed"
+              # ALB Status
+              if [[ -z "$ALB_DNS" ]]; then
+                echo "- Load Balancer (prod-e-alb): ❌ Not Found"
               else
-                echo "- API Gateway: $([ $HEALTH_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($HEALTH_STATUS)")"
+                echo "- Load Balancer (prod-e-alb): ✅ Available"
               fi
 
-              # Prometheus Status with more detailed reporting
-              if [[ -z "$PROMETHEUS_URL" ]]; then
-                echo "- Prometheus: ❌ Stack Not Deployed"
+              # Backend Status
+              if [[ "$BACKEND_STATUS" == "200" ]]; then
+                echo "- Backend API: ✅ Healthy"
               else
-                echo "- Prometheus: $([ $PROMETHEUS_STATUS == "200" ] && echo "✅ Healthy" || echo "❌ Unhealthy ($PROMETHEUS_STATUS)")"
+                echo "- Backend API: ❌ Unhealthy ($BACKEND_STATUS)"
               fi
+
+              # Prometheus Status - Accept 200, 302, 401 as valid
+              if [[ "$PROMETHEUS_STATUS" == "200" || "$PROMETHEUS_STATUS" == "302" || "$PROMETHEUS_STATUS" == "401" ]]; then
+                echo "- Prometheus: ✅ Healthy (Code: $PROMETHEUS_STATUS)"
+              else
+                echo "- Prometheus: ❌ Unhealthy ($PROMETHEUS_STATUS)"
+              fi
+
+              # Grafana Status - Accept 200, 302, 401 as valid
+              if [[ "$GRAFANA_STATUS" == "200" || "$GRAFANA_STATUS" == "302" || "$GRAFANA_STATUS" == "401" ]]; then
+                echo "- Grafana: ✅ Healthy (Code: $GRAFANA_STATUS)"
+              else
+                echo "- Grafana: ❌ Unhealthy ($GRAFANA_STATUS)"
+              fi
+
+              # ECS Services Status
+              echo "- ECS Services:"
+              echo "  - Backend: $([ "$BACKEND_SERVICE_STATUS" == "ACTIVE" ] && echo "✅ Active" || echo "❌ Not Active ($BACKEND_SERVICE_STATUS)")"
+              echo "  - Grafana: $([ "$GRAFANA_SERVICE_STATUS" == "ACTIVE" ] && echo "✅ Active" || echo "❌ Not Active ($GRAFANA_SERVICE_STATUS)")"
+              echo "  - Prometheus: $([ "$PROMETHEUS_SERVICE_STATUS" == "ACTIVE" ] && echo "✅ Active" || echo "❌ Not Active ($PROMETHEUS_SERVICE_STATUS)")"
+
+              # RDS Status
+              echo "- RDS Database: $([ "$DB_STATUS" == "available" ] && echo "✅ Available" || echo "❌ Not Available ($DB_STATUS)")"
 
               echo ""
               echo "## Details"
 
-              if [[ -z "$API_URL" ]]; then
-                echo "### API Gateway Issues"
-                echo "CloudFormation stack 'prod-e-api' was not found or is not accessible."
-              elif [[ "$HEALTH_STATUS" != "200" ]]; then
-                echo "### API Gateway Issues"
-                echo "Response code: $HEALTH_STATUS"
-                if [[ -f "./health-results/api-health.json" ]]; then
+              # Detailed issues
+              if [[ -z "$ALB_DNS" ]]; then
+                echo "### Load Balancer Issues"
+                echo "The Application Load Balancer 'prod-e-alb' was not found."
+              fi
+
+              if [[ "$BACKEND_STATUS" != "200" ]]; then
+                echo "### Backend API Issues"
+                echo "Response code: $BACKEND_STATUS"
+                if [[ -f "./health-results/backend-health.json" ]]; then
                   echo "Response body:"
                   echo '```json'
-                  cat ./health-results/api-health.json
+                  cat ./health-results/backend-health.json
                   echo '```'
                 fi
               fi
 
-              if [[ -z "$PROMETHEUS_URL" ]]; then
-                echo "### Prometheus Issues"
-                echo "CloudFormation stack 'prod-e-monitoring' was not found or is not accessible."
-              elif [[ "$PROMETHEUS_STATUS" != "200" ]]; then
+              if [[ "$PROMETHEUS_STATUS" != "200" && "$PROMETHEUS_STATUS" != "302" && "$PROMETHEUS_STATUS" != "401" ]]; then
                 echo "### Prometheus Issues"
                 echo "Response code: $PROMETHEUS_STATUS"
                 if [[ -f "./health-results/prometheus-health.json" ]]; then
@@ -171,6 +196,33 @@ jobs:
                   cat ./health-results/prometheus-health.json
                   echo '```'
                 fi
+              fi
+
+              if [[ "$GRAFANA_STATUS" != "200" && "$GRAFANA_STATUS" != "302" && "$GRAFANA_STATUS" != "401" ]]; then
+                echo "### Grafana Issues"
+                echo "Response code: $GRAFANA_STATUS"
+                if [[ -f "./health-results/grafana-health.json" ]]; then
+                  echo "Response body:"
+                  echo '```json'
+                  cat ./health-results/grafana-health.json
+                  echo '```'
+                fi
+              fi
+
+              if [[ "$BACKEND_SERVICE_STATUS" != "ACTIVE" || "$GRAFANA_SERVICE_STATUS" != "ACTIVE" || "$PROMETHEUS_SERVICE_STATUS" != "ACTIVE" ]]; then
+                echo "### ECS Service Issues"
+                echo "One or more ECS services are not active."
+                echo '```json'
+                jq '.services[] | {serviceName, status, desiredCount, runningCount, events: .events[0:3]}' ./health-results/ecs-services.json
+                echo '```'
+              fi
+
+              if [[ "$DB_STATUS" != "available" ]]; then
+                echo "### RDS Database Issues"
+                echo "The RDS instance 'prod-e-db' is not available (Status: $DB_STATUS)."
+                echo '```json'
+                jq '.DBInstances[0] | {DBInstanceStatus, DBInstanceClass, Engine, EngineVersion}' ./health-results/rds-status.json 2>/dev/null || echo "{\"Error\": \"No instance data available\"}"
+                echo '```'
               fi
             } > ./health-results/health-report.md
           fi
