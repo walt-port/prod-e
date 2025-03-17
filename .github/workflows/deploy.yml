@@ -35,7 +35,7 @@ jobs:
       - run: scripts/monitoring/resource_check.sh
       - run: npm test
       - run: cd infrastructure/lambda && rm -f backup.zip && zip -j backup.zip backup.js && ls -la backup.zip && unzip -l backup.zip && cp backup.zip ../../dummy-backup.zip && ls -la ../../dummy-backup.zip
-      - run: cd cdktf.out/stacks/prod-e && cdktf deploy --auto-approve
+      - run: cdktf deploy --auto-approve
 
   resource-check:
     needs: deploy
