@@ -98,6 +98,9 @@ jobs:
           npm ci
           cd ../..
 
+      - name: Initialize CDKTF
+        run: npm run get
+
       - name: Import existing resources
         run: |
           npx cdktf synth
