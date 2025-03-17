@@ -1,0 +1,24 @@
+{
+  "name": "data-import-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for importing data from S3 to RDS",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "lambda",
+    "data-import",
+    "aws"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1473.0",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "jest": "^29.6.4",
+    "aws-sdk-mock": "^5.8.0"
+  }
+}

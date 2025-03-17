@@ -85,18 +85,18 @@ jobs:
           npm install
           npm run test:reliable
 
-      - name: Prepare Lambda function
-        run: |
-          cd functions/data-import
-          npm ci
-          npm run build
-          cd ../..
+      # - name: Prepare Lambda function
+      #   run: |
+      #     cd functions/data-import
+      #     npm ci
+      #     npm run build
+      #     cd ../..
 
-      - name: Prepare import script
-        run: |
-          cd scripts/import
-          npm ci
-          cd ../..
+      # - name: Prepare import script
+      #   run: |
+      #     cd scripts/import
+      #     npm ci
+      #     cd ../..
 
       - name: Import existing resources
         run: |

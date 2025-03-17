@@ -1,0 +1,27 @@
+{
+  "name": "aws-resource-import",
+  "version": "1.0.0",
+  "description": "Script to detect AWS resources and generate Terraform import commands",
+  "main": "import.js",
+  "scripts": {
+    "start": "node import.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "terraform",
+    "import",
+    "aws",
+    "cdktf"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1473.0",
+    "commander": "^11.0.0",
+    "fs-extra": "^11.1.1"
+  },
+  "devDependencies": {
+    "jest": "^29.6.4",
+    "mock-fs": "^5.2.0"
+  }
+}

@@ -1,0 +1,16 @@
+# Node modules
+node_modules/
+
+# Distribution directory
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage directory
+coverage/
+
+# OS specific files
+.DS_Store
+Thumbs.db
