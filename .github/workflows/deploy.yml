@@ -12,14 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18.x'
+
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v1
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.5.0
+          terraform_version: 1.5.7  # Updated to 1.5.7 for better compatibility
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -47,7 +49,7 @@ jobs:
 
       - name: Install cdktf-cli
         run: |
-          npm install -g cdktf-cli@0.15.5
+          npm install -g cdktf-cli@0.20.7  # Updated to 0.20.7 for better compatibility
           echo "CDKTF version:"
           cdktf --version
 
@@ -65,41 +67,13 @@ jobs:
       - name: Fix package version conflicts
         run: |
           npm uninstall cdktf
-          npm install cdktf@0.15.5 --save --legacy-peer-deps
+          npm install cdktf@0.20.7 --save --legacy-peer-deps  # Match CLI version
 
       - name: Set environment variable to suppress jsii warnings
         run: echo "JSII_SUPPRESS_UPGRADE_PROMPT=1" >> $GITHUB_ENV
 
-      - name: Generate provider schema manually
-        run: |
-          mkdir -p .gen
-          cd .gen
-          echo "Generating AWS provider schema manually..."
-          echo '{
-            "provider": {
-              "aws": {
-                "versions": {
-                  "4.67.0": {
-                    "name": "aws",
-                    "version": "4.67.0"
-                  }
-                }
-              }
-            }
-          }' > constraints.json
-          cd ..
-
       - name: Get dependencies
-        run: |
-          echo "Running cdktf get with workarounds..."
-          JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1 cdktf get --skip-provider-schema-validation --force
-
-          # Check if .gen/providers/aws exists, if not create a minimal structure
-          if [ ! -d ".gen/providers/aws" ]; then
-            echo "Creating minimal AWS provider structure..."
-            mkdir -p .gen/providers/aws
-            echo "// Minimal AWS provider setup" > .gen/providers/aws/index.ts
-          fi
+        run: cdktf get
 
       - name: Synthesize
         run: npm run synth
@@ -115,13 +89,15 @@ jobs:
           mv backup.zip dummy-backup.zip
           cp dummy-backup.zip cdktf.out/stacks/prod-e/
 
-      - name: Copy and execute import script
+      - name: Initialize Terraform and execute import script
         run: |
           chmod +x import-commands.sh
           cp import-commands.sh cdktf.out/stacks/prod-e/
           cd cdktf.out/stacks/prod-e/
-          ../../import-commands.sh > import-commands.log 2>&1 || echo "Import commands completed with some errors"
-          cd ../../..
+          terraform init -upgrade
+          sh ./import-commands.sh > import-commands.log 2>&1 || echo "Import commands completed with some errors"
+          cat import-commands.log
+          cd ../../
 
       - name: Deploy
         run: cdktf deploy --auto-approve
