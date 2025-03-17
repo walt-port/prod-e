@@ -100,16 +100,12 @@ jobs:
 
       - name: Import existing resources
         run: |
-          cd infrastructure
           npx cdktf synth
-          cd ..
           node scripts/import/import.js --region us-west-2 --output ./terraform-imports
 
       - name: Deploy with CDKTF
         run: |
-          cd infrastructure
           npm run deploy
-          cd ..
 
       - name: Verify deployment
         run: |
