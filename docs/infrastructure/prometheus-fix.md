@@ -76,7 +76,7 @@ apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
-    url: http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/prometheus
+    url: http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/prometheus
     isDefault: true
     editable: false
 ```
@@ -219,7 +219,7 @@ apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
-    url: http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/prometheus
+    url: http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/prometheus
     isDefault: true
     editable: false
 ```

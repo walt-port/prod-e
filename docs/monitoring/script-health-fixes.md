@@ -7,11 +7,13 @@
 #### resource_check.sh
 
 - Fixed the `bc` dependency issue by replacing it with bash arithmetic for EFS size calculations
+- Updated the ALB reference to use the correct load balancer name `prod-e-alb` instead of `application-load-balancer`
 - Updated the monitoring services section to correctly check for Grafana service using the proper service name
 - Improved error handling and output formatting
 
 #### monitor-health.sh
 
+- Updated the ALB reference to use the correct load balancer name `prod-e-alb`
 - Updated endpoint checks to use the ALB DNS name instead of internal DNS names that can't be reached
 - Fixed Grafana endpoint check to handle redirects (HTTP 302) as a successful response
 - Improved Prometheus endpoint check to rely on ECS service status instead of direct endpoint access
@@ -24,6 +26,7 @@
 
 ### 2. Documentation Updates
 
+- Updated all documentation to use the correct ALB name `prod-e-alb` for consistency
 - Updated Grafana documentation with troubleshooting information for health issues
 - Added notes about health status discrepancies between ECS tasks and monitoring scripts
 - Updated scripts README with information about the recent fixes and enhancements

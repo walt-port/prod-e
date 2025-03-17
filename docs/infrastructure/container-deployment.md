@@ -41,7 +41,7 @@ The backend application uses a multi-stage Dockerfile for optimal security and e
 The build and push process is automated through a shell script:
 
 ```bash
-./scripts/build-and-push.sh
+./scripts/deployment/build-and-push.sh backend
 ```
 
 This script:
@@ -71,7 +71,7 @@ The ECS task definition is configured to use the ECR image:
 1. Build and push the Docker image:
 
    ```bash
-   ./scripts/build-and-push.sh
+   ./scripts/deployment/build-and-push.sh backend
    ```
 
 2. Deploy the updated infrastructure:
@@ -87,7 +87,7 @@ When making changes to the backend application:
 2. Rebuild and push the Docker image:
 
    ```bash
-   ./scripts/build-and-push.sh
+   ./scripts/deployment/build-and-push.sh backend
    ```
 
 3. The ECS service will automatically detect the new image tagged with "latest" and update its tasks

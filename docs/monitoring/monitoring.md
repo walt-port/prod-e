@@ -160,7 +160,7 @@ Prometheus has been deployed with the following configuration:
 2. **Configuration**:
 
    - Scrape interval: Default (15s)
-   - Target: Backend service via ALB (`application-load-balancer-XXXXX.us-west-2.elb.amazonaws.com:3000`)
+   - Target: Backend service via ALB (`prod-e-alb-962304124.us-west-2.elb.amazonaws.com:3000`)
    - Path: `/metrics`
 
 3. **Security**:

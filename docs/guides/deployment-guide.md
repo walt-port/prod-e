@@ -175,7 +175,7 @@ After deployment completes, verify that all components are functioning correctly
 ```bash
 $ aws ecs list-services --cluster prod-e-cluster
 $ aws rds describe-db-instances --db-instance-identifier postgres-instance
-$ aws elbv2 describe-load-balancers
+$ aws elbv2 describe-load-balancers --names prod-e-alb
 ```
 
 ### 2. Verify Application Health
@@ -183,7 +183,7 @@ $ aws elbv2 describe-load-balancers
 1. Get the ALB DNS name:
 
    ```bash
-   $ aws elbv2 describe-load-balancers --query "LoadBalancers[0].DNSName" --output text
+   $ aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].DNSName" --output text
    ```
 
 2. Check the health endpoint:

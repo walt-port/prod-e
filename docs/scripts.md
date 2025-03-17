@@ -80,11 +80,15 @@ Located in `scripts/deployment/build-and-push.sh`, this script automates buildin
 #### Usage
 
 ```bash
-# Build and push all images
-./scripts/deployment/build-and-push.sh
+# Build and push backend image with default tag (latest)
+./scripts/deployment/build-and-push.sh backend
 
-# Build and push specific service
-./scripts/deployment/build-and-push.sh --service backend
+# Build and push specific service with a version tag
+./scripts/deployment/build-and-push.sh -t v1.0.0 backend
+
+# Build and push Grafana or Prometheus images
+./scripts/deployment/build-and-push.sh grafana
+./scripts/deployment/build-and-push.sh prometheus
 ```
 
 ### create-lambda-zip.js

@@ -8,7 +8,7 @@ Prometheus is deployed as an ECS Fargate task in the `prod-e-cluster`. It is con
 
 - **ECS Fargate Task**: Prometheus runs as a containerized service in ECS Fargate.
 - **Health Check**: The task includes a health check that verifies the Prometheus server is running correctly.
-- **Load Balancer Integration**: Prometheus is accessible via the Application Load Balancer at the `/prometheus` path.
+- **Load Balancer Integration**: Prometheus is accessible via the Application Load Balancer (`prod-e-alb`) at the `/prometheus` path.
 
 ## Configuration
 
@@ -37,7 +37,7 @@ Prometheus is accessible through the Application Load Balancer with the followin
 Prometheus can be accessed at:
 
 ```
-http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/prometheus/
+http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/prometheus/
 ```
 
 ## Testing and Validation
@@ -53,12 +53,12 @@ To verify Prometheus is working correctly:
 2. Verify the Prometheus endpoint is accessible:
 
    ```
-   curl -I http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/prometheus/
+   curl -I http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/prometheus/
    ```
 
 3. Check that metrics are being collected:
    ```
-   curl http://application-load-balancer-98932456.us-west-2.elb.amazonaws.com/prometheus/api/v1/targets
+   curl http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/prometheus/api/v1/targets
    ```
 
 ## Troubleshooting

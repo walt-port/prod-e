@@ -147,8 +147,8 @@ This document provides a comprehensive guide for troubleshooting common issues w
 2. Verify target group and listener configuration:
 
    ```bash
-   $ aws elbv2 describe-target-groups
-   $ aws elbv2 describe-listeners --load-balancer-arn arn:aws:elasticloadbalancing:...
+   $ aws elbv2 describe-target-groups --load-balancer-arn $(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].LoadBalancerArn" --output text)
+   $ aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].LoadBalancerArn" --output text)
    ```
 
 3. Check ALB security groups allow traffic on appropriate ports

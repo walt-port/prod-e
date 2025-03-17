@@ -22,9 +22,9 @@ This module handles all network-related resources:
 
 This module manages the load balancing tier:
 
-- Application Load Balancer in public subnets
-- HTTP listener with rules
-- Default fixed response for health checks
+- Application Load Balancer (`prod-e-alb`) in public subnets
+- HTTP listener with rules for backend, Prometheus, and Grafana services
+- Target groups for each service with appropriate health checks
 
 ### 3. ECS Fargate (`ecs.ts`)
 

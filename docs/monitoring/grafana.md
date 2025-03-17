@@ -56,7 +56,7 @@ Basic alerting has been configured for:
 
 ## Access Information
 
-- **URL**: http://{ALB_DNS}/grafana
+- **URL**: http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/grafana
 - **Default username**: admin
 - **Default password**: Stored in AWS Secrets Manager (grafana-admin-credentials)
 
@@ -67,7 +67,7 @@ Basic alerting has been configured for:
 Use the following command to verify Grafana is running properly:
 
 ```bash
-curl -u admin:{PASSWORD} http://{ALB_DNS}/grafana/api/health
+curl -u admin:{PASSWORD} http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/grafana/api/health
 ```
 
 ### Prometheus Connection
@@ -111,7 +111,7 @@ aws lambda invoke --function-name grafana-backup out.json
 4. **Internal endpoints not accessible**:
 
    - Scripts using internal DNS names (e.g., `prod-e-grafana.internal`) may fail with timeout errors
-   - Use the ALB DNS name instead, with the appropriate path (e.g., `http://{ALB_DNS}/grafana/api/health`)
+   - Use the ALB DNS name instead, with the appropriate path (e.g., `http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/grafana/api/health`)
 
 5. **Task reports as UNHEALTHY in monitoring scripts**:
    - Check the ECS task's health status using `aws ecs describe-tasks`
