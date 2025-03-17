@@ -16,6 +16,7 @@ export class Ecs extends Construct {
   public taskExecutionRole: IamRole;
   public taskRole: IamRole;
   public taskDefinition: EcsTaskDefinition;
+  public backendTaskDefinition: EcsTaskDefinition;
 
   constructor(scope: Construct, id: string, networking: Networking, alb: Alb) {
     super(scope, id);
@@ -117,6 +118,12 @@ export class Ecs extends Construct {
       },
     });
 
+    // Add permissions to task role to access Secrets Manager
+    new IamRolePolicyAttachment(this, 'ecs-task-secretsmanager-policy', {
+      role: this.taskRole.name,
+      policyArn: 'arn:aws:iam::aws:policy/SecretsManagerReadWrite',
+    });
+
     // Task definition for Grafana
     this.taskDefinition = new EcsTaskDefinition(this, 'grafana-task-definition', {
       family: 'grafana-task',
@@ -141,7 +148,7 @@ export class Ecs extends Construct {
           environment: [
             {
               name: 'GF_SERVER_ROOT_URL',
-              value: 'http://application-load-balancer.us-west-2.elb.amazonaws.com/grafana',
+              value: 'http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/grafana',
             },
             { name: 'GF_SERVER_SERVE_FROM_SUB_PATH', value: 'true' },
             { name: 'GF_SECURITY_ADMIN_USER', value: 'admin' },
@@ -159,6 +166,80 @@ export class Ecs extends Construct {
         },
       ]),
       tags: { Name: 'grafana-task-def' },
+    });
+
+    // Task definition for backend service
+    this.backendTaskDefinition = new EcsTaskDefinition(this, 'backend-task-definition', {
+      family: 'prod-e-task',
+      requiresCompatibilities: ['FARGATE'],
+      networkMode: 'awsvpc',
+      cpu: '256',
+      memory: '512',
+      executionRoleArn: this.taskExecutionRole.arn,
+      taskRoleArn: this.taskRole.arn,
+      containerDefinitions: JSON.stringify([
+        {
+          name: 'prod-e-container',
+          image: '043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-backend:latest',
+          essential: true,
+          portMappings: [
+            {
+              containerPort: 3000,
+              hostPort: 3000,
+              protocol: 'tcp',
+            },
+          ],
+          environment: [
+            { name: 'NODE_ENV', value: 'production' },
+            { name: 'AWS_REGION', value: 'us-west-2' },
+            { name: 'DB_CREDENTIALS_SECRET_NAME', value: 'prod-e-db-credentials' },
+          ],
+          secrets: [
+            {
+              name: 'DB_HOST',
+              valueFrom:
+                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:host::',
+            },
+            {
+              name: 'DB_PORT',
+              valueFrom:
+                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:port::',
+            },
+            {
+              name: 'DB_NAME',
+              valueFrom:
+                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:dbname::',
+            },
+            {
+              name: 'DB_USER',
+              valueFrom:
+                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:username::',
+            },
+            {
+              name: 'DB_PASSWORD',
+              valueFrom:
+                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:password::',
+            },
+          ],
+          logConfiguration: {
+            logDriver: 'awslogs',
+            options: {
+              'awslogs-group': '/ecs/prod-e-task',
+              'awslogs-region': 'us-west-2',
+              'awslogs-stream-prefix': 'ecs',
+              'awslogs-create-group': 'true',
+            },
+          },
+          healthCheck: {
+            command: ['CMD-SHELL', 'curl -f http://localhost:3000/health || exit 1'],
+            interval: 30,
+            timeout: 5,
+            retries: 3,
+            startPeriod: 60,
+          },
+        },
+      ]),
+      tags: { Name: 'backend-task-def', Project: 'prod-e' },
     });
 
     this.service = new EcsService(this, 'grafana-service', {
