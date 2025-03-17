@@ -355,8 +355,8 @@ check_alb() {
       fi
     done
 
-    # Get ALB ARN for target groups
-    ALB_ARN=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(LoadBalancerName, 'application')].LoadBalancerArn" --output text --region $AWS_REGION)
+    # Get ALB ARN for target groups - using the correct load balancer name 'prod-e-alb'
+    ALB_ARN=$(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].LoadBalancerArn" --output text --region $AWS_REGION)
 
     # Check target groups
     TARGET_GROUPS=$(aws elbv2 describe-target-groups --load-balancer-arn "$ALB_ARN" --output text --region $AWS_REGION --query "TargetGroups[*].[TargetGroupName,Port,Protocol,TargetType]")
@@ -501,11 +501,11 @@ check_monitoring() {
     fi
   fi
 
-  # Get ALB DNS name for endpoint checks
-  ALB_DNS=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?contains(LoadBalancerName, 'application')].DNSName" --output text --region $AWS_REGION)
+  # Get ALB DNS for endpoint checks
+  ALB_DNS=$(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].DNSName" --output text --region $AWS_REGION)
 
   if [[ -n "$ALB_DNS" ]]; then
-    # Try to access Grafana endpoint
+    # Check Grafana endpoint health
     GRAFANA_URL="http://$ALB_DNS/grafana/"
     print_detail "Testing Grafana endpoint: $GRAFANA_URL"
 

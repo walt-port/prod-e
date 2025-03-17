@@ -13,6 +13,23 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Helper functions for printing formatted messages
+print_step() {
+  echo -e "\n${BLUE}$1${NC}"
+}
+
+print_success() {
+  echo -e "${GREEN}✓ $1${NC}"
+}
+
+print_error() {
+  echo -e "${RED}✗ $1${NC}"
+}
+
+print_info() {
+  echo -e "${YELLOW}ℹ $1${NC}"
+}
+
 # Configuration
 ALERTS_ENABLED=${ALERTS_ENABLED:-false}
 SLACK_WEBHOOK=${SLACK_WEBHOOK:-""}
@@ -281,7 +298,7 @@ check_endpoints() {
   echo -e "\n${BLUE}Checking Endpoints...${NC}"
 
   # Get the ALB DNS name
-  ALB_DNS=$(aws elbv2 describe-load-balancers --names application-load-balancer --query "LoadBalancers[0].DNSName" --output text --region $AWS_REGION)
+  ALB_DNS=$(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].DNSName" --output text --region $AWS_REGION)
 
   if [[ -z "$ALB_DNS" ]]; then
     echo -e "${RED}Could not determine ALB DNS name${NC}"
@@ -322,9 +339,10 @@ check_prometheus() {
 
   if [[ "$PROM_SERVICE" == "ACTIVE" ]]; then
     # Get the task ARN for the Prometheus service
-    PROM_TASK=$(aws ecs list-tasks --cluster prod-e-cluster --service-name prometheus-service --region $AWS_REGION | jq -r '.taskArns[0]')
-    if [[ -n "$PROM_TASK" && "$PROM_TASK" != "null" ]]; then
-      HEALTH_STATUS=$(aws ecs describe-tasks --cluster prod-e-cluster --tasks $PROM_TASK --region $AWS_REGION | jq -r '.tasks[0].containers[0].healthStatus')
+    PROM_TASK=$(aws ecs list-tasks --cluster prod-e-cluster --service-name prometheus-service --region $AWS_REGION --query "taskArns[0]" --output text)
+
+    if [[ -n "$PROM_TASK" && "$PROM_TASK" != "None" ]]; then
+      HEALTH_STATUS=$(aws ecs describe-tasks --cluster prod-e-cluster --tasks $PROM_TASK --region $AWS_REGION --query "tasks[0].containers[0].healthStatus" --output text)
 
       if [[ "$HEALTH_STATUS" == "HEALTHY" ]]; then
         print_success "Prometheus service is healthy"
