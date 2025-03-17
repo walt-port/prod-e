@@ -7,81 +7,52 @@
  * - Verifies database initialization
  */
 
-// Create mock objects
-const mockClient = {
-  query: jest.fn().mockResolvedValue({}),
-  release: jest.fn(),
-};
-
-const mockPool = {
-  connect: jest.fn().mockResolvedValue(mockClient),
-  on: jest.fn(),
-};
-
-// Mock the pg module
-jest.mock('pg', () => {
-  return {
-    Pool: jest.fn(() => mockPool),
-  };
-});
+// Import and set up the pg mock from the centralized location
+const pg = require('pg');
+const mockClient = pg._mockClient;
+const mockPool = pg._mockPool;
+const Pool = pg.Pool;
 
 describe('Database Connection', () => {
   let originalEnv;
-  let Pool;
 
   beforeEach(() => {
-    // Save original environment
+    // Save original environment and set test values
     originalEnv = { ...process.env };
 
-    // Clear module cache to ensure fresh app instance
-    jest.resetModules();
-
-    // Reset mocks
-    jest.clearAllMocks();
-
     // Set test environment variables
-    process.env.NODE_ENV = 'development';
+    process.env.NODE_ENV = 'production';
     process.env.DB_HOST = 'test-host';
     process.env.DB_PORT = '5432';
     process.env.DB_NAME = 'test-db';
     process.env.DB_USER = 'test-user';
     process.env.DB_PASSWORD = 'test-password';
 
-    // Get the mocked Pool constructor
-    Pool = require('pg').Pool;
+    // Reset pg module mocks
+    pg._reset();
   });
 
   afterEach(() => {
     // Restore original environment
-    process.env = originalEnv;
-  });
-
-  it('should not connect to database in test mode', async () => {
-    // Set test environment
-    process.env.NODE_ENV = 'test';
-
-    // Mock console.log to avoid cluttering test output
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-
-    // Import the app
-    const app = require('../index');
-
-    // Check that Pool was not called
-    expect(Pool).not.toHaveBeenCalled();
+    process.env = { ...originalEnv };
   });
 
   it('should initialize database with correct configuration', async () => {
-    // Mock console.log to avoid cluttering test output
-    jest.spyOn(console, 'log').mockImplementation(() => {});
+    // Set up the successful connection path
+    mockPool.connect.mockResolvedValue(mockClient);
+    mockClient.query.mockResolvedValue({ rows: [] });
 
     // Import the app
-    const app = require('../index');
+    require('../index');
+
+    // Wait for any promises to resolve
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Check that Pool was constructed
-    expect(Pool).toHaveBeenCalledTimes(1);
+    expect(Pool).toHaveBeenCalled();
 
     // Check the configuration passed to Pool
-    const poolConfig = Pool.mock.calls[0][0];
+    const poolConfig = mockPool.config;
     expect(poolConfig).toEqual({
       host: 'test-host',
       port: '5432',
@@ -93,14 +64,10 @@ describe('Database Connection', () => {
       connectionTimeoutMillis: 2000,
     });
 
-    // Wait for any promises to resolve
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     // Check that connect was called (for database initialization)
     expect(mockPool.connect).toHaveBeenCalled();
 
-    // Check that query was called on the client
-    expect(mockClient.query).toHaveBeenCalled();
+    // Check that query was called on the client to create the table
     expect(mockClient.query).toHaveBeenCalledWith(
       expect.stringContaining('CREATE TABLE IF NOT EXISTS metrics')
     );
@@ -110,22 +77,37 @@ describe('Database Connection', () => {
   });
 
   it('should handle database connection errors gracefully', async () => {
-    // Mock console.error to avoid cluttering test output
+    // Make the connect method throw an error for this test
+    const connectionError = new Error('Connection error');
+    mockPool.connect.mockRejectedValueOnce(connectionError);
+
+    // Spy on console.error
     jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Make the connect method throw an error
-    mockPool.connect.mockRejectedValueOnce(new Error('Connection error'));
-
     // Import the app
-    const app = require('../index');
+    require('../index');
 
-    // Wait for any promises to resolve
+    // Wait for any promises to resolve (including the rejected one)
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // Check that console.error was called with the error
-    expect(console.error).toHaveBeenCalledWith(
-      'Error initializing database:',
-      expect.objectContaining({ message: 'Connection error' })
-    );
+    expect(console.error).toHaveBeenCalledWith('Error initializing database:', connectionError);
+  });
+
+  it('should skip database connection in test environment', async () => {
+    // Set environment to test
+    process.env.NODE_ENV = 'test';
+
+    // Import the app
+    require('../index');
+
+    // Wait a moment
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Check that Pool was not constructed in test environment
+    expect(Pool).not.toHaveBeenCalled();
+
+    // Check that connect was not called
+    expect(mockPool.connect).not.toHaveBeenCalled();
   });
 });

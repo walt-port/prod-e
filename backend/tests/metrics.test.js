@@ -1,92 +1,122 @@
 /**
  * Metrics Endpoint Tests
  *
- * Tests the /metrics endpoint functionality including:
+ * Tests the Prometheus metrics endpoint functionality:
  * - Proper response format
- * - Handling of default metrics
  * - Error handling
  */
 
 const request = require('supertest');
 
+// Mock prom-client
+jest.mock('prom-client', () => {
+  const mockRegistry = {
+    metrics: jest.fn().mockResolvedValue('mock metrics data'),
+    contentType: 'text/plain; version=0.0.4; charset=utf-8',
+  };
+
+  return {
+    Counter: jest.fn().mockImplementation(() => ({
+      inc: jest.fn(),
+      labels: jest.fn().mockReturnThis(),
+    })),
+    Histogram: jest.fn().mockImplementation(() => ({
+      observe: jest.fn(),
+      labels: jest.fn().mockReturnThis(),
+    })),
+    Registry: jest.fn(() => mockRegistry),
+    collectDefaultMetrics: jest.fn(),
+  };
+});
+
+// Mock metrics generation error scenario separately
+jest.mock(
+  '../utils/metrics-generator',
+  () => {
+    return {
+      generateMetrics: jest.fn().mockImplementation(() => {
+        throw new Error('Metrics generation failed');
+      }),
+    };
+  },
+  { virtual: true }
+);
+
 describe('Metrics Endpoint', () => {
-  let app;
   let originalEnv;
+  let app;
+  let promClient;
 
   beforeEach(() => {
-    // Save original environment and clean cache to ensure fresh app instance
-    originalEnv = process.env;
-    process.env = { ...originalEnv };
-    process.env.NODE_ENV = 'test'; // Use test mode to avoid database connections
+    // Save original environment
+    originalEnv = { ...process.env };
 
-    jest.resetModules();
+    // Set test environment
+    process.env.NODE_ENV = 'test';
 
-    // Import the app
-    app = require('../index');
+    // Get access to the mock registry
+    promClient = require('prom-client');
   });
 
   afterEach(() => {
     // Restore original environment
-    process.env = originalEnv;
+    process.env = { ...originalEnv };
+
+    // Clean up app if it was loaded
+    if (app && app.close) {
+      app.close();
+    }
   });
 
-  it('should return 200 and Prometheus metrics in the correct format', async () => {
-    // Make the request
-    const response = await request(app).get('/metrics').expect(200);
-
-    // Check content type
-    expect(response.headers['content-type']).toMatch(/text\/plain/);
-
-    // Check for common Prometheus metric patterns
-    expect(response.text).toMatch(/^# HELP /m); // Help line
-    expect(response.text).toMatch(/^# TYPE /m); // Type line
-
-    // Check for our custom metrics
-    expect(response.text).toMatch(/http_request_duration_seconds/);
-    expect(response.text).toMatch(/http_requests_total/);
-  });
-
-  it('should include default metrics with the configured prefix', async () => {
-    // Set custom metrics prefix
-    process.env.METRICS_PREFIX = 'test_prefix_';
-    jest.resetModules();
-
-    // Import the app with new config
+  it('should return metrics data with correct content type', async () => {
+    // Import the app
     app = require('../index');
 
     // Make the request
-    const response = await request(app).get('/metrics').expect(200);
+    const response = await request(app)
+      .get('/metrics')
+      .expect('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+      .expect(200);
 
-    // Check for metrics with our prefix
-    expect(response.text).toMatch(/test_prefix_/);
+    // Check response
+    expect(response.text).toBe('mock metrics data');
+    expect(promClient.Registry().metrics).toHaveBeenCalled();
   });
 
-  it('should handle errors when generating metrics', async () => {
+  it('should handle errors during metrics generation', async () => {
+    // Reset modules to ensure our mock error is used
     jest.resetModules();
 
-    // Mock prom-client to simulate an error
-    jest.mock('prom-client', () => {
-      const mockRegistry = {
-        contentType: 'text/plain',
-        metrics: jest.fn().mockRejectedValue(new Error('Metrics generation failed')),
-        registerMetric: jest.fn(),
-      };
+    // Create error in metrics generation
+    promClient.Registry().metrics.mockRejectedValueOnce(new Error('Metrics generation failed'));
 
-      return {
-        Registry: jest.fn(() => mockRegistry),
-        collectDefaultMetrics: jest.fn(),
-        Histogram: jest.fn(() => ({ name: 'http_request_duration_seconds' })),
-        Counter: jest.fn(() => ({ name: 'http_requests_total' })),
-      };
-    });
-
-    // Import the app with mocked modules
+    // Import the app
     app = require('../index');
 
-    // Make the request
+    // Make request that should trigger an error
     const response = await request(app).get('/metrics').expect(500);
 
-    // Check error message
+    // Check error response
     expect(response.text).toBe('Error generating metrics');
+  });
+
+  it('should register custom metrics with the registry', async () => {
+    // Import the app
+    app = require('../index');
+
+    // Verify metrics were registered
+    expect(promClient.Counter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'http_requests_total',
+        help: expect.any(String),
+      })
+    );
+
+    expect(promClient.Histogram).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'http_request_duration_seconds',
+        help: expect.any(String),
+      })
+    );
   });
 });

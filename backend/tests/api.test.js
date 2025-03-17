@@ -1,120 +1,125 @@
 /**
  * API Endpoint Tests
  *
- * Tests the API endpoints:
- * - Validates response status codes
- * - Tests response content
- * - Verifies error handling
+ * Tests the basic API endpoints functionality:
+ * - Root endpoint response
+ * - Not found handling
+ * - Request logging
  */
 
 const request = require('supertest');
-const express = require('express');
-
-// Mock the pg module
-jest.mock('pg', () => {
-  const mockClient = {
-    query: jest.fn().mockResolvedValue({}),
-    release: jest.fn(),
-  };
-
-  const mockPool = {
-    connect: jest.fn().mockResolvedValue(mockClient),
-    on: jest.fn(),
-  };
-
-  return {
-    Pool: jest.fn(() => mockPool),
-  };
-});
-
-// Mock the prom-client module
-jest.mock('prom-client', () => {
-  const mockCounter = {
-    inc: jest.fn(),
-    labels: jest.fn().mockReturnThis(),
-  };
-
-  const mockHistogram = {
-    observe: jest.fn(),
-    labels: jest.fn().mockReturnThis(),
-  };
-
-  const mockRegistry = {
-    registerMetric: jest.fn(),
-    metrics: jest.fn().mockResolvedValue('mock metrics data'),
-    contentType: 'text/plain; version=0.0.4; charset=utf-8',
-  };
-
-  return {
-    Counter: jest.fn(() => mockCounter),
-    Histogram: jest.fn(() => mockHistogram),
-    Registry: jest.fn(() => mockRegistry),
-    collectDefaultMetrics: jest.fn(),
-  };
-});
+const pg = require('pg');
+const mockClient = pg._mockClient;
+const mockPool = pg._mockPool;
 
 describe('API Endpoints', () => {
-  let app;
   let originalEnv;
+  let app;
 
   beforeEach(() => {
     // Save original environment
     originalEnv = { ...process.env };
 
-    // Clear module cache to ensure fresh app instance
-    jest.resetModules();
-
-    // Reset mocks
-    jest.clearAllMocks();
-
-    // Set test environment
+    // Set test mode to avoid database connections
     process.env.NODE_ENV = 'test';
 
-    // Mock console methods to avoid cluttering test output
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    // Import the app
-    app = require('../index');
+    // Reset mocks
+    pg._reset();
   });
 
   afterEach(() => {
     // Restore original environment
-    process.env = originalEnv;
+    process.env = { ...originalEnv };
+
+    // Clean up app if it was loaded
+    if (app && app.close) {
+      app.close();
+    }
   });
 
-  describe('GET /health', () => {
-    it('should return 200 status code and health information', async () => {
-      const response = await request(app).get('/health');
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty('status');
-      expect(response.body).toHaveProperty('timestamp');
-      expect(response.body).toHaveProperty('database');
-      expect(response.body.status).toBe('ok');
-      expect(response.body.database).toBe('skipped (test mode)');
-    });
+  it('should return welcome message at root endpoint', async () => {
+    // Import the app
+    app = require('../index');
+
+    // Make the request
+    const response = await request(app).get('/').expect('Content-Type', /json/).expect(200);
+
+    // Check response
+    expect(response.body).toHaveProperty('message');
+    expect(response.body.message).toContain('Production Experience');
   });
 
-  describe('GET /metrics', () => {
-    it('should return 200 status code and metrics data', async () => {
-      const response = await request(app).get('/metrics');
-      expect(response.statusCode).toBe(200);
-      expect(response.text).toBe('mock metrics data');
-      expect(response.headers['content-type']).toBe('text/plain; version=0.0.4; charset=utf-8');
-    });
+  it('should return 404 for non-existent routes', async () => {
+    // Import the app
+    app = require('../index');
+
+    // Make the request to a non-existent route
+    const response = await request(app)
+      .get('/nonexistent-route')
+      .expect('Content-Type', /json/)
+      .expect(404);
+
+    // Check response
+    expect(response.body).toHaveProperty('error');
+    expect(response.body.error).toContain('Not Found');
   });
 
-  describe('GET /api-docs', () => {
-    it('should return a successful response for API docs', async () => {
-      const response = await request(app).get('/api-docs');
-      expect(response.statusCode).toBe(301);
-    });
+  it('should log requests to the database in production mode', async () => {
+    // Set production environment
+    process.env.NODE_ENV = 'production';
+
+    // Set up mocks for database interactions
+    mockPool.connect
+      .mockResolvedValueOnce(mockClient) // For initialization
+      .mockResolvedValueOnce(mockClient); // For request logging
+
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    // Import the app
+    app = require('../index');
+
+    // Wait for initialization
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Make a request that should be logged
+    await request(app).get('/').expect(200);
+
+    // Verify database query was called to log the request
+    // Skip metrics endpoint which doesn't log
+    expect(mockPool.connect).toHaveBeenCalledTimes(2); // Once for init, once for logging
+    expect(mockClient.query).toHaveBeenCalledWith(
+      'INSERT INTO metrics(endpoint, method, status_code, duration_ms) VALUES($1, $2, $3, $4)',
+      ['/', 'GET', 200, expect.any(Number)]
+    );
+    expect(mockClient.release).toHaveBeenCalled();
   });
 
-  describe('GET /nonexistent-route', () => {
-    it('should return 404 status code for nonexistent routes', async () => {
-      const response = await request(app).get('/nonexistent-route');
-      expect(response.statusCode).toBe(404);
-    });
+  it('should not log health check requests to database', async () => {
+    // Set production environment
+    process.env.NODE_ENV = 'production';
+
+    // Set up mocks for database interactions
+    mockPool.connect
+      .mockResolvedValueOnce(mockClient) // For initialization
+      .mockResolvedValueOnce(mockClient); // For health check
+
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    // Import the app
+    app = require('../index');
+
+    // Wait for initialization
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Make a request to health endpoint
+    await request(app).get('/health').expect(200);
+
+    // Verify the health endpoint request was not logged to DB
+    // We should see two connect calls (init and health check) but no INSERT query for logging
+    expect(mockPool.connect).toHaveBeenCalledTimes(2);
+    expect(mockClient.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO metrics'),
+      expect.arrayContaining(['/health'])
+    );
   });
 });

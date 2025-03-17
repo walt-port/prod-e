@@ -13,6 +13,7 @@ const express = require('express');
 const promClient = require('prom-client');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const AWS = require('aws-sdk');
 
 // Create Express application
 const app = express();
@@ -20,6 +21,11 @@ const port = process.env.PORT || 3000;
 
 // Determine if we should connect to the database
 const shouldConnectToDatabase = process.env.NODE_ENV !== 'test';
+
+// Configure AWS SDK
+if (process.env.NODE_ENV === 'production') {
+  AWS.config.update({ region: process.env.AWS_REGION || 'us-west-2' });
+}
 
 // Configure Prometheus metrics
 const register = new promClient.Registry();
@@ -69,18 +75,70 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Configure PostgreSQL connection if not in test mode
 let pool;
-if (shouldConnectToDatabase) {
-  const { Pool } = require('pg');
-  pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    max: 20, // Maximum number of clients in the pool
-    idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-    connectionTimeoutMillis: 2000, // How long to wait for a connection
-  });
+let dbConfig = {};
+
+async function getDbCredentials() {
+  if (process.env.NODE_ENV === 'production') {
+    // In production, get credentials from AWS Secrets Manager
+    const secretsManager = new AWS.SecretsManager();
+    try {
+      const secretId = process.env.DB_CREDENTIALS_SECRET_NAME || 'prod-e-db-credentials';
+      const data = await secretsManager.getSecretValue({ SecretId: secretId }).promise();
+      const secret = JSON.parse(data.SecretString);
+
+      return {
+        host: secret.host || process.env.DB_HOST,
+        port: secret.port || process.env.DB_PORT,
+        database: secret.dbname || process.env.DB_NAME,
+        user: secret.username || process.env.DB_USER,
+        password: secret.password || process.env.DB_PASSWORD,
+      };
+    } catch (err) {
+      console.error('Error retrieving database credentials from Secrets Manager:', err);
+      console.warn('Falling back to environment variables for database configuration');
+
+      // Fall back to environment variables
+      return {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+      };
+    }
+  } else {
+    // In non-production environments, use environment variables
+    return {
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+    };
+  }
+}
+
+// Initialize database connection
+async function initializeDatabaseConnection() {
+  if (shouldConnectToDatabase) {
+    const { Pool } = require('pg');
+    dbConfig = await getDbCredentials();
+
+    pool = new Pool({
+      host: dbConfig.host,
+      port: dbConfig.port,
+      database: dbConfig.database,
+      user: dbConfig.user,
+      password: dbConfig.password,
+      max: 20, // Maximum number of clients in the pool
+      idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
+      connectionTimeoutMillis: 2000, // How long to wait for a connection
+    });
+
+    console.log(
+      `Database connection initialized to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database} as ${dbConfig.user}`
+    );
+  }
 }
 
 // Middleware to measure request duration
@@ -126,6 +184,8 @@ async function initializeDatabase() {
     console.log('Skipping database initialization in test mode');
     return;
   }
+
+  await initializeDatabaseConnection();
 
   let client;
   try {

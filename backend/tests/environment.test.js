@@ -35,100 +35,75 @@ jest.mock('swagger-jsdoc', () => {
   return jest.fn(() => ({ openapi: '3.0.0' }));
 });
 
-// Mock pg
-jest.mock('pg', () => {
-  const mockClient = {
-    query: jest.fn().mockResolvedValue({ rows: [] }),
-    release: jest.fn(),
-  };
-
-  const mockPool = {
-    connect: jest.fn().mockResolvedValue(mockClient),
-    end: jest.fn().mockResolvedValue(undefined),
-  };
-
-  return {
-    Pool: jest.fn(config => {
-      mockPool.config = config;
-      return mockPool;
-    }),
-  };
-});
-
 // Mock prom-client
 jest.mock('prom-client', () => {
-  const mockCollectDefaultMetrics = jest.fn();
-  const mockRegisterMetric = jest.fn();
-  const mockRegistry = {
-    registerMetric: mockRegisterMetric,
-    contentType: 'text/plain',
-    metrics: jest.fn().mockResolvedValue('metrics data'),
+  const mockCounter = jest.fn().mockImplementation(() => ({
+    inc: jest.fn(),
+    labels: jest.fn().mockReturnThis(),
+  }));
+
+  const mockHistogram = jest.fn().mockImplementation(() => ({
+    observe: jest.fn(),
+    labels: jest.fn().mockReturnThis(),
+  }));
+
+  const mockRegister = {
+    metrics: jest.fn().mockResolvedValue('mock metrics'),
+    registerMetric: jest.fn(),
   };
 
   return {
-    Registry: jest.fn(() => mockRegistry),
-    collectDefaultMetrics: mockCollectDefaultMetrics,
-    Histogram: jest.fn(),
-    Counter: jest.fn(),
+    Counter: mockCounter,
+    Histogram: mockHistogram,
+    Registry: jest.fn(() => mockRegister),
+    collectDefaultMetrics: jest.fn(),
   };
 });
 
+// Get access to the pg mock
+const pg = require('pg');
+
 describe('Environment Variable Handling', () => {
-  let promClient;
-  let pg;
   let originalEnv;
-  let originalModule;
 
   beforeEach(() => {
     // Save original environment
-    originalEnv = process.env;
-    originalModule = require.main;
+    originalEnv = { ...process.env };
 
-    // Start with a clean environment
-    process.env = {};
-
-    // Clear cache to ensure fresh app instance
-    jest.resetModules();
-
-    // Reset mocks
-    promClient = require('prom-client');
-    pg = require('pg');
+    // Configure the pg mock
+    pg._reset();
   });
 
   afterEach(() => {
-    // Restore original environment and module
-    process.env = originalEnv;
-    require.main = originalModule;
+    // Restore original environment
+    process.env = { ...originalEnv };
   });
 
-  it('should use custom metrics prefix when METRICS_PREFIX is set', () => {
-    // Set custom metrics prefix
-    process.env.METRICS_PREFIX = 'custom_prefix_';
-    process.env.NODE_ENV = 'test'; // Avoid DB connection
+  it('should use default port when PORT is not set', () => {
+    // Remove PORT from environment
+    delete process.env.PORT;
 
     // Import the app
-    require('../index');
+    const app = require('../index');
+    const express = require('express');
 
-    // Check if metrics prefix was used
-    expect(promClient.collectDefaultMetrics).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prefix: 'custom_prefix_',
-      })
-    );
+    // Check if listen was called with default port
+    expect(express().listen).toHaveBeenCalledWith(3000, expect.any(Function));
   });
 
-  it('should not connect to database in test mode', () => {
-    // Set environment to test
-    process.env.NODE_ENV = 'test';
+  it('should use environment PORT when set', () => {
+    // Set custom PORT
+    process.env.PORT = '8080';
 
     // Import the app
-    require('../index');
+    const app = require('../index');
+    const express = require('express');
 
-    // Check that database connection was not instantiated
-    expect(pg.Pool).not.toHaveBeenCalled();
+    // Check if listen was called with custom port
+    expect(express().listen).toHaveBeenCalledWith(8080, expect.any(Function));
   });
 
-  it('should use database configuration from environment variables', () => {
+  it('should use database configuration from environment variables', async () => {
     // Set environment to production with DB config
     process.env.NODE_ENV = 'production';
     process.env.DB_HOST = 'testhost';
@@ -140,11 +115,17 @@ describe('Environment Variable Handling', () => {
     // Import the app
     require('../index');
 
-    // Get the Pool instance
-    const poolInstance = pg.Pool.mock.calls[0][0];
+    // Wait for any async operations
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Check database configuration
-    expect(poolInstance).toEqual({
+    // Check the Pool constructor was called with correct config
+    expect(pg.Pool).toHaveBeenCalled();
+
+    // Get the config from the mock pool
+    const poolConfig = pg._mockPool.config;
+
+    // Verify the config matches our environment variables
+    expect(poolConfig).toEqual({
       host: 'testhost',
       port: '5432',
       database: 'testdb',
@@ -154,5 +135,16 @@ describe('Environment Variable Handling', () => {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     });
+  });
+
+  it('should not initialize database in test mode', () => {
+    // Set test environment
+    process.env.NODE_ENV = 'test';
+
+    // Import the app
+    require('../index');
+
+    // Verify Pool constructor was not called in test mode
+    expect(pg.Pool).not.toHaveBeenCalled();
   });
 });

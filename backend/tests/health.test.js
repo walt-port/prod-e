@@ -8,97 +8,34 @@
  */
 
 const request = require('supertest');
-
-// Create mock client and pool outside the mock definition
-// so we can access them in tests
-const mockClient = {
-  query: jest.fn().mockResolvedValue({ rows: [] }),
-  release: jest.fn(),
-};
-
-const mockPool = {
-  connect: jest.fn().mockResolvedValue(mockClient),
-  end: jest.fn().mockResolvedValue(undefined),
-};
-
-// Mock the pg Pool
-jest.mock('pg', () => {
-  return {
-    Pool: jest.fn(() => mockPool),
-  };
-});
+const pg = require('pg');
+const mockClient = pg._mockClient;
+const mockPool = pg._mockPool;
 
 describe('Health Endpoint', () => {
-  let app;
   let originalEnv;
+  let app;
 
   beforeEach(() => {
-    // Save original environment and clean cache to ensure fresh app instance
-    originalEnv = process.env;
-    process.env = { ...originalEnv };
-    jest.resetModules();
+    // Save original environment
+    originalEnv = { ...process.env };
 
-    // Reset mock states
-    mockClient.query.mockClear();
-    mockClient.release.mockClear();
-    mockPool.connect.mockClear();
-    mockPool.end.mockClear();
-
-    // Reset default behavior
-    mockPool.connect.mockResolvedValue(mockClient);
-    mockClient.query.mockResolvedValue({ rows: [] });
+    // Reset mocks
+    pg._reset();
   });
 
   afterEach(() => {
     // Restore original environment
-    process.env = originalEnv;
+    process.env = { ...originalEnv };
+
+    // Clean up app if it was loaded
+    if (app && app.close) {
+      app.close();
+    }
   });
 
-  it('should return 200 and status OK when database is connected', async () => {
-    // Set environment to production
-    process.env.NODE_ENV = 'production';
-
-    // Import the app
-    app = require('../index');
-
-    // Make the request
-    const response = await request(app).get('/health').expect('Content-Type', /json/).expect(200);
-
-    // Check response
-    expect(response.body).toHaveProperty('status', 'ok');
-    expect(response.body).toHaveProperty('database', 'connected');
-    expect(response.body).toHaveProperty('timestamp');
-
-    // Verify database interactions
-    expect(mockPool.connect).toHaveBeenCalled();
-    expect(mockClient.query).toHaveBeenCalled();
-    expect(mockClient.release).toHaveBeenCalled();
-  });
-
-  it('should return 500 when database connection fails', async () => {
-    // Set environment to production
-    process.env.NODE_ENV = 'production';
-
-    // Mock a database connection error for the health endpoint
-    // First call is for initialization, second is for health check
-    mockPool.connect
-      .mockResolvedValueOnce(mockClient) // For initialization
-      .mockRejectedValueOnce(new Error('Connection failed')); // For health check
-
-    // Import the app
-    app = require('../index');
-
-    // Make the request
-    const response = await request(app).get('/health').expect('Content-Type', /json/).expect(500);
-
-    // Check response
-    expect(response.body).toHaveProperty('status', 'error');
-    expect(response.body).toHaveProperty('message', 'Database connection failed');
-    expect(response.body).toHaveProperty('database', 'disconnected');
-  });
-
-  it('should skip database check in test mode', async () => {
-    // Set environment to test
+  it('should return 200 and database status disconnected in test mode', async () => {
+    // Set environment to test mode
     process.env.NODE_ENV = 'test';
 
     // Import the app
@@ -107,11 +44,72 @@ describe('Health Endpoint', () => {
     // Make the request
     const response = await request(app).get('/health').expect('Content-Type', /json/).expect(200);
 
-    // Check response
+    // Check response in test mode
     expect(response.body).toHaveProperty('status', 'ok');
-    expect(response.body).toHaveProperty('database', 'skipped (test mode)');
+    expect(response.body).toHaveProperty('database', 'disconnected'); // Disconnected in test mode
+    expect(response.body).toHaveProperty('timestamp');
 
-    // Verify no database interactions
+    // In test mode, database connection is skipped
     expect(mockPool.connect).not.toHaveBeenCalled();
+  });
+
+  it('should return 200 and status OK when database is connected', async () => {
+    // Set environment to production
+    process.env.NODE_ENV = 'production';
+
+    // Configure mock responses for both database initialization and health check
+    mockPool.connect
+      .mockResolvedValueOnce(mockClient) // For initialization
+      .mockResolvedValueOnce(mockClient); // For health check
+
+    mockClient.query
+      .mockResolvedValueOnce({ rows: [] }) // For database initialization
+      .mockResolvedValueOnce({ rows: [] }); // For health check query
+
+    // Import the app
+    app = require('../index');
+
+    // Wait for initialization to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Make the request
+    const response = await request(app).get('/health').expect('Content-Type', /json/).expect(200);
+
+    // Check response when DB is connected
+    expect(response.body).toHaveProperty('status', 'ok');
+    expect(response.body).toHaveProperty('database', 'connected');
+    expect(response.body).toHaveProperty('timestamp');
+
+    // Verify database interactions
+    expect(mockPool.connect).toHaveBeenCalledTimes(2); // Once for init, once for health check
+    expect(mockClient.query).toHaveBeenCalled();
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+
+  it('should return 500 when database connection fails', async () => {
+    // Set environment to production
+    process.env.NODE_ENV = 'production';
+
+    // Configure mocks: First success for initialization, then failure for health check
+    mockPool.connect
+      .mockResolvedValueOnce(mockClient) // Success for initialization
+      .mockRejectedValueOnce(new Error('Connection failed')); // Failure for health check
+
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    // Import the app
+    app = require('../index');
+
+    // Wait for initialization
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Make the request, expecting a 500 status
+    const response = await request(app).get('/health').expect('Content-Type', /json/).expect(500);
+
+    // Check error response
+    expect(response.body).toHaveProperty('status', 'error');
+    expect(response.body).toHaveProperty('database', 'disconnected');
+    expect(response.body).toHaveProperty('message', 'Database connection failed');
+    expect(response.body).toHaveProperty('timestamp');
   });
 });

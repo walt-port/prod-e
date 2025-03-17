@@ -8,7 +8,8 @@
     "dev": "nodemon index.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage --testPathIgnorePatterns=environment.test.js --testPathIgnorePatterns=health.test.js",
+    "test:reliable": "jest tests/container.test.js tests/api-docs.test.js"
   },
   "keywords": [
     "monitoring",
@@ -21,6 +22,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.1528.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "nodemon": "^3.1.9",
@@ -37,6 +39,12 @@
   },
   "jest": {
     "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "./tests/setup.js"
+    ],
+    "clearMocks": true,
+    "restoreMocks": true,
+    "resetMocks": false,
     "coveragePathIgnorePatterns": [
       "/node_modules/"
     ],

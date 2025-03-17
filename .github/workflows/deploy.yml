@@ -82,6 +82,7 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
+          npm install
           npm test
 
       - name: Prepare Lambda function
