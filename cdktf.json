@@ -1,7 +1,10 @@
 {
   "language": "typescript",
   "app": "npx ts-node infrastructure/main.ts",
-  "terraformProviders": ["aws@~> 4.67.0"],
+  "terraformProviders": [
+    "aws@~> 4.67.0"
+  ],
   "terraformModules": [],
-  "codeMakerOutput": ".gen"
+  "codeMakerOutput": ".gen",
+  "projectId": "bbfc8ea3-45aa-4c9d-9592-8d819dc7e027"
 }
