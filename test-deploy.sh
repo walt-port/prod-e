@@ -2,8 +2,8 @@
 set -e
 
 # Install necessary packages
-npm install -g cdktf-cli@0.16.0
-npm ci
+npm install -g cdktf-cli@0.15.5
+npm ci --legacy-peer-deps
 
 # Get dependencies
 cdktf get

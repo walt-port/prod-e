@@ -47,12 +47,12 @@ jobs:
 
       - name: Install cdktf-cli
         run: |
-          npm install -g cdktf-cli@0.16.0
+          npm install -g cdktf-cli@0.15.5
           echo "CDKTF version:"
           cdktf --version
 
       - name: Install packages
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Clean cdktf.out and .gen directories
         run: |
