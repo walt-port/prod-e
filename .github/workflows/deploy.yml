@@ -85,24 +85,25 @@ jobs:
           npm install
           npm run test:reliable
 
-      # - name: Prepare Lambda function
-      #   run: |
-      #     cd functions/data-import
-      #     npm ci
-      #     npm run build
-      #     cd ../..
+      - name: Prepare Lambda function
+        run: |
+          cd functions/data-import
+          npm ci
+          npm run build
+          cd ../..
 
-      # - name: Prepare import script
-      #   run: |
-      #     cd scripts/import
-      #     npm ci
-      #     cd ../..
+      - name: Prepare import script
+        run: |
+          cd scripts/import
+          npm ci
+          cd ../..
 
       - name: Import existing resources
         run: |
           cd infrastructure
-          npx cdktf import --app="npm run --silent compile && node cdktf.out/stacks/prod-e"
+          npx cdktf synth
           cd ..
+          node scripts/import/import.js --region us-west-2 --output ./terraform-imports
 
       - name: Deploy with CDKTF
         run: |
