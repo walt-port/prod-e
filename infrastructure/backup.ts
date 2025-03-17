@@ -101,7 +101,7 @@ export class Backup extends Construct {
     // Using filename property instead of code object
     this.lambda = new LambdaFunction(this, 'backup-lambda', {
       functionName: 'prod-e-backup',
-      runtime: 'nodejs20.x',
+      runtime: 'nodejs18.x',
       handler: 'index.handler',
       role: this.backupRole.arn,
       timeout: 300,
