@@ -89,14 +89,45 @@ jobs:
           mv backup.zip dummy-backup.zip
           cp dummy-backup.zip cdktf.out/stacks/prod-e/
 
+      - name: Debug - Check state before imports
+        run: |
+          cd cdktf.out/stacks/prod-e/
+          terraform init -upgrade
+          terraform state list > state-before-imports.log
+          cat state-before-imports.log
+          cd ../../
+
+      - name: Clear conflicting state entries
+        run: |
+          cd cdktf.out/stacks/prod-e/
+          terraform init -upgrade
+          # Remove resources that might conflict (from import-commands.sh)
+          terraform state rm aws_db_subnet_group.prode_rds_newsubnetgroup_8B244C0C || true
+          terraform state rm aws_iam_role.prode_ecs_ecstaskexecutionrole_20EAF6F9 || true
+          terraform state rm aws_iam_role.prode_ecs_ecstaskrole_83A127B2 || true
+          terraform state rm aws_lb.prode_alb_5B6BC7FD || true
+          terraform state rm aws_lb_target_group.prode_alb_ecstargetgroup_D11F7D5C || true
+          terraform state rm aws_lb_target_group.prode_alb_grafanatargetgroup_F3AF7448 || true
+          terraform state rm aws_lb_target_group.prode_alb_prometheustargetgroup_F7AD68CC || true
+          terraform state rm aws_lambda_function.prode_backup_backuplambda_D9B46980 || true
+          terraform state rm aws_s3_bucket.prode_backup_backupbucket_A17FE2F3 || true
+          cd ../../
+
       - name: Initialize Terraform and execute import script
         run: |
           chmod +x import-commands.sh
-          cp import-commands.sh cdktf.out/stacks/prod-e/
           cd cdktf.out/stacks/prod-e/
           terraform init -upgrade
-          sh ./import-commands.sh > import-commands.log 2>&1 || echo "Import commands completed with some errors"
+          sh ../../import-commands.sh > import-commands.log 2>&1
           cat import-commands.log
+          cd ../../
+
+      - name: Debug - Check state after imports
+        run: |
+          cd cdktf.out/stacks/prod-e/
+          terraform init -upgrade
+          terraform state list > state-after-imports.log
+          cat state-after-imports.log
           cd ../../
 
       - name: Deploy

@@ -1,23 +1,30 @@
 #!/bin/bash
 
-cd "$(dirname "$0")/cdktf.out/stacks/prod-e"
+# Debug: Confirm the current directory
+echo "Current directory: $(pwd)"
+
+# Replace YOUR_AWS_ACCOUNT_ID with your actual AWS account ID
+AWS_ACCOUNT_ID="043309339649"
 
 # Import DB subnet group
-terraform import -config=. --allow-missing-config aws_db_subnet_group.rds_new-subnet-group_E54AD540 prod-e-rds-subnet-group-new || echo "Import failed for DB subnet group, but continuing..."
+terraform import aws_db_subnet_group.prode_rds_newsubnetgroup_8B244C0C prod-e-rds-subnet-group-new || { echo "Error: Import failed for DB subnet group"; exit 1; }
 
 # Import execution role
-terraform import -config=. --allow-missing-config aws_iam_role.ecs_ecs-task-execution-role_3775D793 ecs-task-execution-role || echo "Import failed for execution role, but continuing..."
+terraform import aws_iam_role.prode_ecs_ecstaskexecutionrole_20EAF6F9 "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecs-task-execution-role" || { echo "Error: Import failed for execution role"; exit 1; }
 
 # Import task role
-terraform import -config=. --allow-missing-config aws_iam_role.ecs_ecs-task-role_12D46AC3 ecs-task-role || echo "Import failed for task role, but continuing..."
+terraform import aws_iam_role.prode_ecs_ecstaskrole_83A127B2 "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecs-task-role" || { echo "Error: Import failed for task role"; exit 1; }
 
 # Import ALB
-terraform import -config=. --allow-missing-config aws_lb.alb_88D76693 prod-e-alb || echo "Import failed for ALB, but continuing..."
+terraform import aws_lb.prode_alb_5B6BC7FD prod-e-alb || { echo "Error: Import failed for ALB"; exit 1; }
 
 # Import target groups
-terraform import -config=. --allow-missing-config aws_lb_target_group.alb_ecs-target-group_7A1FFA55 ecs-target-group || echo "Import failed for ecs target group, but continuing..."
-terraform import -config=. --allow-missing-config aws_lb_target_group.alb_grafana-target-group_B6047762 grafana-tg || echo "Import failed for grafana target group, but continuing..."
-terraform import -config=. --allow-missing-config aws_lb_target_group.alb_prometheus-target-group_64B90CF3 prometheus-tg || echo "Import failed for prometheus target group, but continuing..."
+terraform import aws_lb_target_group.prode_alb_ecstargetgroup_D11F7D5C ecs-target-group || { echo "Error: Import failed for ecs target group"; exit 1; }
+terraform import aws_lb_target_group.prode_alb_grafanatargetgroup_F3AF7448 grafana-tg || { echo "Error: Import failed for grafana target group"; exit 1; }
+terraform import aws_lb_target_group.prode_alb_prometheustargetgroup_F7AD68CC prometheus-tg || { echo "Error: Import failed for prometheus target group"; exit 1; }
+
+# Import Lambda function
+terraform import aws_lambda_function.prode_backup_backuplambda_D9B46980 prod-e-backup || { echo "Error: Import failed for Lambda function"; exit 1; }
 
 # Import S3 bucket
-terraform import -config=. --allow-missing-config aws_s3_bucket.backup_backup-bucket_F99A4016 prod-e-backups || echo "Import failed for S3 bucket, but continuing..."
+terraform import aws_s3_bucket.prode_backup_backupbucket_A17FE2F3 prod-e-backups || { echo "Error: Import failed for S3 bucket"; exit 1; }
