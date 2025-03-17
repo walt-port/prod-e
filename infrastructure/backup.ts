@@ -105,7 +105,7 @@ export class Backup extends Construct {
       handler: 'index.handler',
       role: this.backupRole.arn,
       timeout: 300,
-      filename: '/tmp/placeholder-lambda.zip', // Use a placeholder path for synthesis
+      filename: 'dummy-backup.zip', // Changed from placeholder path to the actual file created in the workflow
       tags: { Name: 'prod-e-backup-lambda', Project: 'prod-e' },
     });
   }
