@@ -1,158 +1,32 @@
-name: Deploy Prod-E
+name: Deploy Infrastructure
 # Automated deployment workflow for the Production Experience project
 # For complete documentation, see .github/CICD.md
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.4.6
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install CDKTF
-        run: npm install -g cdktf-cli
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build and push Backend Docker image
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with: { node-version: 18.x }
+      - run: npm install -g cdktf-cli
+      - run: npm ci
+      - run: cdktf get
+      - run: npm run synth
+      - run: chmod +x infrastructure/scripts/resource-check.sh
+      - run: infrastructure/scripts/resource-check.sh
+      - run: npm test # Run backend tests
+      - run: cdktf deploy --auto-approve
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: prod-e-backend
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-      - name: Build and push Prometheus Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: prod-e-prometheus
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f ./backend/Dockerfile.prometheus ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-      - name: Build and push Grafana Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: prod-e-grafana
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f ./backend/Dockerfile.grafana ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-      - name: Run backend tests
-        run: |
-          cd backend
-          npm install
-          npm run test:reliable
-
-      - name: Prepare Lambda function
-        run: |
-          cd functions/data-import
-          npm ci
-          npm run build
-          cd ../..
-
-      - name: Prepare import script
-        run: |
-          cd scripts/import
-          npm ci
-          cd ../..
-
-      - name: Initialize CDKTF
-        run: npm run get
-
-      - name: Import existing resources
-        run: |
-          npx cdktf synth
-          node scripts/import/import.js --region us-west-2 --output ./terraform-imports
-
-      - name: Deploy with CDKTF
-        run: |
-          npm run deploy
-
-      - name: Verify deployment
-        run: |
-          echo "Verifying deployment..."
-
-          # Check ALB exists and get DNS name
-          echo "Checking ALB..."
-          ALB_DNS=$(aws elbv2 describe-load-balancers --names prod-e-alb --query "LoadBalancers[0].DNSName" --output text 2>/dev/null)
-          if [[ -z "$ALB_DNS" || "$ALB_DNS" == "None" ]]; then
-            echo "❌ ERROR: ALB 'prod-e-alb' not found!"
-            exit 1
-          else
-            echo "✅ ALB 'prod-e-alb' found with DNS: $ALB_DNS"
-          fi
-
-          # Check ECS services are active
-          echo "Checking ECS services..."
-          SERVICES_JSON=$(aws ecs describe-services --cluster prod-e-cluster --services backend-service grafana-service prometheus-service)
-
-          # Parse each service status
-          echo "$SERVICES_JSON" | jq -r '.services[] | "\(.serviceName): \(.status) (Desired: \(.desiredCount), Running: \(.runningCount))"'
-
-          # Check if all services are ACTIVE
-          NOT_ACTIVE=$(echo "$SERVICES_JSON" | jq -r '.services[] | select(.status != "ACTIVE") | .serviceName')
-          if [[ -n "$NOT_ACTIVE" ]]; then
-            echo "❌ ERROR: The following services are not ACTIVE:"
-            echo "$NOT_ACTIVE"
-            exit 1
-          else
-            echo "✅ All ECS services are ACTIVE"
-          fi
-
-          # Check RDS instance
-          echo "Checking RDS instance..."
-          DB_STATUS=$(aws rds describe-db-instances --db-instance-identifier prod-e-db --query "DBInstances[0].DBInstanceStatus" --output text 2>/dev/null)
-          if [[ "$DB_STATUS" == "available" ]]; then
-            echo "✅ RDS instance 'prod-e-db' is available"
-          else
-            echo "⚠️ WARNING: RDS instance 'prod-e-db' status is: $DB_STATUS"
-          fi
-
-          echo "Deployment verification completed successfully!"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   resource-check:
-    needs: build-and-deploy
+    needs: deploy
     uses: ./.github/workflows/resource-check.yml
     secrets: inherit
