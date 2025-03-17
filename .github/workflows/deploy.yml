@@ -36,7 +36,7 @@ jobs:
           echo "Validating cdktf.json:"
           node -e "console.log(JSON.parse(require('fs').readFileSync('cdktf.json', 'utf8')))"
 
-      - run: npm install -g cdktf-cli@0.19.0
+      - run: npm install -g cdktf-cli@0.20.11
       - run: npm ci
       - run: cdktf get
       - run: npm run synth
