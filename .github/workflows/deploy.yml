@@ -47,7 +47,7 @@ jobs:
 
       - name: Install cdktf-cli
         run: |
-          npm install -g cdktf-cli@0.20.11
+          npm install -g cdktf-cli@0.16.0
           echo "CDKTF version:"
           cdktf --version
 

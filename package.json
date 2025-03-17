@@ -23,10 +23,10 @@
     "node": ">=18.0"
   },
   "dependencies": {
-    "@cdktf/provider-aws": "^19.56.1",
+    "@cdktf/provider-aws": "^12.0.0",
     "archiver": "^7.0.1",
-    "cdktf": "^0.20.11",
-    "constructs": "^10.4.2",
+    "cdktf": "^0.16.0",
+    "constructs": "^10.2.0",
     "jszip": "^3.10.1"
   },
   "devDependencies": {
