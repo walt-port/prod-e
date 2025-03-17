@@ -4,7 +4,7 @@ name: AWS Resource Check
 
 on:
   workflow_run:
-    workflows: ['Deploy Prod-E']
+    workflows: ['Deploy Infrastructure']
     types:
       - completed
   workflow_dispatch:

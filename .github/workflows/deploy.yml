@@ -30,12 +30,12 @@ jobs:
       - run: cdktf get --skip-provider-schema-validation || (echo "Retrying cdktf get..." && cdktf get --skip-provider-schema-validation) # Retry on failure
       - run: npm run synth
       - run: chmod +x import-commands.sh
-      - run: ./import-commands.sh
+      - run: cd cdktf.out/stacks/prod-e && terraform init && sh ../../../import-commands.sh > import-commands.log 2>&1 && cat import-commands.log && cd ../../..
       - run: chmod +x scripts/monitoring/resource_check.sh
       - run: scripts/monitoring/resource_check.sh
-      - run: npm test # Run backend tests
-      - run: cd infrastructure/lambda && rm -f backup.zip && zip -j backup.zip backup.js && ls -la backup.zip && unzip -l backup.zip && rm -f ../../dummy-backup.zip && cp backup.zip ../../dummy-backup.zip && ls -la ../../dummy-backup.zip
-      - run: cdktf deploy --auto-approve
+      - run: npm test
+      - run: cd infrastructure/lambda && rm -f backup.zip && zip -j backup.zip backup.js && ls -la backup.zip && unzip -l backup.zip && cp backup.zip ../../dummy-backup.zip && ls -la ../../dummy-backup.zip
+      - run: cd cdktf.out/stacks/prod-e && cdktf deploy --auto-approve
 
   resource-check:
     needs: deploy
