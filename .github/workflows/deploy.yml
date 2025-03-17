@@ -29,7 +29,7 @@ jobs:
       - run: rm -rf .gen # Clean generated files
       - run: cdktf get --skip-provider-schema-validation || (echo "Retrying cdktf get..." && cdktf get --skip-provider-schema-validation) # Retry on failure
       - run: npm run synth
-      - run: cd cdktf.out/stacks/prod-e && terraform init && sed -i 's/terraform import/terraform import --allow-missing-config/g' ../../import-commands.sh && cd ../../..
+      - run: cd cdktf.out/stacks/prod-e && terraform init && sed -i 's/terraform import/terraform import --allow-missing-config/g' ../../../import-commands.sh && cd ../../..
       - run: chmod +x import-commands.sh
       - run: ./import-commands.sh
       - run: npm test
