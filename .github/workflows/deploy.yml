@@ -22,7 +22,21 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
-      - run: npm install -g cdktf-cli
+
+      # Debug steps
+      - name: Debug - Check JSON Files
+        run: |
+          echo "Checking JSON files..."
+          echo "cdktf.json:"
+          cat cdktf.json
+          echo ""
+          echo "Checking for BOM markers or special characters:"
+          hexdump -C cdktf.json | head -5
+          echo ""
+          echo "Validating cdktf.json:"
+          node -e "console.log(JSON.parse(require('fs').readFileSync('cdktf.json', 'utf8')))"
+
+      - run: npm install -g cdktf-cli@0.19.0
       - run: npm ci
       - run: cdktf get
       - run: npm run synth
