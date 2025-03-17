@@ -14,17 +14,22 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with: { node-version: 18.x }
+      - uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+      - uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
       - run: npm install -g cdktf-cli
       - run: npm ci
       - run: cdktf get
       - run: npm run synth
-      - run: chmod +x infrastructure/scripts/resource-check.sh
-      - run: infrastructure/scripts/resource-check.sh
+      - run: chmod +x scripts/monitoring/resource_check.sh
+      - run: scripts/monitoring/resource_check.sh
       - run: npm test # Run backend tests
       - run: cdktf deploy --auto-approve
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   resource-check:
     needs: deploy
