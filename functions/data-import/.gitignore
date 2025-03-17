@@ -14,3 +14,7 @@ coverage/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Whitelist important JS files
+!index.js
+!index.test.js
