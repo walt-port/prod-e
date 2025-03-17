@@ -1,7 +1,7 @@
 # Documentation Inventory
 
-**Version:** 1.5
-**Last Updated:** March 16, 2025
+**Version:** 1.6
+**Last Updated:** August 9, 2025
 **Owner:** DevOps Team
 
 This document provides a complete inventory of all documentation files in the project. It serves as a reference to help locate specific documentation and identify gaps in documentation coverage.
@@ -24,23 +24,25 @@ This document provides a complete inventory of all documentation files in the pr
 
 ## Process Documentation
 
-| Document Title          | File Path                            | Description                                                    | Related Documents                               |
-| ----------------------- | ------------------------------------ | -------------------------------------------------------------- | ----------------------------------------------- |
-| CI/CD Process           | processes/ci-cd.md                   | Continuous Integration and Deployment workflow                 | github-workflows.md                             |
-| GitHub Workflows        | processes/github-workflows.md        | Automated monitoring, resource checking, and cleanup workflows | ci-cd.md, aws-resource-management.md            |
-| AWS Resource Management | processes/aws-resource-management.md | AWS resource provisioning, monitoring, compliance, and cleanup | github-workflows.md, monitoring-setup.md        |
-| Monitoring Setup        | processes/monitoring-setup.md        | Monitoring infrastructure and practices                        | aws-resource-management.md, github-workflows.md |
-| Testing Strategy        | processes/testing.md                 | Testing approach, methodologies, and implementation            | ci-cd.md                                        |
-| Audit Process           | processes/audits.md                  | Infrastructure and codebase audit processes                    | aws-resource-management.md                      |
+| Document Title          | File Path                            | Description                                                    | Related Documents                                     |
+| ----------------------- | ------------------------------------ | -------------------------------------------------------------- | ----------------------------------------------------- |
+| CI/CD Process           | processes/ci-cd.md                   | Continuous Integration and Deployment workflow                 | github-workflows.md                                   |
+| GitHub Workflows        | processes/github-workflows.md        | Automated monitoring, resource checking, and cleanup workflows | ci-cd.md, aws-resource-management.md                  |
+| AWS Resource Management | processes/aws-resource-management.md | AWS resource provisioning, monitoring, compliance, and cleanup | github-workflows.md, monitoring-setup.md              |
+| Monitoring Setup        | processes/monitoring-setup.md        | Monitoring infrastructure and practices                        | aws-resource-management.md, github-workflows.md       |
+| Testing Strategy        | processes/testing.md                 | Testing approach, methodologies, and implementation            | backend/api-docs-tests.md, backend/container-tests.md |
+| Audit Process           | processes/audits.md                  | Infrastructure and codebase audit processes                    | aws-resource-management.md                            |
 
 ## Application Documentation
 
-| Document Title      | File Path              | Description                                                   | Related Documents    |
-| ------------------- | ---------------------- | ------------------------------------------------------------- | -------------------- |
-| API Reference       | api/api-reference.md   | API endpoints, parameters, responses, and examples            | backend/services.md  |
-| Frontend Components | frontend/components.md | Frontend component documentation, usage, and examples         | api/api-reference.md |
-| Backend Services    | backend/services.md    | Backend service documentation, dependencies, and interactions | api/api-reference.md |
-| Database Schema     | database/schema.md     | Database schema, relationships, and indices                   | backend/services.md  |
+| Document Title          | File Path                  | Description                                                    | Related Documents    |
+| ----------------------- | -------------------------- | -------------------------------------------------------------- | -------------------- |
+| API Reference           | api/api-reference.md       | API endpoints, parameters, responses, and examples             | backend/services.md  |
+| Frontend Components     | frontend/components.md     | Frontend component documentation, usage, and examples          | api/api-reference.md |
+| Backend Services        | backend/services.md        | Backend service documentation, dependencies, and interactions  | api/api-reference.md |
+| Database Schema         | database/schema.md         | Database schema, relationships, and indices                    | backend/services.md  |
+| API Documentation Tests | backend/api-docs-tests.md  | Testing approach for API documentation components              | processes/testing.md |
+| Container Tests         | backend/container-tests.md | Testing approach for container configuration and compatibility | processes/testing.md |
 
 ## User and Administrative Guides
 
@@ -81,5 +83,5 @@ The documentation inventory is updated when:
 
 ---
 
-**Last Updated**: 2025-03-16
-**Version**: 1.5
+**Last Updated**: 2025-08-09
+**Version**: 1.6
