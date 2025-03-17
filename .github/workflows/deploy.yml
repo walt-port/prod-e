@@ -30,6 +30,7 @@ jobs:
       - run: cdktf get --skip-provider-schema-validation || (echo "Retrying cdktf get..." && cdktf get --skip-provider-schema-validation) # Retry on failure
       - run: npm run synth
       - run: chmod +x import-commands.sh
+      - run: import-commands.sh
       - run: cd cdktf.out/stacks/prod-e && sh ../../../import-commands.sh && cd ../../..
       - run: chmod +x scripts/monitoring/resource_check.sh
       - run: scripts/monitoring/resource_check.sh
