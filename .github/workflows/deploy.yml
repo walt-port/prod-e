@@ -62,10 +62,16 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Get dependencies with debug
+      - name: Fix package version conflicts
         run: |
-          echo "Running cdktf get with debug output..."
-          CDKTF_LOG_LEVEL=debug cdktf get --skip-provider-schema-validation
+          npm uninstall cdktf
+          npm install cdktf@0.15.5 --save --legacy-peer-deps
+
+      - name: Get dependencies
+        run: |
+          echo "Running cdktf get..."
+          # Using --force flag to bypass version conflicts
+          cdktf get --skip-provider-schema-validation --force || (echo "Retrying with verbose output..." && CDKTF_LOG_LEVEL=debug cdktf get --skip-provider-schema-validation --force)
 
       - name: Synthesize
         run: npm run synth
