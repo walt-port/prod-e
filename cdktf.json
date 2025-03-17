@@ -11,11 +11,11 @@
   },
   "terraformBackend": {
     "s3": {
-      "bucket": "prod-e-terraform-state",
+      "bucket": "prod-e-tfstate",
       "key": "terraform.tfstate",
       "region": "us-west-2",
       "encrypt": true,
-      "dynamodb_table": "prod-e-terraform-lock"
+      "dynamodb_table": "prod-e-tfstate-lock"
     }
   }
 }
