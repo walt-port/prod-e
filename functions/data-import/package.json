@@ -4,7 +4,8 @@
   "description": "AWS Lambda function for importing data from S3 to RDS",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "mkdir -p dist && cp index.js dist/ && cp package.json dist/ && zip -j dist/function.zip dist/index.js"
   },
   "keywords": [
     "lambda",
