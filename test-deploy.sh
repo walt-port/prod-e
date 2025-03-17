@@ -8,7 +8,6 @@ npm run synth || { echo "Error: npm run synth failed"; exit 1; }
 cp import-commands.sh cdktf.out/stacks/prod-e/ || { echo "Error: Failed to copy import-commands.sh to cdktf.out/stacks/prod-e/"; exit 1; }
 cd cdktf.out/stacks/prod-e || { echo "Error: Failed to cd into cdktf.out/stacks/prod-e"; exit 1; }
 terraform init -upgrade || { echo "Error: terraform init -upgrade failed"; exit 1; }
-sed -i "s/terraform import/terraform import --allow-missing-config/g" ./import-commands.sh || { echo "Error: sed command failed"; exit 1; }
 sh ./import-commands.sh > import-commands.log 2>&1 || { echo "Error: Failed to run import-commands.sh"; exit 1; }
 cat import-commands.log
 cd ../../..

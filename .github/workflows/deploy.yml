@@ -31,7 +31,9 @@ jobs:
       - run: npm run synth
       - run: chmod +x import-commands.sh
       - run: cp import-commands.sh cdktf.out/stacks/prod-e/
-      - run: cd cdktf.out/stacks/prod-e && terraform init -upgrade && sed -i 's/terraform import/terraform import --allow-missing-config/g' ./import-commands.sh && sh ./import-commands.sh > import-commands.log 2>&1 && cat import-commands.log && cd ../../..
+      - run: cd cdktf.out/stacks/prod-e && terraform init -upgrade && sh ./import-commands.sh > import-commands.log 2>&1 && cat import-commands.log && cd ../../..
+      - run: chmod +x scripts/monitoring/resource_check.sh
+      - run: scripts/monitoring/resource_check.sh
       - run: npm test
       - run: cd infrastructure/lambda && rm -f backup.zip && zip -j backup.zip backup.js && ls -la backup.zip && unzip -l backup.zip && cp backup.zip ../../dummy-backup.zip && ls -la ../../dummy-backup.zip
       - run: cp dummy-backup.zip cdktf.out/stacks/prod-e/
