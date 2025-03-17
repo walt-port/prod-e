@@ -2,6 +2,7 @@ import { App, S3Backend, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
 import { DataAwsCallerIdentity } from '../.gen/providers/aws/data-aws-caller-identity';
 import { DataAwsResourcegroupstaggingapiResources } from '../.gen/providers/aws/data-aws-resourcegroupstaggingapi-resources';
+import { EcsService } from '../.gen/providers/aws/ecs-service';
 import { AwsProvider } from '../.gen/providers/aws/provider';
 import { Alb } from './alb';
 import { Backup } from './backup';
@@ -115,6 +116,29 @@ export class ProdEStack extends TerraformStack {
     console.log('Starting backup initialization');
     const backup = new Backup(this, 'backup', options);
     console.log('Backup initialized');
+
+    // Create and configure the backend service
+    const backend = new EcsService(this, 'backend-service', {
+      name: 'backend-service',
+      cluster: ecs.cluster.id,
+      taskDefinition: ecs.backendTaskDefinition.arn,
+      desiredCount: 1,
+      launchType: 'FARGATE',
+      networkConfiguration: {
+        subnets: networking.privateSubnets.map(s => s.id),
+        securityGroups: [ecs.securityGroup.id],
+        assignPublicIp: false,
+      },
+      loadBalancer: [
+        {
+          targetGroupArn: alb.ecsTargetGroup.arn,
+          containerName: 'prod-e-container',
+          containerPort: 3000,
+        },
+      ],
+      forceNewDeployment: true,
+      tags: { Name: 'backend-service', Project: 'prod-e' },
+    });
 
     // Outputs
     console.log('Creating output for ALB endpoint');

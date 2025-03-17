@@ -59,7 +59,7 @@ export class Rds extends Construct {
       allocatedStorage: 20,
       dbName: 'prode',
       username: 'postgres',
-      password: 'temporaryPassword123!', // In production, use SSM/Secrets Manager
+      password: 'ReallyStrongPass87$', // Updated password
       skipFinalSnapshot: true, // For demo purposes
       multiAz: false, // For demo, single AZ is enough
       vpcSecurityGroupIds: [this.dbSecurityGroup.id],

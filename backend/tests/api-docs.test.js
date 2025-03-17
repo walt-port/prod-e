@@ -119,6 +119,6 @@ describe('API Documentation', () => {
 
   it('should set up appropriate middleware', () => {
     // Verify proper middleware was used
-    expect(app.use).toHaveBeenCalledWith(expect.any(String), expect.anything());
+    expect(app.use).toHaveBeenCalledWith('/api-docs', expect.anything(), expect.anything());
   });
 });
