@@ -102,15 +102,15 @@ jobs:
           cd cdktf.out/stacks/prod-e/
           terraform init -upgrade
           set +e
-          terraform state list | grep -q "aws_db_subnet_group.prode_rds_newsubnetgroup_8B244C0C" && terraform state rm aws_db_subnet_group.prode_rds_newsubnetgroup_8B244C0C
-          terraform state list | grep -q "aws_iam_role.prode_ecs_ecstaskexecutionrole_20EAF6F9" && terraform state rm aws_iam_role.prode_ecs_ecstaskexecutionrole_20EAF6F9
-          terraform state list | grep -q "aws_iam_role.prode_ecs_ecstaskrole_83A127B2" && terraform state rm aws_iam_role.prode_ecs_ecstaskrole_83A127B2
-          terraform state list | grep -q "aws_lb.prode_alb_5B6BC7FD" && terraform state rm aws_lb.prode_alb_5B6BC7FD
-          terraform state list | grep -q "aws_lb_target_group.prode_alb_ecstargetgroup_D11F7D5C" && terraform state rm aws_lb_target_group.prode_alb_ecstargetgroup_D11F7D5C
-          terraform state list | grep -q "aws_lb_target_group.prode_alb_grafanatargetgroup_F3AF7448" && terraform state rm aws_lb_target_group.prode_alb_grafanatargetgroup_F3AF7448
-          terraform state list | grep -q "aws_lb_target_group.prode_alb_prometheustargetgroup_F7AD68CC" && terraform state rm aws_lb_target_group.prode_alb_prometheustargetgroup_F7AD68CC
-          terraform state list | grep -q "aws_lambda_function.prode_backup_backuplambda_D9B46980" && terraform state rm aws_lambda_function.prode_backup_backuplambda_D9B46980
-          terraform state list | grep -q "aws_s3_bucket.prode_backup_backupbucket_A17FE2F3" && terraform state rm aws_s3_bucket.prode_backup_backupbucket_A17FE2F3
+          terraform state list | grep -q "aws_db_subnet_group.rds_new-subnet-group_E54AD540" && terraform state rm aws_db_subnet_group.rds_new-subnet-group_E54AD540
+          terraform state list | grep -q "aws_iam_role.ecs_ecs-task-execution-role_3775D793" && terraform state rm aws_iam_role.ecs_ecs-task-execution-role_3775D793
+          terraform state list | grep -q "aws_iam_role.ecs_ecs-task-role_12D46AC3" && terraform state rm aws_iam_role.ecs_ecs-task-role_12D46AC3
+          terraform state list | grep -q "aws_lb.alb_88D76693" && terraform state rm aws_lb.alb_88D76693
+          terraform state list | grep -q "aws_lb_target_group.alb_ecs-target-group_7A1FFA55" && terraform state rm aws_lb_target_group.alb_ecs-target-group_7A1FFA55
+          terraform state list | grep -q "aws_lb_target_group.alb_grafana-target-group_B6047762" && terraform state rm aws_lb_target_group.alb_grafana-target-group_B6047762
+          terraform state list | grep -q "aws_lb_target_group.alb_prometheus-target-group_64B90CF3" && terraform state rm aws_lb_target_group.alb_prometheus-target-group_64B90CF3
+          terraform state list | grep -q "aws_lambda_function.backup_backup-lambda_62A5F41F" && terraform state rm aws_lambda_function.backup_backup-lambda_62A5F41F
+          terraform state list | grep -q "aws_s3_bucket.backup_backup-bucket_F99A4016" && terraform state rm aws_s3_bucket.backup_backup-bucket_F99A4016
           set -e
           cd ../../
 
