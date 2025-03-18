@@ -16,7 +16,7 @@ terraform import aws_iam_role.ecs_ecs-task-execution-role_3775D793 ecs-task-exec
 terraform import aws_iam_role.ecs_ecs-task-role_12D46AC3 ecs-task-role || { echo "Error: Import failed for task role"; exit 1; }
 
 # Import ALB
-terraform import aws_lb.alb_88D76693 prod-e-alb || { echo "Error: Import failed for ALB"; exit 1; }
+terraform import aws_lb.alb_88D76693 arn:aws:elasticloadbalancing:us-west-2:043309339649:loadbalancer/app/prod-e-alb/28e8b4c5e891545b || { echo "Error: Import failed for ALB"; exit 1; }
 
 # Import target groups
 terraform import aws_lb_target_group.alb_ecs-target-group_7A1FFA55 ecs-target-group || { echo "Error: Import failed for ecs target group"; exit 1; }
