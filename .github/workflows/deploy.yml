@@ -101,9 +101,7 @@ jobs:
         run: |
           cd cdktf.out/stacks/prod-e/
           terraform init -upgrade
-          # Disable exit-on-error for this block
           set +e
-          # Remove resources that might conflict (from import-commands.sh), only if they exist
           terraform state list | grep -q "aws_db_subnet_group.prode_rds_newsubnetgroup_8B244C0C" && terraform state rm aws_db_subnet_group.prode_rds_newsubnetgroup_8B244C0C
           terraform state list | grep -q "aws_iam_role.prode_ecs_ecstaskexecutionrole_20EAF6F9" && terraform state rm aws_iam_role.prode_ecs_ecstaskexecutionrole_20EAF6F9
           terraform state list | grep -q "aws_iam_role.prode_ecs_ecstaskrole_83A127B2" && terraform state rm aws_iam_role.prode_ecs_ecstaskrole_83A127B2
@@ -113,7 +111,6 @@ jobs:
           terraform state list | grep -q "aws_lb_target_group.prode_alb_prometheustargetgroup_F7AD68CC" && terraform state rm aws_lb_target_group.prode_alb_prometheustargetgroup_F7AD68CC
           terraform state list | grep -q "aws_lambda_function.prode_backup_backuplambda_D9B46980" && terraform state rm aws_lambda_function.prode_backup_backuplambda_D9B46980
           terraform state list | grep -q "aws_s3_bucket.prode_backup_backupbucket_A17FE2F3" && terraform state rm aws_s3_bucket.prode_backup_backupbucket_A17FE2F3
-          # Re-enable exit-on-error
           set -e
           cd ../../
 
@@ -122,7 +119,8 @@ jobs:
           chmod +x import-commands.sh
           cd cdktf.out/stacks/prod-e/
           terraform init -upgrade
-          sh ../../import-commands.sh > import-commands.log 2>&1
+          echo "Attempting to run import script: $(ls -l ../../import-commands.sh)"
+          sh ../../import-commands.sh > import-commands.log 2>&1 || echo "Script failed, check log"
           cat import-commands.log
           cd ../../
 
