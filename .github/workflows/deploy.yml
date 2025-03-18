@@ -117,10 +117,12 @@ jobs:
       - name: Initialize Terraform and execute import script
         run: |
           chmod +x import-commands.sh
+          ls -l import-commands.sh
           cd cdktf.out/stacks/prod-e/
+          ls -l ../../import-commands.sh
           terraform init -upgrade
-          echo "Attempting to run import script: $(ls -l ../../import-commands.sh)"
-          sh ../../import-commands.sh > import-commands.log 2>&1 || echo "Script failed, check log"
+          echo "Attempting to run import script: $(ls -l /home/runner/work/prod-e/prod-e/import-commands.sh)"
+          sh /home/runner/work/prod-e/prod-e/import-commands.sh > import-commands.log 2>&1 || echo "Script failed, check log"
           cat import-commands.log
           cd ../../
 
@@ -130,6 +132,15 @@ jobs:
           terraform init -upgrade
           terraform state list > state-after-imports.log
           cat state-after-imports.log
+          grep "aws_db_subnet_group.prode_rds_newsubnetgroup_8B244C0C" state-after-imports.log || { echo "Error: DB subnet group not imported"; exit 1; }
+          grep "aws_iam_role.prode_ecs_ecstaskexecutionrole_20EAF6F9" state-after-imports.log || { echo "Error: ECS task execution role not imported"; exit 1; }
+          grep "aws_iam_role.prode_ecs_ecstaskrole_83A127B2" state-after-imports.log || { echo "Error: ECS task role not imported"; exit 1; }
+          grep "aws_lb.prode_alb_5B6BC7FD" state-after-imports.log || { echo "Error: ALB not imported"; exit 1; }
+          grep "aws_lb_target_group.prode_alb_ecstargetgroup_D11F7D5C" state-after-imports.log || { echo "Error: ECS target group not imported"; exit 1; }
+          grep "aws_lb_target_group.prode_alb_grafanatargetgroup_F3AF7448" state-after-imports.log || { echo "Error: Grafana target group not imported"; exit 1; }
+          grep "aws_lb_target_group.prode_alb_prometheustargetgroup_F7AD68CC" state-after-imports.log || { echo "Error: Prometheus target group not imported"; exit 1; }
+          grep "aws_lambda_function.prode_backup_backuplambda_D9B46980" state-after-imports.log || { echo "Error: Lambda function not imported"; exit 1; }
+          grep "aws_s3_bucket.prode_backup_backupbucket_A17FE2F3" state-after-imports.log || { echo "Error: S3 bucket not imported"; exit 1; }
           cd ../../
 
       - name: Deploy
