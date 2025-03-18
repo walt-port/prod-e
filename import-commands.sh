@@ -19,9 +19,9 @@ terraform import aws_iam_role.ecs_ecs-task-role_12D46AC3 ecs-task-role || { echo
 terraform import aws_lb.alb_88D76693 arn:aws:elasticloadbalancing:us-west-2:043309339649:loadbalancer/app/prod-e-alb/28e8b4c5e891545b || { echo "Error: Import failed for ALB"; exit 1; }
 
 # Import target groups
-terraform import aws_lb_target_group.alb_ecs-target-group_7A1FFA55 ecs-target-group || { echo "Error: Import failed for ecs target group"; exit 1; }
-terraform import aws_lb_target_group.alb_grafana-target-group_B6047762 grafana-tg || { echo "Error: Import failed for grafana target group"; exit 1; }
-terraform import aws_lb_target_group.alb_prometheus-target-group_64B90CF3 prometheus-tg || { echo "Error: Import failed for prometheus target group"; exit 1; }
+terraform import aws_lb_target_group.alb_ecs-target-group_7A1FFA55 arn:aws:elasticloadbalancing:us-west-2:043309339649:targetgroup/ecs-target-group/18854594c2424fa4 || { echo "Error: Import failed for ecs target group"; exit 1; }
+terraform import aws_lb_target_group.alb_grafana-target-group_B6047762 arn:aws:elasticloadbalancing:us-west-2:043309339649:targetgroup/grafana-tg/c22c813781b91425 || { echo "Error: Import failed for grafana target group"; exit 1; }
+terraform import aws_lb_target_group.alb_prometheus-target-group_64B90CF3 arn:aws:elasticloadbalancing:us-west-2:043309339649:targetgroup/prometheus-tg/9d6577e36f78b65e || { echo "Error: Import failed for prometheus target group"; exit 1; }
 
 # Import Lambda function
 terraform import aws_lambda_function.backup_backup-lambda_62A5F41F prod-e-backup || { echo "Error: Import failed for Lambda function"; exit 1; }
