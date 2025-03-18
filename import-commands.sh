@@ -10,10 +10,10 @@ AWS_ACCOUNT_ID="043309339649"
 terraform import aws_db_subnet_group.rds_new-subnet-group_E54AD540 prod-e-rds-subnet-group-new || { echo "Error: Import failed for DB subnet group"; exit 1; }
 
 # Import execution role
-terraform import aws_iam_role.ecs_ecs-task-execution-role_3775D793 "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecs-task-execution-role" || { echo "Error: Import failed for execution role"; exit 1; }
+terraform import aws_iam_role.ecs_ecs-task-execution-role_3775D793 ecs-task-execution-role || { echo "Error: Import failed for execution role"; exit 1; }
 
 # Import task role
-terraform import aws_iam_role.ecs_ecs-task-role_12D46AC3 "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecs-task-role" || { echo "Error: Import failed for task role"; exit 1; }
+terraform import aws_iam_role.ecs_ecs-task-role_12D46AC3 ecs-task-role || { echo "Error: Import failed for task role"; exit 1; }
 
 # Import ALB
 terraform import aws_lb.alb_88D76693 prod-e-alb || { echo "Error: Import failed for ALB"; exit 1; }
