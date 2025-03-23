@@ -11,7 +11,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "upgrade": "npm i cdktf@latest cdktf-cli@latest",
-    "build:docker": "./scripts/build-and-push.sh"
+    "build:docker": "./scripts/deployment/build-and-push.sh"
   },
   "engines": {
     "node": ">=18.0"
