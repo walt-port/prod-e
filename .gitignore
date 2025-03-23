@@ -44,6 +44,7 @@ override.tf.json
 .vscode
 .context_updates/
 .idea/
+plan2_finish.md
 
 # Logs
 *.log
@@ -78,7 +79,7 @@ __pycache__/
 !/temp/.gitkeep
 
 # One-time scripts that should not be tracked
-scripts/one-time/
+/.one_time/*
 
 # Allow all audits and tests
 !audits/**/*

@@ -1,18 +1,23 @@
-const AWS = require('aws-sdk');
-const fs = require('fs');
-const s3 = new AWS.S3();
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const fs = require('fs').promises;
+
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-west-2' });
 
 exports.handler = async () => {
-  const files = fs.readdirSync('/mnt/efs');
-  for (const file of files) {
-    const content = fs.readFileSync('/mnt/efs/' + file);
-    await s3
-      .putObject({
-        Bucket: 'prod-e-grafana-backups',
+  const bucket = process.env.BACKUP_BUCKET || 'prod-e-grafana-backups';
+  try {
+    const files = await fs.readdir('/mnt/efs');
+    for (const file of files) {
+      const content = await fs.readFile(`/mnt/efs/${file}`);
+      await s3.send(new PutObjectCommand({
+        Bucket: bucket,
         Key: file,
         Body: content,
-      })
-      .promise();
+      }));
+    }
+    return { statusCode: 200, body: 'Backup complete' };
+  } catch (err) {
+    console.error('Backup failed:', err);
+    return { statusCode: 500, body: 'Backup failed: ' + err.message };
   }
-  return { statusCode: 200, body: 'Backup complete' };
 };

@@ -7,6 +7,12 @@ import { Alb } from './alb';
 import { Ecs } from './ecs';
 import { Networking } from './networking';
 
+function assertEnvVar(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set in .env`);
+  return value;
+}
+
 export class Monitoring extends Construct {
   public prometheusService: EcsService;
   public promSecurityGroup: SecurityGroup;
@@ -15,73 +21,83 @@ export class Monitoring extends Construct {
   constructor(scope: Construct, id: string, networking: Networking, alb: Alb, ecs: Ecs) {
     super(scope, id);
 
-    // Security group for Prometheus
+    const projectName = assertEnvVar('PROJECT_NAME');
+    const prometheusCpu = assertEnvVar('PROMETHEUS_CPU');
+    const prometheusMemory = assertEnvVar('PROMETHEUS_MEMORY');
+    const prometheusContainerName = assertEnvVar('PROMETHEUS_CONTAINER_NAME');
+    const prometheusTag = assertEnvVar('PROMETHEUS_TAG');
+    const prometheusPort = Number(assertEnvVar('PROMETHEUS_PORT'));
+    const prometheusDesiredCount = Number(assertEnvVar('PROMETHEUS_DESIRED_COUNT'));
+    const awsRegion = assertEnvVar('AWS_REGION');
+    const awsAccountId = assertEnvVar('AWS_ACCOUNT_ID');
+    const prometheusEgressCidr = assertEnvVar('PROMETHEUS_EGRESS_CIDR');
+
     this.promSecurityGroup = new SecurityGroup(this, 'prom-security-group', {
-      name: 'prom-security-group',
+      name: `${projectName}-prom-sg`,
       vpcId: networking.vpc.id,
-      tags: { Name: 'prom-sg' },
+      tags: { Name: `${projectName}-prom-sg`, Project: projectName },
     });
 
-    // Add inbound rule to allow traffic from ALB
     new SecurityGroupRule(this, 'prom-inbound', {
       type: 'ingress',
-      fromPort: 9090,
-      toPort: 9090,
+      fromPort: prometheusPort,
+      toPort: prometheusPort,
       protocol: 'tcp',
-      sourceSecurityGroupId: networking.albSecurityGroup.id, // Allow from ALB only
+      sourceSecurityGroupId: networking.albSecurityGroup.id,
       securityGroupId: this.promSecurityGroup.id,
+      description: 'Allow traffic from ALB',
     });
 
-    // Add outbound rule to allow all traffic
     new SecurityGroupRule(this, 'prom-outbound', {
       type: 'egress',
       fromPort: 0,
       toPort: 0,
-      protocol: '-1', // All protocols
-      cidrBlocks: ['0.0.0.0/0'], // Allow traffic to anywhere
+      protocol: '-1',
+      cidrBlocks: [prometheusEgressCidr],
       securityGroupId: this.promSecurityGroup.id,
+      description: 'Allow all outbound traffic',
     });
 
-    // Task definition for Prometheus
     this.prometheusTaskDefinition = new EcsTaskDefinition(this, 'prom-task-definition', {
-      family: 'prom-task',
+      family: `${projectName}-prom-task`,
       requiresCompatibilities: ['FARGATE'],
       networkMode: 'awsvpc',
-      cpu: '256',
-      memory: '512',
+      cpu: prometheusCpu,
+      memory: prometheusMemory,
       executionRoleArn: ecs.taskExecutionRole.arn,
       taskRoleArn: ecs.taskRole.arn,
-      containerDefinitions: JSON.stringify([
-        {
-          name: 'prometheus',
-          image: '043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest',
-          essential: true,
-          portMappings: [
-            {
-              containerPort: 9090,
-              hostPort: 9090,
-              protocol: 'tcp',
-            },
-          ],
-          logConfiguration: {
-            logDriver: 'awslogs',
-            options: {
-              'awslogs-group': '/ecs/prom-task',
-              'awslogs-region': 'us-west-2',
-              'awslogs-stream-prefix': 'ecs',
-              'awslogs-create-group': 'true',
-            },
+      containerDefinitions: JSON.stringify([{
+        name: prometheusContainerName,
+        image: `${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/${projectName}-prometheus:${prometheusTag}`,
+        essential: true,
+        portMappings: [{ containerPort: prometheusPort, hostPort: prometheusPort, protocol: 'tcp' }],
+        environment: [
+          { name: 'BACKEND_ALB_HOST', value: assertEnvVar('BACKEND_ALB_HOST') },
+        ],
+        command: [
+          '/bin/prometheus',
+          '--config.file=/etc/prometheus/prometheus.yml',
+          '--web.external-url=/metrics',
+          '--web.route-prefix=/'
+        ],
+        logConfiguration: {
+          logDriver: 'awslogs',
+          options: {
+            'awslogs-group': `/ecs/${projectName}-prom-task`,
+            'awslogs-region': awsRegion,
+            'awslogs-stream-prefix': 'ecs',
+            'awslogs-create-group': 'true',
           },
         },
-      ]),
-      tags: { Name: 'prom-task-def' },
+      }]),
+      tags: { Name: `${projectName}-prom-task-def`, Project: projectName },
     });
 
     this.prometheusService = new EcsService(this, 'prometheus-service', {
-      name: 'prometheus-service',
+      name: `${projectName}-prometheus-service`,
       cluster: ecs.cluster.id,
       taskDefinition: this.prometheusTaskDefinition.arn,
-      desiredCount: 1,
+      desiredCount: prometheusDesiredCount,
       launchType: 'FARGATE',
       networkConfiguration: {
         subnets: networking.privateSubnets.map(s => s.id),
@@ -91,11 +107,11 @@ export class Monitoring extends Construct {
       loadBalancer: [
         {
           targetGroupArn: alb.prometheusTargetGroup.arn,
-          containerName: 'prometheus',
-          containerPort: 9090,
+          containerName: prometheusContainerName,
+          containerPort: prometheusPort,
         },
       ],
+      tags: { Name: `${projectName}-prometheus-service`, Project: projectName },
     });
-    // Grafana already in ecs.ts - extend here if needed
   }
 }

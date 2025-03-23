@@ -5,21 +5,26 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "build": "mkdir -p dist && cp index.js dist/ && cp package.json dist/ && zip -j dist/function.zip dist/index.js"
+    "build": "mkdir -p dist && cp index.js package.json dist/ && cd dist && zip -r ../function.zip index.js package.json"
   },
-  "keywords": [
-    "lambda",
-    "data-import",
-    "aws"
-  ],
-  "author": "",
+  "keywords": ["lambda", "data-import", "aws"],
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.1473.0",
-    "pg": "^8.11.3"
+    "@aws-sdk/client-secrets-manager": "^3.645.0",
+    "@aws-sdk/client-s3": "^3.645.0",
+    "pg": "^8.14.0"
   },
   "devDependencies": {
-    "jest": "^29.6.4",
-    "aws-sdk-mock": "^5.8.0"
+    "jest": "^29.7.0",
+    "jest-mock-extended": "^3.0.5"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "clearMocks": true,
+    "restoreMocks": true,
+    "resetMocks": false
+  },
+  "engines": {
+    "node": ">=18.0"
   }
 }

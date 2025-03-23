@@ -1,41 +1,19 @@
-# Base image
-FROM grafana/grafana-oss:10.0.0
-
-# Set working directory
+FROM grafana/grafana-oss:10.2.6
 WORKDIR /usr/share/grafana
-
-# Switch to root for package install
 USER root
 
-# Install dependencies (Alpine uses apk)
-RUN apk update && \
-    apk add --no-cache curl
+RUN apk update && apk add --no-cache netcat-openbsd
 
-# Copy provisioning configs
 COPY provisioning/ /etc/grafana/provisioning/
-
-# Create a startup script to ensure proper subpath configuration
 RUN echo '#!/bin/sh\n\
-# Ensure proper subpath configuration\n\
-if [ -n "${GF_SERVER_ROOT_URL}" ] && [ "${GF_SERVER_SERVE_FROM_SUB_PATH}" = "true" ]; then\n\
-  echo "Configuring Grafana for subpath"\n\
-  # Make sure the subpath settings are properly applied\n\
-  mkdir -p /var/lib/grafana/plugins\n\
-  chmod -R 777 /var/lib/grafana\n\
+if [ -n "$GF_SERVER_ROOT_URL" ] && [ "$GF_SERVER_SERVE_FROM_SUB_PATH" = "true" ]; then\n\
+  echo "Configuring Grafana for subpath at $GF_SERVER_ROOT_URL"\n\
+  mkdir -p "$GF_PATHS_PLUGINS"\n\
+  chmod -R 777 "$GF_PATHS_DATA"\n\
 fi\n\
-\n\
-# Start Grafana\n\
-exec grafana-server \
-  --homepath=/usr/share/grafana \
-  --config=/etc/grafana/grafana.ini \
-  "$@"' > /usr/local/bin/start-grafana.sh && \
-  chmod +x /usr/local/bin/start-grafana.sh
+exec grafana-server --homepath="$GF_PATHS_HOME" --config="$GF_PATHS_CONFIG" "$@"' > /usr/local/bin/start-grafana.sh && \
+chmod +x /usr/local/bin/start-grafana.sh
 
-# Switch back to grafana user
 USER grafana
-
-# Expose port
 EXPOSE 3000
-
-# Use our custom startup script
 CMD ["/usr/local/bin/start-grafana.sh"]

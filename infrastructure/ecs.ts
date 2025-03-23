@@ -9,6 +9,12 @@ import { SecurityGroupRule } from '../.gen/providers/aws/security-group-rule';
 import { Alb } from './alb';
 import { Networking } from './networking';
 
+function assertEnvVar(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set in .env`);
+  return value;
+}
+
 export class Ecs extends Construct {
   public cluster: EcsCluster;
   public service: EcsService;
@@ -21,217 +27,180 @@ export class Ecs extends Construct {
   constructor(scope: Construct, id: string, networking: Networking, alb: Alb) {
     super(scope, id);
 
+    const projectName = assertEnvVar('PROJECT_NAME');
+    const backendPort = Number(assertEnvVar('BACKEND_PORT'));
+    const grafanaCpu = assertEnvVar('GRAFANA_CPU');
+    const grafanaMemory = assertEnvVar('GRAFANA_MEMORY');
+    const grafanaContainerName = assertEnvVar('GRAFANA_CONTAINER_NAME');
+    const grafanaTag = assertEnvVar('GRAFANA_TAG');
+    const grafanaPort = Number(assertEnvVar('GRAFANA_PORT'));
+    const grafanaRootUrl = assertEnvVar('GRAFANA_ROOT_URL');
+    const grafanaAdminUser = assertEnvVar('GRAFANA_ADMIN_USER');
+    const grafanaAllowSignup = assertEnvVar('GRAFANA_ALLOW_SIGNUP');
+    const grafanaDesiredCount = Number(assertEnvVar('GRAFANA_DESIRED_COUNT'));
+    const backendCpu = assertEnvVar('BACKEND_CPU');
+    const backendMemory = assertEnvVar('BACKEND_MEMORY');
+    const backendContainerName = assertEnvVar('BACKEND_CONTAINER_NAME');
+    const backendTag = assertEnvVar('BACKEND_TAG');
+    const nodeEnv = assertEnvVar('NODE_ENV');
+    const dbSecretId = assertEnvVar('DB_SECRET_ID');
+    const awsRegion = assertEnvVar('AWS_REGION');
+    const awsAccountId = assertEnvVar('AWS_ACCOUNT_ID');
+    const ecsEgressCidr = assertEnvVar('ECS_EGRESS_CIDR');
+
     this.cluster = new EcsCluster(this, 'cluster', {
-      name: 'prod-e-cluster',
-      tags: {
-        Name: 'ecs-cluster',
-        ManagedBy: 'CDKTF',
-        Project: 'prod-e',
-      },
+      name: `${projectName}-cluster`,
+      tags: { Name: `${projectName}-cluster`, Project: projectName },
     });
 
-    // Security group for ECS tasks
     this.securityGroup = new SecurityGroup(this, 'ecs-security-group', {
-      name: 'ecs-security-group',
-      description: 'Security group for ECS Fargate tasks',
+      name: `${projectName}-ecs-sg`,
+      description: 'Security group for ECS tasks',
       vpcId: networking.vpc.id,
-      tags: { Name: 'ecs-sg' },
+      tags: { Name: `${projectName}-ecs-sg`, Project: projectName },
     });
 
-    // Add inbound rule to allow traffic from ALB
     new SecurityGroupRule(this, 'ecs-http-inbound', {
       type: 'ingress',
-      fromPort: 3000,
-      toPort: 3000,
+      fromPort: backendPort,
+      toPort: backendPort,
       protocol: 'tcp',
-      sourceSecurityGroupId: networking.albSecurityGroup.id, // Allow traffic from ALB
+      sourceSecurityGroupId: networking.albSecurityGroup.id,
       securityGroupId: this.securityGroup.id,
-      description: 'Allow HTTP traffic from ALB',
+      description: 'Allow traffic from ALB',
     });
 
-    // Add outbound rule to allow all traffic
     new SecurityGroupRule(this, 'ecs-all-outbound', {
       type: 'egress',
       fromPort: 0,
       toPort: 0,
-      protocol: '-1', // All protocols
-      cidrBlocks: ['0.0.0.0/0'], // Allow traffic to anywhere
+      protocol: '-1',
+      cidrBlocks: [ecsEgressCidr],
       securityGroupId: this.securityGroup.id,
       description: 'Allow all outbound traffic',
     });
 
-    // IAM execution role for ECS tasks
     this.taskExecutionRole = new IamRole(this, 'ecs-task-execution-role', {
-      name: 'ecs-task-execution-role',
+      name: `${projectName}-ecs-task-execution-role`,
       assumeRolePolicy: JSON.stringify({
         Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Principal: {
-              Service: 'ecs-tasks.amazonaws.com',
-            },
-            Action: 'sts:AssumeRole',
-          },
-        ],
+        Statement: [{ Effect: 'Allow', Principal: { Service: 'ecs-tasks.amazonaws.com' }, Action: 'sts:AssumeRole' }],
       }),
-      tags: {
-        Name: 'ecs-execution-role',
-      },
+      tags: { Name: `${projectName}-ecs-task-execution-role`, Project: projectName },
     });
 
-    // Attach the Amazon ECS Task Execution Role policy to the ECS execution role
-    new IamRolePolicyAttachment(this, 'ecs-task-execution-role-policy', {
+    new IamRolePolicyAttachment(this, 'ecs-task-execution-policy', {
       role: this.taskExecutionRole.name,
       policyArn: 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy',
     });
 
-    // Add CloudWatch Logs permissions
-    new IamRolePolicyAttachment(this, 'ecs-task-execution-cloudwatch-logs-policy', {
+    new IamRolePolicyAttachment(this, 'ecs-task-logs-policy', {
       role: this.taskExecutionRole.name,
       policyArn: 'arn:aws:iam::aws:policy/CloudWatchLogsFullAccess',
     });
 
-    // Add SecretsManager access policy
-    new IamRolePolicyAttachment(this, 'ecs-task-execution-secretsmanager-policy', {
+    new IamRolePolicyAttachment(this, 'ecs-task-secrets-policy', {
       role: this.taskExecutionRole.name,
       policyArn: 'arn:aws:iam::aws:policy/SecretsManagerReadWrite',
     });
 
-    // Create IAM task role for ECS tasks
     this.taskRole = new IamRole(this, 'ecs-task-role', {
-      name: 'ecs-task-role',
+      name: `${projectName}-ecs-task-role`,
       assumeRolePolicy: JSON.stringify({
         Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Principal: {
-              Service: 'ecs-tasks.amazonaws.com',
-            },
-            Action: 'sts:AssumeRole',
-          },
-        ],
+        Statement: [{ Effect: 'Allow', Principal: { Service: 'ecs-tasks.amazonaws.com' }, Action: 'sts:AssumeRole' }],
       }),
-      tags: {
-        Name: 'ecs-task-role',
-      },
+      tags: { Name: `${projectName}-ecs-task-role`, Project: projectName },
     });
 
-    // Add permissions to task role to access Secrets Manager
-    new IamRolePolicyAttachment(this, 'ecs-task-secretsmanager-policy', {
+    new IamRolePolicyAttachment(this, 'ecs-task-role-secrets-policy', { // Renamed here
       role: this.taskRole.name,
       policyArn: 'arn:aws:iam::aws:policy/SecretsManagerReadWrite',
     });
 
-    // Task definition for Grafana
     this.taskDefinition = new EcsTaskDefinition(this, 'grafana-task-definition', {
-      family: 'grafana-task',
+      family: `${projectName}-grafana-task`,
       requiresCompatibilities: ['FARGATE'],
       networkMode: 'awsvpc',
-      cpu: '256',
-      memory: '512',
+      cpu: grafanaCpu,
+      memory: grafanaMemory,
       executionRoleArn: this.taskExecutionRole.arn,
       taskRoleArn: this.taskRole.arn,
       containerDefinitions: JSON.stringify([
         {
-          name: 'grafana',
-          image: '043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-grafana:latest',
+          name: grafanaContainerName,
+          image: `${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/${projectName}-grafana:${grafanaTag}`,
           essential: true,
           portMappings: [
             {
-              containerPort: 3000,
-              hostPort: 3000,
+              containerPort: grafanaPort,
+              hostPort: grafanaPort,
               protocol: 'tcp',
             },
           ],
           environment: [
-            {
-              name: 'GF_SERVER_ROOT_URL',
-              value: 'http://prod-e-alb-962304124.us-west-2.elb.amazonaws.com/grafana',
-            },
+            { name: 'GF_SERVER_ROOT_URL', value: grafanaRootUrl },
             { name: 'GF_SERVER_SERVE_FROM_SUB_PATH', value: 'true' },
-            { name: 'GF_SECURITY_ADMIN_USER', value: 'admin' },
-            { name: 'GF_USERS_ALLOW_SIGN_UP', value: 'false' },
+            { name: 'GF_SECURITY_ADMIN_USER', value: grafanaAdminUser },
+            { name: 'GF_USERS_ALLOW_SIGN_UP', value: grafanaAllowSignup },
           ],
           logConfiguration: {
             logDriver: 'awslogs',
             options: {
-              'awslogs-group': '/ecs/grafana-task',
-              'awslogs-region': 'us-west-2',
+              'awslogs-group': `/ecs/${projectName}-grafana-task`,
+              'awslogs-region': awsRegion,
               'awslogs-stream-prefix': 'ecs',
               'awslogs-create-group': 'true',
             },
           },
         },
       ]),
-      tags: { Name: 'grafana-task-def' },
+      tags: { Name: `${projectName}-grafana-task-def`, Project: projectName },
     });
 
-    // Task definition for backend service
     this.backendTaskDefinition = new EcsTaskDefinition(this, 'backend-task-definition', {
-      family: 'prod-e-task',
+      family: `${projectName}-task`,
       requiresCompatibilities: ['FARGATE'],
       networkMode: 'awsvpc',
-      cpu: '256',
-      memory: '512',
+      cpu: backendCpu,
+      memory: backendMemory,
       executionRoleArn: this.taskExecutionRole.arn,
       taskRoleArn: this.taskRole.arn,
       containerDefinitions: JSON.stringify([
         {
-          name: 'prod-e-container',
-          image: '043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-backend:latest',
+          name: backendContainerName,
+          image: `${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/${projectName}-backend:${backendTag}`,
           essential: true,
           portMappings: [
             {
-              containerPort: 3000,
-              hostPort: 3000,
+              containerPort: backendPort,
+              hostPort: backendPort,
               protocol: 'tcp',
             },
           ],
           environment: [
-            { name: 'NODE_ENV', value: 'production' },
-            { name: 'AWS_REGION', value: 'us-west-2' },
-            { name: 'DB_CREDENTIALS_SECRET_NAME', value: 'prod-e-db-credentials' },
+            { name: 'NODE_ENV', value: nodeEnv },
+            { name: 'AWS_REGION', value: awsRegion },
+            { name: 'DB_CREDENTIALS_SECRET_NAME', value: dbSecretId },
           ],
           secrets: [
-            {
-              name: 'DB_HOST',
-              valueFrom:
-                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:host::',
-            },
-            {
-              name: 'DB_PORT',
-              valueFrom:
-                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:port::',
-            },
-            {
-              name: 'DB_NAME',
-              valueFrom:
-                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:dbname::',
-            },
-            {
-              name: 'DB_USER',
-              valueFrom:
-                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:username::',
-            },
-            {
-              name: 'DB_PASSWORD',
-              valueFrom:
-                'arn:aws:secretsmanager:us-west-2:043309339649:secret:prod-e-db-credentials:password::',
-            },
+            { name: 'DB_HOST', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:host::` },
+            { name: 'DB_PORT', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:port::` },
+            { name: 'DB_NAME', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:dbname::` },
+            { name: 'DB_USER', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:username::` },
+            { name: 'DB_PASSWORD', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:password::` },
           ],
           logConfiguration: {
             logDriver: 'awslogs',
             options: {
-              'awslogs-group': '/ecs/prod-e-task',
-              'awslogs-region': 'us-west-2',
+              'awslogs-group': `/ecs/${projectName}-task`,
+              'awslogs-region': awsRegion,
               'awslogs-stream-prefix': 'ecs',
               'awslogs-create-group': 'true',
             },
           },
           healthCheck: {
-            command: ['CMD-SHELL', 'curl -f http://localhost:3000/health || exit 1'],
+            command: ['CMD-SHELL', `curl -f http://localhost:${backendPort}${assertEnvVar('BACKEND_HEALTH_PATH')} || exit 1`],
             interval: 30,
             timeout: 5,
             retries: 3,
@@ -239,14 +208,14 @@ export class Ecs extends Construct {
           },
         },
       ]),
-      tags: { Name: 'backend-task-def', Project: 'prod-e' },
+      tags: { Name: `${projectName}-task-def`, Project: projectName },
     });
 
     this.service = new EcsService(this, 'grafana-service', {
-      name: 'grafana-service',
+      name: `${projectName}-grafana-service`,
       cluster: this.cluster.id,
       taskDefinition: this.taskDefinition.arn,
-      desiredCount: 1,
+      desiredCount: grafanaDesiredCount,
       launchType: 'FARGATE',
       networkConfiguration: {
         subnets: networking.privateSubnets.map(s => s.id),
@@ -256,11 +225,12 @@ export class Ecs extends Construct {
       loadBalancer: [
         {
           targetGroupArn: alb.grafanaTargetGroup.arn,
-          containerName: 'grafana',
-          containerPort: 3000,
+          containerName: grafanaContainerName,
+          containerPort: grafanaPort,
         },
       ],
       forceNewDeployment: true,
+      tags: { Name: `${projectName}-grafana-service`, Project: projectName },
     });
   }
 }

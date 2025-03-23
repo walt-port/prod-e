@@ -1,31 +1,21 @@
 {
   "name": "prod-e-backend",
   "version": "1.0.0",
-  "description": "Backend API service for the Production Experience Showcase monitoring and alerting dashboard",
+  "description": "Backend API service for the Production Experience Showcase",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --testPathIgnorePatterns=environment.test.js --testPathIgnorePatterns=health.test.js",
     "test:reliable": "jest tests/container.test.js tests/api-docs.test.js"
   },
-  "keywords": [
-    "monitoring",
-    "dashboard",
-    "express",
-    "api",
-    "prometheus",
-    "metrics"
-  ],
-  "author": "",
+  "keywords": ["monitoring", "dashboard", "express", "api", "prometheus", "metrics"],
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.1528.0",
+    "@aws-sdk/client-secrets-manager": "^3.645.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "nodemon": "^3.1.9",
+    "express": "^4.21.0",
     "pg": "^8.14.0",
     "prom-client": "^15.1.3",
     "swagger-jsdoc": "^6.2.8",
@@ -34,22 +24,20 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "jest-mock-extended": "^3.0.5",
+    "nodemon": "^3.1.9",
     "pg-mem": "^2.8.1",
     "supertest": "^6.3.4"
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFilesAfterEnv": [
-      "./tests/setup.js"
-    ],
+    "setupFilesAfterEnv": ["./tests/setup.js"],
     "clearMocks": true,
     "restoreMocks": true,
     "resetMocks": false,
-    "coveragePathIgnorePatterns": [
-      "/node_modules/"
-    ],
-    "testMatch": [
-      "**/tests/**/*.test.js"
-    ]
+    "coveragePathIgnorePatterns": ["/node_modules/"],
+    "testMatch": ["**/tests/**/*.test.js"]
+  },
+  "engines": {
+    "node": ">=18.0"
   }
 }

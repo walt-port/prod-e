@@ -1,13 +1,11 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
-
 scrape_configs:
   - job_name: 'prod-e-backend'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['prod-e-alb-962304124.us-west-2.elb.amazonaws.com:3000'] # ALB DNS for backend service
-
+      - targets: ['${BACKEND_ALB_HOST}:3000']
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090'] # Self-monitoring
+      - targets: ['localhost:9090']

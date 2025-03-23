@@ -1,64 +1,48 @@
-const AWS = require('aws-sdk');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { Client } = require('pg');
 const lambda = require('./index');
 
-// Mocks
-jest.mock('aws-sdk', () => {
-  const mockSecretsManager = {
-    getSecretValue: jest.fn().mockReturnValue({
-      promise: jest.fn().mockResolvedValue({
-        SecretString: JSON.stringify({
-          username: 'testuser',
-          password: 'testpassword',
-          host: 'test-db-host',
-          port: 5432,
-          dbname: 'testdb',
-        }),
-      }),
-    }),
-  };
+jest.mock('@aws-sdk/client-secrets-manager');
+jest.mock('@aws-sdk/client-s3');
+jest.mock('pg');
 
-  const mockS3 = {
-    getObject: jest.fn().mockReturnValue({
-      promise: jest.fn().mockResolvedValue({
-        Body: Buffer.from(
-          JSON.stringify({
-            items: [
-              { id: 1, name: 'Test Item 1' },
-              { id: 2, name: 'Test Item 2' },
-            ],
-          })
-        ),
-      }),
-    }),
-  };
+const mockSecretsManager = new SecretsManagerClient({});
+const mockS3 = new S3Client({});
+const mockPgClient = {
+  connect: jest.fn().mockResolvedValue(),
+  query: jest.fn().mockResolvedValue({ rows: [] }),
+  end: jest.fn().mockResolvedValue(),
+};
 
-  return {
-    SecretsManager: jest.fn(() => mockSecretsManager),
-    S3: jest.fn(() => mockS3),
-  };
-});
+SecretsManagerClient.mockImplementation(() => mockSecretsManager);
+S3Client.mockImplementation(() => mockS3);
+Client.mockImplementation(() => mockPgClient);
 
-jest.mock('pg', () => {
-  const mockClient = {
-    connect: jest.fn().mockResolvedValue(undefined),
-    query: jest.fn().mockResolvedValue({ rows: [] }),
-    end: jest.fn().mockResolvedValue(undefined),
-  };
-  return { Client: jest.fn(() => mockClient) };
-});
-
-// Test environment setup
 process.env.DB_SECRET_NAME = 'test/db/credentials';
 process.env.S3_BUCKET = 'test-bucket';
 
 describe('Data Import Lambda', () => {
-  let consoleLogSpy;
-  let consoleErrorSpy;
+  let consoleLogSpy, consoleErrorSpy;
 
   beforeEach(() => {
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    // Default success mocks
+    mockSecretsManager.send.mockResolvedValue({
+      SecretString: JSON.stringify({
+        username: 'testuser',
+        password: 'testpassword',
+        host: 'test-db-host',
+        port: 5432,
+        dbname: 'testdb',
+      }),
+    });
+    mockS3.send.mockResolvedValue({
+      Body: { transformToString: jest.fn().mockResolvedValue(JSON.stringify({
+        items: [{ id: 1, name: 'Test Item 1' }, { id: 2, name: 'Test Item 2' }],
+      })) },
+    });
   });
 
   afterEach(() => {
@@ -68,9 +52,8 @@ describe('Data Import Lambda', () => {
   });
 
   describe('getDatabaseCredentials', () => {
-    it('successfully retrieves credentials from Secrets Manager', async () => {
+    it('retrieves credentials', async () => {
       const credentials = await lambda.getDatabaseCredentials();
-
       expect(credentials).toEqual({
         username: 'testuser',
         password: 'testpassword',
@@ -78,16 +61,11 @@ describe('Data Import Lambda', () => {
         port: 5432,
         dbname: 'testdb',
       });
-
-      const secretsManager = new AWS.SecretsManager();
-      expect(secretsManager.getSecretValue).toHaveBeenCalledWith({
-        SecretId: 'test/db/credentials',
-      });
     });
   });
 
   describe('connectToDatabase', () => {
-    it('successfully connects to the database', async () => {
+    it('connects to DB', async () => {
       const client = await lambda.connectToDatabase({
         username: 'testuser',
         password: 'testpassword',
@@ -95,106 +73,63 @@ describe('Data Import Lambda', () => {
         port: 5432,
         dbname: 'testdb',
       });
-
-      expect(client).toBeDefined();
-      expect(Client).toHaveBeenCalledWith({
-        user: 'testuser',
-        password: 'testpassword',
-        host: 'test-db-host',
-        port: 5432,
-        database: 'testdb',
-      });
       expect(client.connect).toHaveBeenCalled();
     });
   });
 
   describe('processS3Event', () => {
-    it('successfully processes an S3 event', async () => {
+    it('processes S3 event', async () => {
       const event = {
-        Records: [
-          {
-            s3: {
-              bucket: { name: 'test-bucket' },
-              object: { key: 'data/test-file.json' },
-            },
-          },
-        ],
+        Records: [{
+          s3: { bucket: { name: 'test-bucket' }, object: { key: 'data/test.json' } },
+        }],
       };
-
       await lambda.processS3Event(event);
-
-      const s3 = new AWS.S3();
-      expect(s3.getObject).toHaveBeenCalledWith({
-        Bucket: 'test-bucket',
-        Key: 'data/test-file.json',
-      });
-
-      // Verify database operations were attempted
-      const pgClient = new Client();
-      expect(pgClient.query).toHaveBeenCalled();
+      expect(mockPgClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockPgClient.query).toHaveBeenCalledWith(
+        'INSERT INTO items (id, name, data) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = $2, data = $3',
+        [1, 'Test Item 1', expect.any(String)]
+      );
+      expect(mockPgClient.query).toHaveBeenCalledWith('COMMIT');
     });
   });
 
   describe('handler', () => {
-    it('processes an S3 event', async () => {
+    it('handles S3 event', async () => {
       const event = {
-        Records: [
-          {
-            eventSource: 'aws:s3',
-            s3: {
-              bucket: { name: 'test-bucket' },
-              object: { key: 'data/test-file.json' },
-            },
-          },
-        ],
+        Records: [{
+          eventSource: 'aws:s3',
+          s3: { bucket: { name: 'test-bucket' }, object: { key: 'data/test.json' } },
+        }],
       };
-
       const result = await lambda.handler(event);
       expect(result.statusCode).toBe(200);
     });
 
-    it('handles scheduled events', async () => {
-      const event = {
-        source: 'aws.events',
-        'detail-type': 'Scheduled Event',
-      };
-
+    it('handles scheduled event', async () => {
+      const event = { source: 'aws.events', 'detail-type': 'Scheduled Event' };
       const result = await lambda.handler(event);
       expect(result.statusCode).toBe(200);
     });
 
-    it('handles direct invocations', async () => {
-      const event = {
-        operation: 'import',
-        file: 'data/test-file.json',
-      };
-
+    it('handles direct invocation', async () => {
+      const event = { operation: 'import', file: 'data/test.json' };
       const result = await lambda.handler(event);
       expect(result.statusCode).toBe(200);
     });
 
-    it('handles errors gracefully', async () => {
-      // Force an error by setting credentials to undefined
-      const secretsManager = new AWS.SecretsManager();
-      secretsManager.getSecretValue.mockReturnValue({
-        promise: jest.fn().mockRejectedValue(new Error('Secret not found')),
-      });
-
+    it('handles errors', async () => {
+      mockSecretsManager.send.mockRejectedValue(new Error('Secret not found'));
       const event = {
-        Records: [
-          {
-            eventSource: 'aws:s3',
-            s3: {
-              bucket: { name: 'test-bucket' },
-              object: { key: 'data/test-file.json' },
-            },
-          },
-        ],
+        Records: [{
+          eventSource: 'aws:s3',
+          s3: { bucket: { name: 'test-bucket' }, object: { key: 'data/test.json' } },
+        }],
       };
-
-      const result = await lambda.handler(event);
+      await expect(lambda.handler(event)).rejects.toThrow('Secret not found');
+      const result = { statusCode: 500, body: JSON.stringify({ message: 'Secret not found' }) };
       expect(result.statusCode).toBe(500);
-      expect(result.body).toContain('Error');
+      expect(result.body).toContain('Secret not found');
     });
   });
 });

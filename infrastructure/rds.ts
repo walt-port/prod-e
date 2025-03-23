@@ -4,6 +4,14 @@ import { DbSubnetGroup } from '../.gen/providers/aws/db-subnet-group';
 import { SecurityGroup } from '../.gen/providers/aws/security-group';
 import { SecurityGroupRule } from '../.gen/providers/aws/security-group-rule';
 import { Networking } from './networking';
+import { SecretsmanagerSecret } from '../.gen/providers/aws/secretsmanager-secret';
+import { SecretsmanagerSecretVersion } from '../.gen/providers/aws/secretsmanager-secret-version';
+
+function assertEnvVar(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set in .env`);
+  return value;
+}
 
 export class Rds extends Construct {
   public dbSecurityGroup: SecurityGroup;
@@ -12,59 +20,96 @@ export class Rds extends Construct {
   constructor(scope: Construct, id: string, networking: Networking) {
     super(scope, id);
 
-    // Create security group for database
+    const projectName = assertEnvVar('PROJECT_NAME');
+    const dbPort = Number(assertEnvVar('DB_PORT'));
+    const dbAccessCidr = assertEnvVar('DB_ACCESS_CIDR');
+    const dbEgressCidr = assertEnvVar('DB_EGRESS_CIDR');
+    const dbSecretId = assertEnvVar('DB_SECRET_ID');
+    const dbEngine = assertEnvVar('DB_ENGINE');
+    const dbEngineVersion = assertEnvVar('DB_ENGINE_VERSION');
+    const dbInstanceClass = assertEnvVar('DB_INSTANCE_CLASS');
+    const dbStorage = Number(assertEnvVar('DB_STORAGE'));
+    const dbName = assertEnvVar('DB_NAME');
+    const dbUsername = assertEnvVar('DB_USERNAME');
+    const dbPassword = assertEnvVar('DB_PASSWORD');
+    const dbMultiAz = process.env.DB_MULTI_AZ === 'true';
+
     this.dbSecurityGroup = new SecurityGroup(this, 'db-security-group', {
-      name: 'db-security-group',
-      description: 'Security group for the RDS PostgreSQL instance',
+      name: `${projectName}-db-sg`,
+      description: 'Security group for RDS',
       vpcId: networking.vpc.id,
-      tags: { Name: 'db-sg' },
+      tags: { Name: `${projectName}-db-sg`, Project: projectName },
     });
 
-    // Add ingress rule for PostgreSQL
     new SecurityGroupRule(this, 'db-postgres-inbound', {
       type: 'ingress',
-      fromPort: 5432,
-      toPort: 5432,
+      fromPort: dbPort,
+      toPort: dbPort,
       protocol: 'tcp',
-      cidrBlocks: ['0.0.0.0/0'], // Note: In production, you'd restrict this
+      cidrBlocks: [dbAccessCidr],
       securityGroupId: this.dbSecurityGroup.id,
       description: 'Allow PostgreSQL traffic',
     });
 
-    // Add egress rule to allow all outbound traffic
     new SecurityGroupRule(this, 'db-all-outbound', {
       type: 'egress',
       fromPort: 0,
       toPort: 0,
-      protocol: '-1', // All protocols
-      cidrBlocks: ['0.0.0.0/0'],
+      protocol: '-1',
+      cidrBlocks: [dbEgressCidr],
       securityGroupId: this.dbSecurityGroup.id,
       description: 'Allow all outbound traffic',
     });
 
-    // Create a new subnet group in our current VPC
-    const newSubnetGroup = new DbSubnetGroup(this, 'new-subnet-group', {
-      name: 'prod-e-rds-subnet-group-new',
+    const subnetGroup = new DbSubnetGroup(this, 'subnet-group', {
+      name: `${projectName}-rds-subnet-group`,
       subnetIds: networking.privateSubnets.map(s => s.id),
-      description: 'Subnet group for RDS in our new VPC',
-      tags: { Name: 'prod-e-rds-subnet-group-new' },
+      description: 'Subnet group for RDS',
+      tags: { Name: `${projectName}-rds-subnet-group`, Project: projectName },
     });
 
-    // Use our newly created subnet group
-    this.dbInstance = new DbInstance(this, 'prod-e-db', {
-      identifier: 'prod-e-db',
-      engine: 'postgres',
-      engineVersion: '14.17',
-      instanceClass: 'db.t3.micro', // Use a small instance for demo
-      allocatedStorage: 20,
-      dbName: 'prode',
-      username: 'postgres',
-      password: 'ReallyStrongPass87$', // Updated password
-      skipFinalSnapshot: true, // For demo purposes
-      multiAz: false, // For demo, single AZ is enough
+    const dbSecret = new SecretsmanagerSecret(this, 'db-secret', {
+      name: dbSecretId,
+      tags: { Project: projectName },
+    });
+
+    const dbSecretVersion = new SecretsmanagerSecretVersion(this, 'db-secret-version', {
+      secretId: dbSecret.id,
+      secretString: JSON.stringify({
+        username: dbUsername,
+        password: dbPassword,
+        host: '',
+        port: dbPort,
+        dbname: dbName,
+      }),
+    });
+
+    this.dbInstance = new DbInstance(this, 'db', {
+      identifier: `${projectName}-db`,
+      engine: dbEngine,
+      engineVersion: dbEngineVersion,
+      instanceClass: dbInstanceClass,
+      allocatedStorage: dbStorage,
+      dbName: dbName,
+      username: dbUsername,
+      password: dbPassword,
+      skipFinalSnapshot: true,
+      multiAz: dbMultiAz,
       vpcSecurityGroupIds: [this.dbSecurityGroup.id],
-      dbSubnetGroupName: newSubnetGroup.name,
-      tags: { Name: 'prod-e-db' },
+      dbSubnetGroupName: subnetGroup.name,
+      tags: { Name: `${projectName}-db`, Project: projectName },
+    });
+
+    new SecretsmanagerSecretVersion(this, 'db-secret-version-updated', {
+      secretId: dbSecret.id,
+      secretString: JSON.stringify({
+        username: dbUsername,
+        password: dbPassword,
+        host: this.dbInstance.endpoint,
+        port: dbPort,
+        dbname: dbName,
+      }),
+      dependsOn: [this.dbInstance],
     });
   }
 }

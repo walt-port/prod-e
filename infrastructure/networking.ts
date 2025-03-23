@@ -2,13 +2,18 @@ import { Construct } from 'constructs';
 import { Eip } from '../.gen/providers/aws/eip';
 import { InternetGateway } from '../.gen/providers/aws/internet-gateway';
 import { NatGateway } from '../.gen/providers/aws/nat-gateway';
-import { AwsProvider } from '../.gen/providers/aws/provider';
 import { RouteTable } from '../.gen/providers/aws/route-table';
 import { RouteTableAssociation } from '../.gen/providers/aws/route-table-association';
 import { SecurityGroup } from '../.gen/providers/aws/security-group';
 import { SecurityGroupRule } from '../.gen/providers/aws/security-group-rule';
 import { Subnet } from '../.gen/providers/aws/subnet';
 import { Vpc } from '../.gen/providers/aws/vpc';
+
+function assertEnvVar(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set in .env`);
+  return value;
+}
 
 export class Networking extends Construct {
   public vpc: Vpc;
@@ -21,107 +26,92 @@ export class Networking extends Construct {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    const provider = new AwsProvider(this, 'aws', { region: 'us-west-2' });
+    const projectName = assertEnvVar('PROJECT_NAME');
+    const vpcCidr = assertEnvVar('VPC_CIDR');
+    const publicSubnetCidrs = assertEnvVar('PUBLIC_SUBNET_CIDRS').split(',');
+    const privateSubnetCidrs = assertEnvVar('PRIVATE_SUBNET_CIDRS').split(',');
+    const availabilityZones = assertEnvVar('AVAILABILITY_ZONES').split(',');
+    const albPort = Number(assertEnvVar('ALB_PORT'));
+    const albIngressCidr = assertEnvVar('ALB_INGRESS_CIDR');
+    const albEgressCidr = assertEnvVar('ALB_EGRESS_CIDR');
 
-    // VPC
     this.vpc = new Vpc(this, 'vpc', {
-      cidrBlock: '10.0.0.0/16',
+      cidrBlock: vpcCidr,
       enableDnsHostnames: true,
       enableDnsSupport: true,
-      tags: { Name: 'prod-e-vpc' },
+      tags: { Name: `${projectName}-vpc`, Project: projectName },
     });
 
-    // Public Subnets (multi-AZ)
-    this.publicSubnets = ['us-west-2a', 'us-west-2b'].map(
-      (az, i) =>
-        new Subnet(this, `public-subnet-${i}`, {
-          vpcId: this.vpc.id,
-          cidrBlock: `10.0.${i + 1}.0/24`,
-          availabilityZone: az,
-          mapPublicIpOnLaunch: true,
-          tags: { Name: `prod-e-public-${az}` },
-        })
-    );
+    this.publicSubnets = publicSubnetCidrs.map((cidr, i) => new Subnet(this, `public-subnet-${i}`, {
+      vpcId: this.vpc.id,
+      cidrBlock: cidr,
+      availabilityZone: availabilityZones[i],
+      mapPublicIpOnLaunch: true,
+      tags: { Name: `${projectName}-public-${availabilityZones[i]}`, Project: projectName },
+    }));
 
-    // Private Subnets (multi-AZ)
-    this.privateSubnets = ['us-west-2a', 'us-west-2b'].map(
-      (az, i) =>
-        new Subnet(this, `private-subnet-${i}`, {
-          vpcId: this.vpc.id,
-          cidrBlock: `10.0.${i + 10}.0/24`,
-          availabilityZone: az,
-          tags: { Name: `prod-e-private-${az}` },
-        })
-    );
+    this.privateSubnets = privateSubnetCidrs.map((cidr, i) => new Subnet(this, `private-subnet-${i}`, {
+      vpcId: this.vpc.id,
+      cidrBlock: cidr,
+      availabilityZone: availabilityZones[i],
+      tags: { Name: `${projectName}-private-${availabilityZones[i]}`, Project: projectName },
+    }));
 
-    // Internet Gateway
     this.internetGateway = new InternetGateway(this, 'igw', {
       vpcId: this.vpc.id,
-      tags: { Name: 'prod-e-igw' },
+      tags: { Name: `${projectName}-igw`, Project: projectName },
     });
 
-    // NAT Gateway (in first public subnet)
     this.natGateway = new NatGateway(this, 'nat', {
       allocationId: new Eip(this, 'nat-eip', { vpc: true }).id,
       subnetId: this.publicSubnets[0].id,
-      tags: { Name: 'prod-e-nat' },
+      tags: { Name: `${projectName}-nat`, Project: projectName },
     });
 
-    // Route Tables (simplified)
     const publicRt = new RouteTable(this, 'public-rt', {
       vpcId: this.vpc.id,
       route: [{ cidrBlock: '0.0.0.0/0', gatewayId: this.internetGateway.id }],
-      tags: { Name: 'prod-e-public-rt' },
+      tags: { Name: `${projectName}-public-rt`, Project: projectName },
     });
 
     const privateRt = new RouteTable(this, 'private-rt', {
       vpcId: this.vpc.id,
       route: [{ cidrBlock: '0.0.0.0/0', natGatewayId: this.natGateway.id }],
-      tags: { Name: 'prod-e-private-rt' },
+      tags: { Name: `${projectName}-private-rt`, Project: projectName },
     });
 
-    this.publicSubnets.forEach(
-      (subnet, i) =>
-        new RouteTableAssociation(this, `public-rta-${i}`, {
-          subnetId: subnet.id,
-          routeTableId: publicRt.id,
-        })
-    );
+    this.publicSubnets.forEach((subnet, i) => new RouteTableAssociation(this, `public-rta-${i}`, {
+      subnetId: subnet.id,
+      routeTableId: publicRt.id,
+    }));
 
-    this.privateSubnets.forEach(
-      (subnet, i) =>
-        new RouteTableAssociation(this, `private-rta-${i}`, {
-          subnetId: subnet.id,
-          routeTableId: privateRt.id,
-        })
-    );
+    this.privateSubnets.forEach((subnet, i) => new RouteTableAssociation(this, `private-rta-${i}`, {
+      subnetId: subnet.id,
+      routeTableId: privateRt.id,
+    }));
 
-    // Security Group for ALB
     this.albSecurityGroup = new SecurityGroup(this, 'alb-security-group', {
-      name: 'alb-security-group',
-      description: 'Security group for the Application Load Balancer',
+      name: `${projectName}-alb-sg`,
       vpcId: this.vpc.id,
-      tags: { Name: 'alb-sg' },
+      tags: { Name: `${projectName}-alb-sg`, Project: projectName },
     });
 
-    // Add inbound rule to allow HTTP traffic from anywhere
     new SecurityGroupRule(this, 'alb-http-inbound', {
       type: 'ingress',
-      fromPort: 80,
-      toPort: 80,
+      fromPort: albPort,
+      toPort: albPort,
       protocol: 'tcp',
-      cidrBlocks: ['0.0.0.0/0'], // Allow traffic from anywhere
+      cidrBlocks: [albIngressCidr],
       securityGroupId: this.albSecurityGroup.id,
-      description: 'Allow HTTP traffic from anywhere',
+      description: 'Allow HTTP traffic',
     });
 
-    // Add outbound rule to allow all traffic
     new SecurityGroupRule(this, 'alb-all-outbound', {
       type: 'egress',
       fromPort: 0,
       toPort: 0,
-      protocol: '-1', // All protocols
-      cidrBlocks: ['0.0.0.0/0'], // Allow traffic to anywhere
+      protocol: '-1',
+      cidrBlocks: [albEgressCidr],
       securityGroupId: this.albSecurityGroup.id,
       description: 'Allow all outbound traffic',
     });

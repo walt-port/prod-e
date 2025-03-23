@@ -1,18 +1,6 @@
-# Base image for Prometheus
-FROM prom/prometheus:latest
-
-# Copy Prometheus configuration to the correct location
-COPY prometheus.yml /prometheus/
-
-# Expose port
+FROM prom/prometheus:v2.51.0
+COPY prometheus.yml /etc/prometheus/prometheus.yml
 EXPOSE 9090
-
-# Add simple health check by checking if the port is listening
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD nc -z localhost 9090 || exit 1
-
-# Set command with proper path prefix configuration
-CMD [ "/bin/prometheus", \
-    "--config.file=/prometheus/prometheus.yml", \
-    "--web.external-url=/prometheus", \
-    "--web.route-prefix=/" ]
+CMD ["/bin/prometheus", "--config.file=/etc/prometheus/prometheus.yml", "--web.external-url=/metrics", "--web.route-prefix=/"]
