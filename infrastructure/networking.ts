@@ -63,7 +63,7 @@ export class Networking extends Construct {
     });
 
     this.natGateway = new NatGateway(this, 'nat', {
-      allocationId: new Eip(this, 'nat-eip', { vpc: true }).id,
+      allocationId: new Eip(this, 'nat-eip', { domain: 'vpc' }).id,
       subnetId: this.publicSubnets[0].id,
       tags: { Name: `${projectName}-nat`, Project: projectName },
     });
