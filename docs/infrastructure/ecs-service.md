@@ -21,8 +21,8 @@ A logical grouping of tasks or services.
 Defines how containers should run.
 
 - **Family**: prod-e-task
-- **CPU**: 256 (0.25 vCPU)
-- **Memory**: 512 MB
+- **CPU**: 256 (0.25 vCPU) <!-- TODO: Verify CPU/Memory values -->
+- **Memory**: 512 MB <!-- TODO: Verify CPU/Memory values -->
 - **Network Mode**: awsvpc
 - **Task Execution Role**: ecs-task-execution-role
 - **Task Role**: ecs-task-role
@@ -244,11 +244,12 @@ ECS publishes the following metrics to CloudWatch:
 
 ## Future Enhancements
 
+<!-- TODO: Review/update this section based on current implementation -->
+
 1. **Service Auto-scaling**: Implement auto-scaling based on CPU and memory metrics
 2. **Multi-AZ Deployment**: Ensure tasks are distributed across multiple AZs
 3. **Blue/Green Deployments**: Implement CodeDeploy for zero-downtime deployments
 4. **Container Insights**: Enable ECS Container Insights for enhanced monitoring
-5. **Canary Deployments**: Test new versions with a small percentage of traffic
 
 ## Deployment Instructions
 
@@ -258,3 +259,8 @@ To deploy or update the ECS service:
 2. Update the task definition if container configuration has changed
 3. Deploy the infrastructure using CDKTF
 4. Verify the service is running with `aws ecs describe-services`
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

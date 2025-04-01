@@ -1,7 +1,7 @@
 # Monitoring Implementation
 
-**Version:** 1.1
-**Last Updated:** March 16, 2025
+**Version:** 1.2
+**Last Updated:** [Current Date - will be filled by system]
 **Owner:** DevOps Team
 
 ## Overview
@@ -21,6 +21,8 @@ This document outlines the monitoring strategy for the Production Experience Sho
 - [Related Documentation](#related-documentation)
 
 ## Current Status
+
+<!-- TODO: Verify Current Status section, especially Prometheus scraping, EFS for Grafana, and Phase 2 completion (dashboards/alerting). -->
 
 The backend application includes Prometheus metrics collection via the `prom-client` library, with a `/metrics` endpoint exposed for scraping. Prometheus has been successfully deployed on ECS Fargate and is now scraping metrics from the backend application.
 
@@ -160,7 +162,7 @@ Prometheus has been deployed with the following configuration:
 2. **Configuration**:
 
    - Scrape interval: Default (15s)
-   - Target: Backend service via ALB (`prod-e-alb-962304124.us-west-2.elb.amazonaws.com:3000`)
+   - Target: Backend service via ALB (`prod-e-alb-962304124.us-west-2.elb.amazonaws.com:3000`) <!-- TODO: Verify scrape target configuration -->
    - Path: `/metrics`
 
 3. **Security**:
@@ -283,5 +285,5 @@ Prometheus has been deployed with the following configuration:
 
 ---
 
-**Last Updated**: 2025-03-16
-**Version**: 1.1
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.2

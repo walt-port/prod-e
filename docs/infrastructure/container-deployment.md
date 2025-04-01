@@ -27,7 +27,7 @@ The Amazon Elastic Container Registry (ECR) is a fully managed container registr
 
 The backend application uses a multi-stage Dockerfile for optimal security and efficiency:
 
-- Base Image: Node.js 16
+- Base Image: Node.js 16 <!-- TODO: Verify Node.js version -->
 - Stages:
   1. Builder stage - installs all dependencies and builds the application
   2. Production stage - includes only production dependencies
@@ -56,7 +56,7 @@ This script:
 The ECS task definition is configured to use the ECR image:
 
 - Image: `${ecrRepository.repositoryUrl}:latest`
-- CPU/Memory: 0.25 vCPU (256 units) / 0.5GB (512MB)
+- CPU/Memory: 0.25 vCPU (256 units) / 0.5GB (512MB) <!-- TODO: Verify CPU/Memory values -->
 - Port Mapping: Container port 3000 → Host port 3000
 - Environment Variables:
   - Database connection details
@@ -93,6 +93,8 @@ When making changes to the backend application:
 3. The ECS service will automatically detect the new image tagged with "latest" and update its tasks
 
 ## Continuous Integration/Deployment (Future)
+
+<!-- TODO: Update this section based on current GitHub Actions implementation -->
 
 Future enhancements planned for the CI/CD pipeline:
 
@@ -139,3 +141,8 @@ Common issues and resolutions:
    - Including only necessary files
    - Running as non-root users
    - Regular security scanning
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

@@ -38,6 +38,8 @@ The CI/CD pipeline is implemented using GitHub Actions and consists of the follo
 
 ## Related Workflows
 
+<!-- TODO: Verify workflow YAML filenames (resource-check.yml, health-monitor.yml, cleanup.yml) -->
+
 Our CI/CD process is supported by several GitHub Actions workflows:
 
 ### Main Workflows
@@ -105,5 +107,10 @@ In case of deployment failures:
 ## Related Documentation
 
 - [GitHub Workflows](github-workflows.md)
-- [AWS Resource Management](aws-resource-management.md)
-- [Monitoring Setup](monitoring-setup.md)
+- [AWS Resource Management Overview](resource-management-overview.md)
+- [Monitoring Setup](../monitoring/monitoring.md)
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.2

@@ -1,12 +1,14 @@
 # AWS Budget Analysis & Resource Allocation
 
-**Version:** 1.1
-**Last Updated:** March 16, 2025
+**Version:** 1.2
+**Last Updated:** [Current Date - will be filled by system]
 **Owner:** DevOps Team
 
 This document provides a detailed analysis of the AWS resources used in the Production Experience Showcase project, including current costs, planned additions, and optimization opportunities.
 
 ## Current Infrastructure Costs
+
+**Note:** The cost estimates below are based on the resource inventory from **March 16, 2025**, and may not reflect the current state or pricing. Actual costs can vary. Use AWS Cost Explorer or other current billing tools for up-to-date information.
 
 The following table outlines the estimated monthly costs for our current AWS infrastructure based on the latest resource inventory:
 
@@ -26,6 +28,8 @@ The following table outlines the estimated monthly costs for our current AWS inf
 | **Total Current**             |                                            | **~$124.20/month**     |
 
 ## Current Resource Inventory
+
+**Note:** The resource inventory below reflects the state as of **March 16, 2025**. This list may be outdated. To get the current inventory, use tools like the `scripts/monitoring/resource_check.sh` script or the AWS Management Console/CLI.
 
 As of March 16, 2025, the following resources are actively running:
 
@@ -156,5 +160,5 @@ To maintain visibility into costs:
 
 ---
 
-**Last Updated**: 2025-03-16
-**Version**: 1.1
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.2

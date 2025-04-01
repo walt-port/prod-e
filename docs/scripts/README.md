@@ -15,30 +15,6 @@ This document provides detailed information about the utility scripts used in th
 
 ## Monitoring Scripts
 
-### monitor-health.sh
-
-Located in `scripts/monitoring/monitor-health.sh`, this script performs continuous health monitoring of all services.
-
-#### Features
-
-- Monitors ECS services health
-- Checks Prometheus and Grafana endpoints
-- Verifies database connectivity
-- Supports both continuous monitoring and one-time checks
-
-#### Usage
-
-```bash
-# Run continuously with default interval (5 min)
-./scripts/monitoring/monitor-health.sh
-
-# Run a single health check
-./scripts/monitoring/monitor-health.sh --once
-
-# Specify a custom interval (in seconds)
-./scripts/monitoring/monitor-health.sh --interval 60
-```
-
 ### resource_check.sh
 
 Located in `scripts/monitoring/resource_check.sh`, this script performs comprehensive checks of AWS resources.
@@ -91,27 +67,6 @@ Located in `scripts/deployment/build-and-push.sh`, this script automates buildin
 ./scripts/deployment/build-and-push.sh prometheus
 ```
 
-### create-lambda-zip.js
-
-Located in `scripts/deployment/create-lambda-zip.js`, this script creates deployment packages for AWS Lambda functions.
-
-#### Features
-
-- Bundles Lambda function code into ZIP files
-- Includes dependencies correctly
-- Handles different environments (dev, test, prod)
-- Optimizes package size
-
-#### Usage
-
-```bash
-# Create deployment package for all functions
-node scripts/deployment/create-lambda-zip.js
-
-# Create deployment package for specific function
-node scripts/deployment/create-lambda-zip.js --function backup
-```
-
 ### rollback.sh
 
 Located in `scripts/deployment/rollback.sh`, this script provides functionality to roll back to previous deployment versions.
@@ -157,30 +112,6 @@ Located in `scripts/maintenance/cleanup-resources.sh`, this script automates the
 
 # Keep latest 5 versions, delete older resources
 ./scripts/maintenance/cleanup-resources.sh --force --keep=5
-```
-
-### teardown.py
-
-Located in `scripts/maintenance/teardown.py`, this script provides a controlled way to tear down infrastructure components.
-
-#### Features
-
-- Removes AWS resources in the correct order
-- Supports dry-run mode
-- Handles dependencies between resources
-- Provides detailed output and status
-
-#### Usage
-
-```bash
-# Preview teardown (no changes made)
-python scripts/maintenance/teardown.py --dry-run
-
-# Perform complete teardown
-python scripts/maintenance/teardown.py
-
-# Teardown specific components
-python scripts/maintenance/teardown.py --components ecs,alb
 ```
 
 ## Backup Scripts
@@ -237,11 +168,11 @@ Located in `scripts/backup/backup-database.sh`, this script automates database b
 
 ## Related Documentation
 
-- [Infrastructure Documentation](infrastructure/README.md)
-- [Monitoring Documentation](monitoring/README.md)
-- [CI/CD Pipeline](processes/ci-cd.md)
+- [Infrastructure Documentation](../infrastructure/README.md)
+- [Monitoring Documentation](../monitoring/README.md)
+- [CI/CD Pipeline](../processes/ci-cd.md)
 
 ---
 
-**Last Updated**: 2025-03-16
-**Version**: 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

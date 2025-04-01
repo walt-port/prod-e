@@ -8,61 +8,67 @@ This document describes the Amazon RDS PostgreSQL database infrastructure compon
 
 The database architecture consists of:
 
-- A PostgreSQL RDS instance in the private subnet
-- Security groups allowing access on port 5432
-- Subnet groups for the database instance
-- Configuration for database credentials and connection parameters
+- A PostgreSQL RDS instance (`prod-e-db`) in private subnets across multiple Availability Zones.
+- Security groups allowing access only from necessary services (e.g., ECS tasks) on port 5432.
+- A DB Subnet Group specifying the private subnets for the instance.
+- Database credentials managed securely via AWS Secrets Manager.
 
 ## Components
 
 ### RDS Instance
 
-The PostgreSQL RDS instance is configured as follows:
+The PostgreSQL RDS instance (`prod-e-db`) is configured as follows:
 
-- Engine: PostgreSQL 14.10
+- Engine: PostgreSQL 14.17
 - Instance Class: db.t3.micro
-- Storage: 20 GB
-- Multi-AZ: Disabled (single AZ deployment)
-- Location: us-west-2a (same as private subnet)
-- Publicly Accessible: Yes (for development purposes only)
+- Storage: 20 GB (General Purpose SSD - gp2)
+- Multi-AZ: Enabled (Utilizing a multi-AZ DB Subnet Group)
+- Location: us-west-2 (deployed across AZs specified in the subnet group)
+- Publicly Accessible: No
 - Port: 5432
-- Database Name: appdb
-- Master Username: admin
-- Skip Final Snapshot: Yes (for easy cleanup in development)
+- Database Name: `appdb` (or as specified in initial setup)
+- Master Credentials: Managed via AWS Secrets Manager (`prod-e/db-credentials`)
+- Skip Final Snapshot: Yes (for easy cleanup in non-production stages)
 
 ### Security Group
 
-The database security group controls traffic to and from the RDS instance:
+The database security group (`db-security-group`) controls traffic to the RDS instance:
 
 - Inbound rules:
-  - Allow PostgreSQL (port 5432) from anywhere (0.0.0.0/0)
-    - Note: This is for development purposes only. In production, this should be restricted to specific sources.
+  - Allow PostgreSQL (port 5432) from the ECS Task Security Group (`ecs-security-group`).
 - Outbound rules:
-  - Allow all outbound traffic to anywhere (0.0.0.0/0)
+  - None explicitly defined (defaults to allow all, but typically not required for RDS).
 
 ### DB Subnet Group
 
-A DB subnet group is created for the RDS instance:
+A DB subnet group (`db-subnet-group`) is created for the RDS instance:
 
-- Includes both private and public subnets (to meet the minimum requirement of two subnets)
-- Used by the RDS instance to determine which subnets and IP addresses to use
+- Includes private subnets across at least two Availability Zones (e.g., `private-subnet-a`, `private-subnet-b`).
+- Ensures the RDS instance can operate in a highly available configuration.
 
 ## Security Considerations
 
-The current configuration makes the database publicly accessible for development purposes. In a production environment, consider:
+- **Network Isolation**: The database resides in private subnets, inaccessible directly from the internet.
+- **Restricted Access**: Security groups limit inbound traffic to only necessary sources (ECS tasks).
+- **Credentials Management**: Secrets Manager securely handles database credentials, avoiding hardcoding.
+- **Encryption**: Consider enabling encryption at rest for enhanced data protection.
+- **IAM Permissions**: Ensure database access via IAM roles/policies follows the principle of least privilege (if using IAM DB Authentication).
 
-- Restricting access to specific IP addresses or security groups
-- Disabling public accessibility
-- Enabling encryption at rest
-- Implementing proper IAM permissions
-- Enabling Multi-AZ deployment for high availability
+## Backup and Recovery
 
-## Future Enhancements
+- **Automated Snapshots**: AWS RDS provides automated snapshot capabilities.
+- **Manual Snapshots**: Can be created via the console/CLI.
+- **Backup Script**: A script (`scripts/backup/backup-database.sh`) exists for potentially automating snapshot creation (needs verification/review).
+- **Point-in-Time Recovery**: Enabled if automated backups are configured.
 
-Planned enhancements for the database include:
+## Future Enhancements / Considerations
 
-- Implementing proper backup and restore procedures
-- Adding read replicas for improved performance
-- Setting up parameter groups for database optimization
-- Implementing proper monitoring and alerting
-- Configuring automatic minor version upgrades
+- **Read Replicas**: Add read replicas for scaling read traffic.
+- **Parameter Groups**: Customize database parameters for performance tuning.
+- **Monitoring**: Enhance monitoring with CloudWatch custom metrics or Performance Insights.
+- **Automatic Minor Version Upgrades**: Enable for automated patching.
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

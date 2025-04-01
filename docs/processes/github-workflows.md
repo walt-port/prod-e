@@ -12,6 +12,8 @@ This document describes the GitHub Actions workflows configured for the Producti
 
 ## Workflows
 
+<!-- TODO: Verify workflow YAML filenames (resource-check.yml, health-monitor.yml, cleanup.yml) -->
+
 ### Deploy Workflow (deploy.yml)
 
 The deployment workflow is responsible for deploying the application to AWS using CDK.
@@ -86,8 +88,8 @@ The cleanup workflow identifies and optionally removes unused AWS resources to c
 ## Related Documentation
 
 - [CI/CD Process](ci-cd.md)
-- [AWS Resource Management](aws-resource-management.md)
-- [Monitoring Setup](monitoring-setup.md)
+- [AWS Resource Management Overview](resource-management-overview.md)
+- [Monitoring Setup](../monitoring/monitoring.md)
 
 ## Appendix
 
@@ -99,3 +101,8 @@ The workflows use the following environment variables and secrets:
 - `AWS_ACCESS_KEY_ID`: AWS access key (stored as GitHub secret)
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key (stored as GitHub secret)
 - `SLACK_WEBHOOK_URL`: Webhook URL for Slack notifications (stored as GitHub secret)
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

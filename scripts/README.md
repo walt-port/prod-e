@@ -24,6 +24,12 @@ This directory contains various scripts used for managing the Production Experie
 
   - `backup-database.sh` - Performs database backups
 
-## Usage
+## Documentation
 
-See the scripts documentation in the `/docs/scripts.md` file for detailed usage instructions.
+Detailed documentation for each script, including usage examples and parameters, can be found in the main project documentation directory:
+
+- **[Scripts Documentation](../docs/scripts/README.md)**
+
+See the scripts documentation in the `../docs/scripts/README.md` file for detailed usage instructions.
+
+## Contribution

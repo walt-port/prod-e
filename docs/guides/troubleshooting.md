@@ -1,5 +1,7 @@
 # Troubleshooting Guide
 
+<!-- TODO: Verify specific resource names/paths/commands throughout this document -->
+
 ## Overview
 
 This document provides a comprehensive guide for troubleshooting common issues with the Production Experience Showcase project. It covers infrastructure, application, monitoring, and deployment problems with step-by-step resolution procedures.
@@ -432,7 +434,11 @@ This document provides a comprehensive guide for troubleshooting common issues w
 - [Network Architecture](./network-architecture.md)
 - [ECS Service Documentation](./ecs-service.md)
 
+### State Lock Issues
+
+If a deployment fails and the state lock is not released, you can manually remove it with:
+
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

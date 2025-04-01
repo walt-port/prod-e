@@ -1,94 +1,69 @@
-# Infrastructure Documentation
+# Project Overview
 
-**Version:** 1.2
-**Last Updated:** March 16, 2025
+**Version:** 1.3
+**Last Updated:** [Current Date - will be filled by system]
 **Owner:** DevOps Team
 
 ## Overview
 
-This document provides a high-level overview of the infrastructure documentation for the Production Experience Showcase. The infrastructure is deployed on AWS using the Cloud Development Kit (CDK) and follows best practices for security, scalability, and reliability.
+This document provides a high-level overview of the Production Experience Showcase (prod-e) project. The primary goal is to demonstrate practical DevOps/SRE skills by building and maintaining a realistic cloud application environment on AWS. It includes infrastructure provisioning via Infrastructure as Code, CI/CD pipelines, containerized services, and operational monitoring capabilities, serving as a portfolio piece addressing the common "production experience" requirement.
 
-## Documentation Index
+## Architecture Summary
 
-| Document                  | Description                                                       | Link                                                            |
-|--------------------------|-------------------------------------------------------------------|----------------------------------------------------------------|
-| Network Architecture     | Documentation of VPC, subnets, routing, and security groups       | [network-architecture.md](./infrastructure/network-architecture.md) |
-| Load Balancer Configuration | Documentation of Application Load Balancer setup              | [load-balancer.md](./infrastructure/load-balancer.md)           |
-| RDS Database             | Documentation of RDS instance, subnet groups, and security        | [rds-database.md](./infrastructure/rds-database.md)             |
-| ECS Service              | Documentation of ECS cluster, tasks, and services                 | [ecs-service.md](./infrastructure/ecs-service.md)               |
-| Container Deployment     | Documentation of container builds and deployment                  | [container-deployment.md](./infrastructure/container-deployment.md) |
-| Remote State Management  | Documentation of S3 state management and DynamoDB locking         | [remote-state.md](./infrastructure/remote-state.md)             |
-| Budget Analysis          | Documentation of ongoing costs and budget considerations          | [ongoing-budget.md](./infrastructure/ongoing-budget.md)         |
+The project utilizes AWS infrastructure deployed in the `us-west-2` region, provisioned using CDKTF (TypeScript). Key components include:
 
-## Architecture Overview
+- **Networking**: A multi-AZ VPC with public and private subnets, NAT Gateway, and Security Groups.
+- **Load Balancing**: An Application Load Balancer (ALB) distributing traffic to backend services.
+- **Compute**: ECS Fargate running containerized services:
+  - `prod-e-backend`: A Node.js/Express application.
+  - `prod-e-grafana-service`: Grafana instance (requires configuration).
+  - `prod-e-prometheus-service`: Prometheus instance (requires configuration).
+- **Database**: An RDS PostgreSQL instance (`prod-e-db`) in a multi-AZ configuration.
+- **Secrets**: AWS Secrets Manager securely stores database credentials and other secrets.
+- **Monitoring**: Foundational monitoring uses AWS CloudWatch. Prometheus and Grafana are deployed for advanced metrics and visualization but require further configuration to scrape application/service metrics.
 
-The Production Experience Showcase architecture consists of the following key components:
+_(Note: Specific diagrams should be updated or added here once accurate representations are available.)_
 
-### Network Layer
-- VPC with public and private subnets across multiple availability zones
-- Internet Gateway for public subnet internet access
-- Security Groups to control traffic flow
+## Technology Stack Highlights
 
-### Application Delivery Layer
-- Application Load Balancer for distributing traffic
-- Target Groups for routing requests to appropriate services
+- **Cloud**: AWS (VPC, EC2, ECS, Fargate, RDS, ALB, S3, CloudWatch, Secrets Manager)
+- **Infrastructure as Code**: CDKTF (TypeScript), Terraform
+- **Backend**: Node.js, Express
+- **Database**: PostgreSQL
+- **Containers**: Docker
+- **Monitoring**: Prometheus, Grafana, CloudWatch (Basic)
+- **CI/CD & Automation**: GitHub Actions
 
-### Compute Layer
-- ECS Fargate for running containerized applications
-- Task Definitions defining container configurations
-- Service Definitions for managing ECS tasks
+For more details, refer to the [Technology Stack documentation](./my-stack.md). _(Self-note: Need to verify/create `my-stack.md` based on `.mdc` file)_
 
-### Data Layer
-- RDS PostgreSQL database for persistent data storage
-- Multi-AZ deployment for high availability
+## Automation
 
-### Monitoring Layer
-- Prometheus for metrics collection
-- CloudWatch for logs and AWS service monitoring
+Key processes are automated using GitHub Actions:
 
-## Infrastructure Design Principles
+- **CI/CD Pipeline**: Builds, tests, and deploys the backend application and infrastructure changes.
+- **Resource Checks**: Periodically verifies the status of critical AWS resources (`resource_check.sh`).
+- **Health Monitoring**: Performs basic health checks against service endpoints.
 
-The infrastructure follows these key design principles:
+See the [Processes Documentation](./processes/README.md) for details on workflows.
 
-1. **Security-First Approach**
-   - Least privilege access controls
-   - Network segmentation with security groups
-   - Secrets management with AWS Secrets Manager
+## Documentation Structure
 
-2. **High Availability**
-   - Multi-AZ deployment for redundancy
-   - Load balancing for request distribution
-   - Automatic instance recovery
+This overview serves as an entry point. Detailed documentation is organized into the following areas:
 
-3. **Infrastructure as Code**
-   - All infrastructure defined using CDK
-   - Version-controlled infrastructure definitions
-   - Automated deployment through CI/CD pipelines
+- **[Infrastructure](./infrastructure/README.md)**: Detailed configuration of AWS resources (VPC, ECS, RDS, ALB, etc.).
+- **[Processes](./processes/README.md)**: Workflows for CI/CD, monitoring, resource management, and audits.
+- **[Application](./backend/README.md)**: Backend service specifics (API, configuration). _(Self-note: Check if frontend docs exist/are needed)_
+- **[Guides](./guides/README.md)**: Setup, deployment, and troubleshooting guides.
+- **[Monitoring](./monitoring/README.md)**: Details on the deployed monitoring tools and configuration state.
 
-4. **Cost Optimization**
-   - Resource tagging for cost allocation
-   - Right-sizing of instances and services
-   - Automatic cleanup of unused resources
-
-## Deployment Workflow
-
-Infrastructure deployment follows this general workflow:
-
-1. Code changes are pushed to the repository
-2. CI/CD pipeline is triggered
-3. Infrastructure code is synthesized to CloudFormation templates
-4. CloudFormation templates are deployed to AWS
-5. Post-deployment verification checks are performed
-
-For more details on the deployment process, see the [CI/CD Process](./processes/ci-cd.md) documentation.
+Refer to the main [Documentation Overview](../../DOCUMENTATION.md) for a comprehensive index.
 
 ## Related Documentation
 
-- [GitHub Workflows](./processes/github-workflows.md)
-- [AWS Resource Management](./processes/aws-resource-management.md)
-- [Monitoring Setup](./processes/monitoring-setup.md)
+- [Root README](../../README.md)
+- [Documentation Overview](../../DOCUMENTATION.md)
 
 ---
 
-**Last Updated**: 2025-03-16
-**Version**: 1.2
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.3

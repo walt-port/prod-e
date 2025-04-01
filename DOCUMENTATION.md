@@ -23,7 +23,7 @@ Documentation related to development, deployment, and operational processes.
 
 - [CI/CD Process](./docs/processes/ci-cd.md) - Continuous Integration and Deployment workflow
 - [GitHub Workflows](./docs/processes/github-workflows.md) - Automated monitoring, resource checking, and cleanup workflows
-- [AWS Resource Management](./docs/processes/aws-resource-management.md) - AWS resource provisioning and management
+- [AWS Resource Management](./docs/processes/resource-management.md) - AWS resource provisioning and management
 - [Monitoring Setup](./docs/processes/monitoring-setup.md) - Monitoring infrastructure and practices
 - [Testing Strategy](./docs/processes/testing.md) - Testing approach and methodologies
 - [Audit Process](./docs/processes/audits.md) - Infrastructure and codebase audit processes

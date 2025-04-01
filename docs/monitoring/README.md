@@ -6,8 +6,11 @@ This directory contains documentation related to the monitoring and observabilit
 
 ## Contents
 
-- [Monitoring Overview](./monitoring.md) - Documentation about the overall monitoring architecture and implementation
-- [Grafana Configuration](./grafana.md) - Documentation for Grafana-specific configuration and dashboards
+- [Monitoring Overview](./monitoring.md) - Documentation about the overall monitoring architecture and implementation.
+- [Prometheus Configuration](./prometheus.md) - Details on Prometheus setup, configuration, and metrics scraping.
+- [Grafana Configuration](./grafana.md) - Documentation for Grafana-specific configuration, data sources, and dashboards.
+- [Monitoring Operations](./operations.md) - Procedures for operating and maintaining the monitoring stack.
+- [Script Health Fixes (Historical)](./script-health-fixes.md) - Details on past fixes related to monitoring script health checks.
 
 ## Related Documentation
 
@@ -17,5 +20,5 @@ This directory contains documentation related to the monitoring and observabilit
 
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

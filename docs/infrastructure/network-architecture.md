@@ -175,3 +175,8 @@ During implementation, we encountered several important AWS requirements:
 | 2025-03-14 | Added NAT Gateway to public-subnet-a           | Enable ECS tasks in private subnets to access ECR for image pulls |
 | 2025-03-14 | Added public and private subnets in us-west-2b | Meet AWS requirements for ALB and RDS DB subnet groups            |
 | 2025-03-14 | Updated ALB target group health check path     | Change from / to /health for accurate service health monitoring   |
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

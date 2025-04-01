@@ -1,0 +1,35 @@
+/* Remove the Hermit font CDN import */
+/* @import url('https://fonts.cdnfonts.com/css/hermit'); */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* The other commented out font import is already removed */
+  html,
+  body {
+    @apply h-full min-h-full;
+  }
+
+  #root {
+    @apply h-full min-h-full flex flex-col;
+    /* Revert font-family change if necessary */
+    font-family: monospace;
+    background-color: #24283b; /* Tokyo Night Storm */
+    color: #c0caf5; /* Default Tokyo Night Foreground */
+  }
+
+  #root > * {
+    @apply flex-grow;
+  }
+
+  /* Add any other global base styles here */
+}
+
+/* Remove the commented out custom styles for AnimatedLogo */
+/*
+.logo::before { ... }
+@keyframes rotate { ... }
+.logo { ... }
+*/

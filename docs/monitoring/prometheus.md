@@ -18,10 +18,10 @@ The Prometheus task definition includes:
 
 - Container image: `043309339649.dkr.ecr.us-west-2.amazonaws.com/prod-e-prometheus:latest`
 - Port mapping: 9090
-- Health check: `wget -q -O - http://localhost:9090/-/healthy || exit 1`
+- Health check: `wget -q -O - http://localhost:9090/-/healthy || exit 1` <!-- TODO: Verify health check command (wget vs nc?) -->
 - Command: `--web.external-url=/prometheus` (configures Prometheus to use the /prometheus path prefix)
-- CPU: 256 units
-- Memory: 512 MB
+- CPU: 256 units <!-- TODO: Verify CPU/Memory values -->
+- Memory: 512 MB <!-- TODO: Verify CPU/Memory values -->
 
 ### Load Balancer Configuration
 
@@ -94,3 +94,8 @@ Common issues and their resolutions:
 
 - [Grafana Documentation](./grafana.md) - Information about the Grafana visualization platform
 - [Monitoring Overview](./monitoring.md) - General monitoring architecture and strategy
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

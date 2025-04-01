@@ -217,11 +217,11 @@ $ docker ps | grep localstack
 
 ## Related Documentation
 
-- [Infrastructure Overview](./overview.md)
-- [Testing Strategy](./testing.md)
+- [Project Overview](../overview.md)
+- [Testing Strategy](../processes/testing.md)
 - [Deployment Guide](./deployment-guide.md)
 
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

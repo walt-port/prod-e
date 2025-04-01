@@ -60,11 +60,6 @@ jobs:
       # --- Networking Config ---
       ECS_EGRESS_CIDR: ${{ vars.ECS_EGRESS_CIDR }}
 
-      # --- REMOVED Lambda Config ---
-      # LAMBDA_RUNTIME: ${{ vars.LAMBDA_RUNTIME }}
-      # LAMBDA_HANDLER: ${{ vars.LAMBDA_HANDLER }}
-      # LAMBDA_TIMEOUT: ${{ vars.LAMBDA_TIMEOUT }}
-      # LAMBDA_CODE_PATH: ${{ vars.LAMBDA_CODE_PATH }}
 
     steps:
       - name: Checkout

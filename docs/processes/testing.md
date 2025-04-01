@@ -8,6 +8,8 @@ This document provides comprehensive information about the testing approach, set
 
 ### Test Files
 
+**Note:** Pass/Fail status below is an example from a past run and may not reflect the current state.
+
 The backend service is tested with the following test files:
 
 | Test File             | Description                          | CI Reliable | Tests   | Status  |
@@ -51,6 +53,8 @@ backend/
 
 ### Recent Test Results
 
+**Note:** The results below are from a past run. To get current results, run `npm run test:reliable` or `npm run test`.
+
 The most recent test run provided the following results:
 
 ```
@@ -64,6 +68,8 @@ Time:        0.642 s
 ```
 
 ### Current Coverage Metrics
+
+**Note:** Coverage metrics below are based on CI-reliable tests from a past run. To get current coverage, run `npm run test:coverage`.
 
 The current test coverage metrics (based on CI-reliable tests only):
 
@@ -449,3 +455,8 @@ The following enhancements are planned for the test suite:
 ## Conclusion
 
 The testing setup provides a solid foundation for ensuring code quality and reliability. We've made significant improvements to make the tests more reliable in CI environments, although that has come at the cost of lower overall coverage metrics. Our next steps will focus on expanding the CI-reliable test suite to improve coverage while maintaining reliability.
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

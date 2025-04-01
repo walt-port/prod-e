@@ -6,15 +6,17 @@ This directory contains documentation for the operational processes of the Produ
 
 ### Core Processes
 
-- [CI/CD Process](ci-cd.md) - Continuous Integration and Deployment workflow
-- [GitHub Workflows](github-workflows.md) - Automated GitHub Actions workflows
-- [AWS Resource Management](aws-resource-management.md) - AWS resource provisioning and management
-- [Monitoring Setup](monitoring-setup.md) - Monitoring infrastructure and practices
+- [CI/CD Process](./ci-cd.md) - Continuous Integration and Deployment workflow.
+- [GitHub Workflows](./github-workflows.md) - Automated GitHub Actions workflows (monitoring, checks, cleanup).
+- [Resource Management Overview](./resource-management-overview.md) - Overview of resource lifecycle, tagging, compliance, and cleanup concepts.
+- [Handling Existing Resources (CDKTF)](./resource-management.md) - Technical details on how CDKTF code handles existing AWS resources during deployment.
+- [Monitoring Setup](../monitoring/monitoring.md) - Configuration and setup of monitoring tools (Prometheus, Grafana, CloudWatch).
 
 ### Additional Processes
 
-- [Testing](testing.md) - Testing strategies and practices
-- [Audits](audits.md) - Audit procedures and compliance
+- [Testing](./testing.md) - Testing strategies and practices.
+- [Audits](./audits.md) - Audit procedures and compliance.
+- [Cleanup Plan (Historical)](./cleanup-plan.md) - Record of a past resource cleanup effort (March 2025).
 
 ## Diagrams
 
@@ -34,5 +36,5 @@ All process documentation should be:
 
 ## Last Updated
 
-**Date:** March 16, 2025
-**Version:** 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

@@ -18,5 +18,5 @@ This directory contains practical guides and procedures for working with the Pro
 
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

@@ -128,10 +128,10 @@ $ aws s3api get-object \
 
 ## Related Documentation
 
-- [Infrastructure Overview](./overview.md)
-- [CI/CD Pipeline](./ci-cd.md)
+- [Project Overview](../overview.md)
+- [CI/CD Pipeline](../processes/ci-cd.md)
 
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

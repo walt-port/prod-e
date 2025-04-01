@@ -44,6 +44,8 @@ The deployment requires the following AWS permissions:
 
 ## Deployment Architecture
 
+<!-- TODO: Verify EFS filesystem for Grafana persistence -->
+
 The deployment creates the following infrastructure components:
 
 1. **Networking Layer**:
@@ -103,6 +105,8 @@ The deployment creates the following infrastructure components:
    ```
 
 ### Step 3: Configure Deployment
+
+<!-- TODO: Verify manual configuration update method (main.ts vs .env/Secrets) -->
 
 1. Update environment variables in the configuration:
 
@@ -210,6 +214,8 @@ $ aws elbv2 describe-load-balancers --names prod-e-alb
 
 ### Grafana Setup
 
+<!-- TODO: Verify Grafana datasource URL (internal vs. ALB) -->
+
 1. Log in with the admin credentials stored in Secrets Manager:
 
    ```bash
@@ -221,6 +227,8 @@ $ aws elbv2 describe-load-balancers --names prod-e-alb
    - Access: Server
 
 ### Database Initialization
+
+<!-- TODO: Verify existence/usage of prod-e-migration task -->
 
 If needed, run database migrations:
 
@@ -307,5 +315,5 @@ $ aws rds download-db-log-file-portion --db-instance-identifier postgres-instanc
 
 ---
 
-**Last Updated**: 2025-03-15
-**Version**: 1.0
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

@@ -83,6 +83,8 @@ Standardized templates have been created to ensure consistent, thorough audits:
 
 The audit process is partially automated using scripts:
 
+<!-- TODO: Verify existence/names of these scripts -->
+
 - `aws-resource-inventory.sh` - Collects AWS resource information
 - `code-quality-check.sh` - Analyzes code quality metrics
 
@@ -98,10 +100,12 @@ These scripts generate detailed reports and summaries that form the basis of aud
 
 ## Recent Audit Findings
 
-For detailed findings from recent audits, see the audit reports in the [audits directory](../audits/).
+For detailed findings from recent audits, see the audit reports in the [audits directory](../../audits/).
 
-- [Infrastructure Audit (2025-03-15)](../audits/infrastructure/infrastructure-audit-2025-03-15.md)
-- [Codebase Audit (2025-03-15)](../audits/codebase/codebase-audit-2025-03-15.md)
+<!-- TODO: Verify links to specific audit reports -->
+
+- [Infrastructure Audit (2025-03-15)](../../audits/infrastructure/infrastructure-audit-2025-03-15.md)
+- [Codebase Audit (2025-03-15)](../../audits/codebase/codebase-audit-2025-03-15.md)
 
 ## Future Enhancements
 
@@ -120,3 +124,8 @@ The audit process will be enhanced over time with these planned improvements:
 3. **Compliance Mapping**
    - Map audit checks to compliance frameworks
    - Generate compliance reports automatically
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1

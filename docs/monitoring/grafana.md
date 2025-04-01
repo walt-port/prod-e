@@ -12,11 +12,11 @@ Grafana has been implemented to visualize metrics collected by Prometheus. This 
 
    - Single-AZ deployment for cost efficiency (~$15/month)
    - 0.25 vCPU and 0.5GB RAM allocation
-   - Official Grafana OSS container image (version 10.0.0)
+   - Official Grafana OSS container image (version 10.0.0) <!-- TODO: Verify image version -->
 
 2. **Persistent Storage**:
 
-   - EFS volume mounted at `/var/lib/grafana`
+   - EFS volume mounted at `/var/lib/grafana` <!-- TODO: Verify EFS implementation -->
    - EFS access point with UID/GID 472 (Grafana user)
    - Lifecycle policy to transition to Infrequent Access after 30 days for cost optimization
 
@@ -27,12 +27,14 @@ Grafana has been implemented to visualize metrics collected by Prometheus. This 
    - Admin credentials stored in AWS Secrets Manager
 
 4. **Backup System**:
-   - Daily backups to S3 using Lambda function
+   - Daily backups to S3 using Lambda function <!-- TODO: Verify Lambda function name/status: grafana-backup? -->
    - Bucket with versioning enabled for backup history
 
 ## Configuration
 
 ### Dashboards
+
+<!-- TODO: Verify implementation status of dashboards -->
 
 Pre-configured dashboards have been provisioned for:
 
@@ -47,6 +49,8 @@ The dashboards are stored in the EFS volume and are also backed up daily to S3.
 Grafana is configured with Prometheus as the default data source, connecting to the Prometheus server via the ALB.
 
 ### Alerting
+
+<!-- TODO: Verify implementation status of alerting -->
 
 Basic alerting has been configured for:
 
@@ -84,7 +88,7 @@ To verify Prometheus connectivity:
 To manually trigger a backup:
 
 ```bash
-aws lambda invoke --function-name grafana-backup out.json
+aws lambda invoke --function-name grafana-backup out.json <!-- TODO: Verify function name -->
 ```
 
 ## Troubleshooting
@@ -136,7 +140,7 @@ aws ecs describe-services --cluster prod-e-cluster --services grafana-service
 aws ecs describe-tasks --cluster prod-e-cluster --tasks $(aws ecs list-tasks --cluster prod-e-cluster --family grafana-task --query 'taskArns[0]' --output text)
 
 # Check Grafana logs
-aws logs get-log-events --log-group-name /ecs/grafana-task --log-stream-name $(aws logs describe-log-streams --log-group-name /ecs/grafana-task --order-by LastEventTime --descending --limit 1 --query 'logStreams[0].logStreamName' --output text)
+aws logs get-log-events --log-group-name /ecs/grafana-task --log-stream-name $(aws logs describe-log-streams --log-group-name /ecs/grafana-task --order-by LastEventTime --descending --limit 1 --query 'logStreams[0].logStreamName' --output text) <!-- TODO: Verify log group name -->
 ```
 
 ## Future Enhancements
@@ -165,3 +169,8 @@ The current implementation is optimized for cost efficiency:
 - Minimal Fargate resources (0.25 vCPU, 0.5GB RAM)
 
 Estimated monthly cost: ~$15
+
+---
+
+**Last Updated**: [Current Date - will be filled by system]
+**Version**: 1.1
