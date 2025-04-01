@@ -16,8 +16,9 @@ const AnimatedLogo: React.FC = () => {
       // Restore padding to 12
       const padding = 12;
       setSvgSize({
-        width: offsetWidth + padding * 2,
-        height: offsetHeight + padding * 2,
+        // Add extra horizontal padding
+        width: offsetWidth + padding * 2 + 8,
+        height: offsetHeight + padding * 2, // Keep vertical padding as is
       });
     }
   }, [isEgg]); // Re-measure if text content changes (egg toggle)
