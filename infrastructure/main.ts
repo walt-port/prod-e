@@ -7,7 +7,6 @@ import { DataAwsCallerIdentity } from '../.gen/providers/aws/data-aws-caller-ide
 import { EcsService } from '../.gen/providers/aws/ecs-service';
 import { AwsProvider } from '../.gen/providers/aws/provider';
 import { Alb } from './alb';
-import { Backup } from './backup';
 import { Ecs } from './ecs';
 import { Monitoring } from './monitoring';
 import { Networking } from './networking';
@@ -49,8 +48,6 @@ export class ProdEStack extends TerraformStack {
 
     const monitoring = new Monitoring(this, 'monitoring', networking, alb, ecs);
 
-    new Backup(this, 'backup');
-
     const backendService = new EcsService(this, 'backend-service', {
       name: `${projectName}-backend-service`,
       cluster: ecs.cluster.id,
@@ -91,4 +88,4 @@ if (require.main === module) {
   }
 }
 
-export { Alb, Backup, Ecs, Monitoring, Networking, Rds };
+export { Alb, Ecs, Monitoring, Networking, Rds };
