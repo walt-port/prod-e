@@ -17,7 +17,7 @@ const AnimatedLogo: React.FC = () => {
       // Padding around text
       const padding = 12;
       // Calculate size needed for text + padding
-      const neededWidth = offsetWidth + padding * 2 + 8;
+      const neededWidth = offsetWidth + padding * 2;
       const neededHeight = offsetHeight + padding * 2;
       setSvgSize({
         width: neededWidth,
@@ -37,14 +37,14 @@ const AnimatedLogo: React.FC = () => {
     <div className="relative inline-block">
       {/* SVG container - Use outer dimensions for svg width/height */}
       <svg
-        width={svgSize.width > 0 ? svgSize.width + 40 : 0} // Match viewBox width
-        height={svgSize.height > 0 ? svgSize.height + 40 : 0} // Match viewBox height
-        // Expand viewBox further for larger gap
-        viewBox={`-20 -20 ${svgSize.width > 0 ? svgSize.width + 40 : 0} ${
-          svgSize.height > 0 ? svgSize.height + 40 : 0
+        width={svgSize.width > 0 ? svgSize.width + 140 : 0} // Use new larger offset
+        height={svgSize.height > 0 ? svgSize.height + 140 : 0} // Use new larger offset
+        // Expand viewBox even further
+        viewBox={`-70 -70 ${svgSize.width > 0 ? svgSize.width + 140 : 0} ${
+          svgSize.height > 0 ? svgSize.height + 140 : 0
         }`}
-        className="absolute top-[49%] left-1/2 -translate-x-1/2 -translate-y-[47%]"
-        style={{ overflow: 'visible' }} // Explicitly allow overflow just in case
+        className="absolute top-[49%] left-1/2 -translate-x-1/2 -translate-y-[49%]"
+        style={{ overflow: 'visible' }}
       >
         <defs>
           <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -56,16 +56,16 @@ const AnimatedLogo: React.FC = () => {
           </linearGradient>
         </defs>
 
-        {/* Outer Border Rectangle - Adjust for larger gap */}
+        {/* Outer Border Rectangle - Adjust vertical position slightly */}
         <rect
           id="logoOuterBorderRect"
-          x="-20" // Increased offset
-          y="-20" // Increased offset
-          width={svgSize.width > 0 ? svgSize.width + 40 : 0} // Match viewBox size
-          height={svgSize.height > 0 ? svgSize.height + 40 : 0} // Match viewBox size
+          x="-70"
+          y="-71" // Nudge up slightly
+          width={svgSize.width > 0 ? svgSize.width + 140 : 0}
+          height={svgSize.height > 0 ? svgSize.height + 140 : 0}
           rx="10"
           fill="none"
-          stroke="#FFFFFF" // Keep white for debugging
+          stroke="#FFFFFF" // Keep white for now while sizing
           strokeWidth="2"
         />
 
