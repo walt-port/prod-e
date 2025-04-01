@@ -313,7 +313,7 @@ check_ecs() {
     CLUSTER_ARN=""
     ALL_CLUSTERS=$(aws ecs list-clusters --query clusterArns --output json --region "$AWS_REGION")
     for arn in $(echo "$ALL_CLUSTERS" | jq -r '.[]'); do
-      TAGS=$(aws ecs describe-clusters --clusters "$arn" --include TAGS --query "clusters[0].tags" --output json --region "$AWS_REGION")
+      TAGS=$(aws ecs describe-clusters --clusters "$arn" --include TAGS --query "clusters[0].tags" --output json --region "$AWS_REGION" 2>/dev/null)
       PROJECT_TAG_VAL=$(echo "$TAGS" | jq -r --arg proj "$PROJECT_NAME" '.[] | select(.key=="Project" and .value==$proj) | .value')
       if [ "$PROJECT_TAG_VAL" == "$PROJECT_NAME" ]; then
         CLUSTER_ARN="$arn"
@@ -625,52 +625,6 @@ check_monitoring() {
     fi
 }
 
-# Check Lambda function based on Project tag
-check_lambda() {
-    print_header "LAMBDA FUNCTION (Project: $PROJECT_NAME)"
-    # Use resourcegroupstaggingapi for reliable tag-based discovery
-    FUNCTION_ARN=$(aws resourcegroupstaggingapi get-resources --resource-type-filters lambda:function --tag-filters Key=Project,Values="$PROJECT_NAME" --query 'ResourceTagMappingList[0].ResourceARN' --output text --region "$AWS_REGION" 2>/dev/null)
-
-    if [ -z "$FUNCTION_ARN" ]; then
-        print_error "Lambda function with tag Project=$PROJECT_NAME not found via tagging API."
-        return 1
-    fi
-
-    # Extract function name from ARN
-    FUNC_NAME=$(echo "$FUNCTION_ARN" | awk -F: '{print $NF}')
-
-    # Describe using the function NAME, not the ARN
-    # Corrected query for get-function (added Configuration. prefix back)
-    FUNCTION_STATE_INFO=$(aws lambda get-function --function-name "$FUNC_NAME" --query 'Configuration.{State:State,LastUpdateStatus:LastUpdateStatus}' --output json --region "$AWS_REGION" 2>/dev/null)
-    FUNCTION_CONFIG_INFO=$(aws lambda get-function-configuration --function-name "$FUNC_NAME" --query '{FunctionName:FunctionName,Runtime:Runtime,MemorySize:MemorySize,Timeout:Timeout,LastModified:LastModified}' --output json --region "$AWS_REGION" 2>/dev/null)
-
-    # Use printf for piping to jq and check the result
-    JQ_RESULT=$(printf '%s' "$FUNCTION_CONFIG_INFO" | jq -r '.FunctionName // "null"')
-
-    if [ -z "$FUNCTION_CONFIG_INFO" ] || [ "$JQ_RESULT" == "null" ]; then
-         # Use FUNC_NAME in error message as ARN lookup succeeded
-         print_error "Failed to describe Lambda function '$FUNC_NAME'."
-         return 1
-    fi
-
-    # Use printf when piping to jq for safety
-    FUNC_RUNTIME=$(printf '%s' "$FUNCTION_CONFIG_INFO" | jq -r '.Runtime')
-    FUNC_MEMORY=$(printf '%s' "$FUNCTION_CONFIG_INFO" | jq -r '.MemorySize')
-    FUNC_TIMEOUT=$(printf '%s' "$FUNCTION_CONFIG_INFO" | jq -r '.Timeout')
-    FUNC_LAST_MODIFIED=$(printf '%s' "$FUNCTION_CONFIG_INFO" | jq -r '.LastModified')
-    FUNC_STATE=$(printf '%s' "$FUNCTION_STATE_INFO" | jq -r '.State // "Unknown"')
-    FUNC_LAST_UPDATE=$(printf '%s' "$FUNCTION_STATE_INFO" | jq -r '.LastUpdateStatus // "Unknown"')
-
-    if [ "$FUNC_STATE" == "Active" ] && [[ "$FUNC_LAST_UPDATE" == "Successful" || "$FUNC_LAST_UPDATE" == "InProgress" ]]; then
-         print_success "Lambda: $FUNC_NAME ($FUNC_RUNTIME)"
-         print_detail "State: $FUNC_STATE, Last Update: $FUNC_LAST_UPDATE"
-    else
-         print_error "Lambda: $FUNC_NAME ($FUNC_RUNTIME) - State: $FUNC_STATE, Last Update: $FUNC_LAST_UPDATE"
-    fi
-
-     print_detail "Memory: ${FUNC_MEMORY}MB, Timeout: ${FUNC_TIMEOUT}s, Last Modified: $FUNC_LAST_MODIFIED"
-}
-
 # Check for potentially orphaned / unused resources specific to the project
 check_orphaned_resources() {
     print_header "POTENTIAL ORPHANED RESOURCES"
@@ -792,7 +746,6 @@ check_rds
 check_ecs # Uses exported CHECK_CLUSTER_ARN
 check_alb # Exports CHECK_ALB_DNS on success
 check_ecr
-check_lambda
 check_monitoring # Uses exported CHECK_CLUSTER_ARN and CHECK_ALB_DNS
 
 # Run checks for potential issues
