@@ -47,12 +47,28 @@ const AnimatedLogo: React.FC = () => {
         style={{ overflow: 'visible' }}
       >
         <defs>
-          <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient
+            id="logoGradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="100%"
+            gradientTransform="rotate(0)"
+          >
             {/* Using colors from original sketch */}
             <stop offset="0%" style={{ stopColor: '#9ece6a' }} />
             <stop offset="33%" style={{ stopColor: '#f7768e' }} />
             <stop offset="66%" style={{ stopColor: '#bb9af7' }} />
             <stop offset="100%" style={{ stopColor: '#9ece6a' }} />
+            {/* Animate the gradient rotation */}
+            <animateTransform
+              attributeName="gradientTransform"
+              type="rotate"
+              from="0"
+              to="360"
+              dur="10s"
+              repeatCount="indefinite"
+            />
           </linearGradient>
         </defs>
 
@@ -65,7 +81,7 @@ const AnimatedLogo: React.FC = () => {
           height={svgSize.height > 0 ? svgSize.height + 140 : 0}
           rx="10"
           fill="none"
-          stroke="#FFFFFF" // Keep white for now while sizing
+          stroke="url(#logoGradient)"
           strokeWidth="2"
         />
 
