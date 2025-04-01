@@ -4,7 +4,7 @@ name: AWS Resource Check
 
 on:
   workflow_run:
-    workflows: ['Deploy Infrastructure']
+    workflows: ['CDKTF Deploy']
     types:
       - completed
   workflow_dispatch:
@@ -28,10 +28,10 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -40,16 +40,14 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Wait for resource provisioning
+      - name: Wait for resource stabilization
         run: |
-          echo "Waiting 10 minutes for resources to fully provision..."
-          sleep 600
+          echo "Waiting 2 minutes for resources to stabilize..."
+          sleep 120
 
       - name: Run Resource Check
         run: |
           chmod +x scripts/monitoring/resource_check.sh
-          # Set environment variable to handle existing resources if needed
-          export SKIP_EXISTING_RESOURCES=true
           if [[ "${{ github.event.inputs.generate_report || 'true' }}" == "true" ]]; then
             ./scripts/monitoring/resource_check.sh --csv=resource_check_results.csv
           else
@@ -57,7 +55,7 @@ jobs:
           fi
 
       - name: Upload Resource Check Results
-        if: ${{ github.event.inputs.generate_report != 'false' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.generate_report != 'false') || (github.event_name != 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: resource-check-results
@@ -70,7 +68,7 @@ jobs:
         with:
           status: ${{ job.status }}
           fields: repo,message,commit,author,action,eventName,workflow
-          text: 'AWS Resource Check ${{ job.status }} after deployment'
+          text: 'AWS Resource Check ${{ job.status }} (Trigger: ${{ github.event_name }})'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         continue-on-error: true

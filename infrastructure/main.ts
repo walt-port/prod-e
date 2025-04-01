@@ -4,6 +4,7 @@ dotenv.config();
 import { App, RemoteBackend, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
 import { DataAwsCallerIdentity } from '../.gen/providers/aws/data-aws-caller-identity';
+import { EcsService } from '../.gen/providers/aws/ecs-service';
 import { AwsProvider } from '../.gen/providers/aws/provider';
 import { Alb } from './alb';
 import { Backup } from './backup';
@@ -11,7 +12,6 @@ import { Ecs } from './ecs';
 import { Monitoring } from './monitoring';
 import { Networking } from './networking';
 import { Rds } from './rds';
-import { EcsService } from '../.gen/providers/aws/ecs-service';
 
 function assertEnvVar(name: string): string {
   const value = process.env[name];
@@ -40,13 +40,18 @@ export class ProdEStack extends TerraformStack {
     new DataAwsCallerIdentity(this, 'current', { provider: awsProvider });
 
     const networking = new Networking(this, 'networking');
+
     const alb = new Alb(this, 'alb', networking);
+
     const ecs = new Ecs(this, 'ecs', networking, alb);
+
     const rds = new Rds(this, 'rds', networking);
+
     const monitoring = new Monitoring(this, 'monitoring', networking, alb, ecs);
+
     new Backup(this, 'backup');
 
-    new EcsService(this, 'backend-service', {
+    const backendService = new EcsService(this, 'backend-service', {
       name: `${projectName}-backend-service`,
       cluster: ecs.cluster.id,
       taskDefinition: ecs.backendTaskDefinition.arn,
@@ -66,6 +71,7 @@ export class ProdEStack extends TerraformStack {
       ],
       forceNewDeployment: true,
       tags: { Name: `${projectName}-backend-service`, Project: projectName },
+      dependsOn: [alb.alb, alb.ecsTargetGroup, alb.listener],
     });
 
     new TerraformOutput(this, 'alb_endpoint', { value: alb.alb.dnsName });
@@ -73,10 +79,16 @@ export class ProdEStack extends TerraformStack {
 }
 
 if (require.main === module) {
-  const projectName = assertEnvVar('PROJECT_NAME');
-  const app = new App();
-  new ProdEStack(app, projectName);
-  app.synth();
+  try {
+    const projectName = assertEnvVar('PROJECT_NAME');
+
+    const app = new App();
+    new ProdEStack(app, projectName);
+    app.synth();
+  } catch (error) {
+    console.error('Synthesis failed:', error);
+    process.exit(1);
+  }
 }
 
 export { Alb, Backup, Ecs, Monitoring, Networking, Rds };

@@ -1,0 +1,60 @@
+name: CDKTF Deploy
+
+on:
+  push:
+    branches:
+      - main
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  apply:
+    name: CDKTF Apply
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Allow checkout
+      # Add id-token permission if using OIDC for AWS auth in the future
+      # id-token: write
+    env:
+      # Terraform Cloud Token
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+      # AWS Credentials (ensure these secrets exist in GitHub repo settings)
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # No specific ref needed if triggering on push to main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' # Use LTS version
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci # Use clean install for CI
+
+      # No global CDKTF install needed, use npx
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.2 # As per template, might need adjustment
+          cli_config_credentials_token: ${{ secrets.TF_TOKEN_APP_TERRAFORM_IO }}
+
+      - name: Get CDKTF Providers and Modules
+        # Run from root directory
+        run: npx cdktf get
+
+      - name: Synthesize Terraform Configuration
+        # Run from root directory
+        run: npx cdktf synth
+
+      - name: Apply Terraform Configuration
+        # Run from root directory
+        # Note: This directly applies changes on push to main.
+        # Consider adding a Plan step and manual approval for production safety.
+        run: npx cdktf deploy --auto-approve

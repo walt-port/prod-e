@@ -84,7 +84,13 @@ export class Ecs extends Construct {
       name: `${projectName}-ecs-task-execution-role`,
       assumeRolePolicy: JSON.stringify({
         Version: '2012-10-17',
-        Statement: [{ Effect: 'Allow', Principal: { Service: 'ecs-tasks.amazonaws.com' }, Action: 'sts:AssumeRole' }],
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { Service: 'ecs-tasks.amazonaws.com' },
+            Action: 'sts:AssumeRole',
+          },
+        ],
       }),
       tags: { Name: `${projectName}-ecs-task-execution-role`, Project: projectName },
     });
@@ -108,12 +114,19 @@ export class Ecs extends Construct {
       name: `${projectName}-ecs-task-role`,
       assumeRolePolicy: JSON.stringify({
         Version: '2012-10-17',
-        Statement: [{ Effect: 'Allow', Principal: { Service: 'ecs-tasks.amazonaws.com' }, Action: 'sts:AssumeRole' }],
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { Service: 'ecs-tasks.amazonaws.com' },
+            Action: 'sts:AssumeRole',
+          },
+        ],
       }),
       tags: { Name: `${projectName}-ecs-task-role`, Project: projectName },
     });
 
-    new IamRolePolicyAttachment(this, 'ecs-task-role-secrets-policy', { // Renamed here
+    new IamRolePolicyAttachment(this, 'ecs-task-role-secrets-policy', {
+      // Renamed here
       role: this.taskRole.name,
       policyArn: 'arn:aws:iam::aws:policy/SecretsManagerReadWrite',
     });
@@ -184,11 +197,26 @@ export class Ecs extends Construct {
             { name: 'DB_CREDENTIALS_SECRET_NAME', value: dbSecretId },
           ],
           secrets: [
-            { name: 'DB_HOST', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:host::` },
-            { name: 'DB_PORT', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:port::` },
-            { name: 'DB_NAME', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:dbname::` },
-            { name: 'DB_USER', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:username::` },
-            { name: 'DB_PASSWORD', valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:password::` },
+            {
+              name: 'DB_HOST',
+              valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:host::`,
+            },
+            {
+              name: 'DB_PORT',
+              valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:port::`,
+            },
+            {
+              name: 'DB_NAME',
+              valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:dbname::`,
+            },
+            {
+              name: 'DB_USER',
+              valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:username::`,
+            },
+            {
+              name: 'DB_PASSWORD',
+              valueFrom: `arn:aws:secretsmanager:${awsRegion}:${awsAccountId}:secret:${dbSecretId}:password::`,
+            },
           ],
           logConfiguration: {
             logDriver: 'awslogs',
@@ -200,7 +228,12 @@ export class Ecs extends Construct {
             },
           },
           healthCheck: {
-            command: ['CMD-SHELL', `curl -f http://localhost:${backendPort}${assertEnvVar('BACKEND_HEALTH_PATH')} || exit 1`],
+            command: [
+              'CMD-SHELL',
+              `curl -f http://localhost:${backendPort}${assertEnvVar(
+                'BACKEND_HEALTH_PATH'
+              )} || exit 1`,
+            ],
             interval: 30,
             timeout: 5,
             retries: 3,

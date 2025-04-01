@@ -1,3 +1,4 @@
+import { AssetType, TerraformAsset } from 'cdktf';
 import { Construct } from 'constructs';
 import { IamRole } from '../.gen/providers/aws/iam-role';
 import { IamRolePolicy } from '../.gen/providers/aws/iam-role-policy';
@@ -25,6 +26,12 @@ export class Backup extends Construct {
     const lambdaTimeout = Number(assertEnvVar('LAMBDA_TIMEOUT'));
     const lambdaCodePath = assertEnvVar('LAMBDA_CODE_PATH');
 
+    // Define the asset for the Lambda code
+    const lambdaAsset = new TerraformAsset(this, 'backup-lambda-asset', {
+      path: lambdaCodePath,
+      type: AssetType.ARCHIVE,
+    });
+
     this.bucket = new S3Bucket(this, 'backup-bucket', {
       bucket: `${projectName}-backups`,
       tags: { Name: `${projectName}-backups`, Project: projectName },
@@ -34,7 +41,13 @@ export class Backup extends Construct {
       name: `${projectName}-backup-role`,
       assumeRolePolicy: JSON.stringify({
         Version: '2012-10-17',
-        Statement: [{ Effect: 'Allow', Principal: { Service: 'lambda.amazonaws.com' }, Action: 'sts:AssumeRole' }],
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { Service: 'lambda.amazonaws.com' },
+            Action: 'sts:AssumeRole',
+          },
+        ],
       }),
       tags: { Name: `${projectName}-backup-role`, Project: projectName },
     });
@@ -50,7 +63,11 @@ export class Backup extends Construct {
         Version: '2012-10-17',
         Statement: [
           { Effect: 'Allow', Action: ['s3:PutObject'], Resource: `${this.bucket.arn}/*` },
-          { Effect: 'Allow', Action: ['elasticfilesystem:ClientMount', 'elasticfilesystem:ClientWrite'], Resource: '*' },
+          {
+            Effect: 'Allow',
+            Action: ['elasticfilesystem:ClientMount', 'elasticfilesystem:ClientWrite'],
+            Resource: '*',
+          },
         ],
       }),
     });
@@ -61,7 +78,8 @@ export class Backup extends Construct {
       handler: lambdaHandler,
       role: this.backupRole.arn,
       timeout: lambdaTimeout,
-      filename: lambdaCodePath,
+      filename: lambdaAsset.path,
+      sourceCodeHash: lambdaAsset.assetHash,
       tags: { Name: `${projectName}-backup-lambda`, Project: projectName },
     });
   }

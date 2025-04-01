@@ -124,5 +124,14 @@ export class Alb extends Construct {
       condition: [{ pathPattern: { values: [`${prometheusPath}*`] } }],
       action: [{ type: 'forward', targetGroupArn: this.prometheusTargetGroup.arn }],
     });
+
+    // Add default rule for the main backend ECS service
+    new LbListenerRule(this, 'ecs-rule', {
+      listenerArn: this.listener.arn,
+      priority: 100, // Lower priority than specific rules
+      action: [{ type: 'forward', targetGroupArn: this.ecsTargetGroup.arn }],
+      // Default rule, matches all paths if no other condition matches
+      condition: [{ pathPattern: { values: ['/*'] } }],
+    });
   }
 }

@@ -1,11 +1,11 @@
 import { Construct } from 'constructs';
 import { DbInstance } from '../.gen/providers/aws/db-instance';
 import { DbSubnetGroup } from '../.gen/providers/aws/db-subnet-group';
+import { SecretsmanagerSecret } from '../.gen/providers/aws/secretsmanager-secret';
+import { SecretsmanagerSecretVersion } from '../.gen/providers/aws/secretsmanager-secret-version';
 import { SecurityGroup } from '../.gen/providers/aws/security-group';
 import { SecurityGroupRule } from '../.gen/providers/aws/security-group-rule';
 import { Networking } from './networking';
-import { SecretsmanagerSecret } from '../.gen/providers/aws/secretsmanager-secret';
-import { SecretsmanagerSecretVersion } from '../.gen/providers/aws/secretsmanager-secret-version';
 
 function assertEnvVar(name: string): string {
   const value = process.env[name];
@@ -73,17 +73,6 @@ export class Rds extends Construct {
       tags: { Project: projectName },
     });
 
-    const dbSecretVersion = new SecretsmanagerSecretVersion(this, 'db-secret-version', {
-      secretId: dbSecret.id,
-      secretString: JSON.stringify({
-        username: dbUsername,
-        password: dbPassword,
-        host: '',
-        port: dbPort,
-        dbname: dbName,
-      }),
-    });
-
     this.dbInstance = new DbInstance(this, 'db', {
       identifier: `${projectName}-db`,
       engine: dbEngine,
@@ -100,15 +89,17 @@ export class Rds extends Construct {
       tags: { Name: `${projectName}-db`, Project: projectName },
     });
 
-    new SecretsmanagerSecretVersion(this, 'db-secret-version-updated', {
+    const endpointString = this.dbInstance.endpoint;
+
+    new SecretsmanagerSecretVersion(this, 'db-secret-version', {
       secretId: dbSecret.id,
-      secretString: JSON.stringify({
-        username: dbUsername,
-        password: dbPassword,
-        host: this.dbInstance.endpoint,
-        port: dbPort,
-        dbname: dbName,
-      }),
+      secretString: `{
+        "username": "${dbUsername}",
+        "password": "${dbPassword}",
+        "host": "${endpointString.split(':')[0]}",
+        "port": ${dbPort},
+        "dbname": "${dbName}"
+      }`,
       dependsOn: [this.dbInstance],
     });
   }

@@ -66,30 +66,31 @@ export class Monitoring extends Construct {
       memory: prometheusMemory,
       executionRoleArn: ecs.taskExecutionRole.arn,
       taskRoleArn: ecs.taskRole.arn,
-      containerDefinitions: JSON.stringify([{
-        name: prometheusContainerName,
-        image: `${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/${projectName}-prometheus:${prometheusTag}`,
-        essential: true,
-        portMappings: [{ containerPort: prometheusPort, hostPort: prometheusPort, protocol: 'tcp' }],
-        environment: [
-          { name: 'BACKEND_ALB_HOST', value: assertEnvVar('BACKEND_ALB_HOST') },
-        ],
-        command: [
-          '/bin/prometheus',
-          '--config.file=/etc/prometheus/prometheus.yml',
-          '--web.external-url=/metrics',
-          '--web.route-prefix=/'
-        ],
-        logConfiguration: {
-          logDriver: 'awslogs',
-          options: {
-            'awslogs-group': `/ecs/${projectName}-prom-task`,
-            'awslogs-region': awsRegion,
-            'awslogs-stream-prefix': 'ecs',
-            'awslogs-create-group': 'true',
+      containerDefinitions: JSON.stringify([
+        {
+          name: prometheusContainerName,
+          image: `${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/${projectName}-prometheus:${prometheusTag}`,
+          essential: true,
+          portMappings: [
+            { containerPort: prometheusPort, hostPort: prometheusPort, protocol: 'tcp' },
+          ],
+          environment: [{ name: 'BACKEND_ALB_HOST', value: assertEnvVar('BACKEND_ALB_HOST') }],
+          command: [
+            '--config.file=/etc/prometheus/prometheus.yml',
+            '--web.external-url=/metrics',
+            '--web.route-prefix=/',
+          ],
+          logConfiguration: {
+            logDriver: 'awslogs',
+            options: {
+              'awslogs-group': `/ecs/${projectName}-prom-task`,
+              'awslogs-region': awsRegion,
+              'awslogs-stream-prefix': 'ecs',
+              'awslogs-create-group': 'true',
+            },
           },
         },
-      }]),
+      ]),
       tags: { Name: `${projectName}-prom-task-def`, Project: projectName },
     });
 
