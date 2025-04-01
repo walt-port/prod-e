@@ -27,33 +27,4 @@
   /* Add any other global base styles here */
 }
 
-/* Custom styles for AnimatedLogo */
-.logo::before {
-  content: '';
-  position: absolute;
-  /* Simplified positioning for testing */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Simplified background for testing */
-  background: red;
-  /* animation: rotate 4s linear infinite; */ /* Temporarily disable animation */
-  z-index: -1; /* Place behind the text */
-  /* border-radius: 8px; */ /* Temporarily disable rounding */
-}
-
-/* Temporarily comment out keyframes */
-/*
-@keyframes rotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-*/
-
-/* Ensure the parent container allows the pseudo-element to be visible */
-.logo {
-  position: relative; /* Needed for absolute positioning of ::before */
-  /* Add some padding so the gradient isn't cut off */
-  padding: 0.25rem;
-}
+/* Removed non-working custom styles for AnimatedLogo */

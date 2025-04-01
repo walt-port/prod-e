@@ -33,8 +33,8 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Panel 4: Remove Centering Styles Again for Testing */}
-          <div className="border border-[#bb9af7] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26]">
+          {/* Panel 4: Restore Original Wrapper Styles */}
+          <div className="border border-[#bb9af7] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26] flex items-center justify-center">
             {/* Component instance */}
             <AnimatedLogo />
           </div>
