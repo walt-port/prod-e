@@ -14,20 +14,20 @@ const AnimatedLogo: React.FC = () => {
   useEffect(() => {
     if (textRef.current) {
       const { offsetWidth, offsetHeight } = textRef.current;
-      // Restore padding to 12
+      // Padding around text
       const padding = 12;
-      const newWidth = offsetWidth + padding * 2 + 8;
-      const newHeight = offsetHeight + padding * 2;
+      // Calculate size needed for text + padding
+      const neededWidth = offsetWidth + padding * 2 + 8;
+      const neededHeight = offsetHeight + padding * 2;
       setSvgSize({
-        // Add extra horizontal padding
-        width: newWidth,
-        height: newHeight,
+        width: neededWidth,
+        height: neededHeight,
       });
 
-      // Calculate perimeter
-      const rectWidth = newWidth > 0 ? newWidth - 2 : 0;
-      const rectHeight = newHeight > 0 ? newHeight - 2 : 0;
-      const perimeter = Math.round(rectWidth * 2 + rectHeight * 2);
+      // Calculate inner perimeter based on needed size
+      const rectInnerWidth = neededWidth > 0 ? neededWidth - 2 : 0;
+      const rectInnerHeight = neededHeight > 0 ? neededHeight - 2 : 0;
+      const perimeter = Math.round(rectInnerWidth * 2 + rectInnerHeight * 2);
       setPathLength(perimeter);
     }
   }, [isEgg]); // Re-measure if text content changes (egg toggle)
@@ -35,11 +35,16 @@ const AnimatedLogo: React.FC = () => {
   return (
     // Outer container - Keep relative inline-block
     <div className="relative inline-block">
-      {/* SVG container - Adjust vertical alignment */}
+      {/* SVG container - Use outer dimensions for svg width/height */}
       <svg
-        width={svgSize.width}
-        height={svgSize.height}
+        width={svgSize.width > 0 ? svgSize.width + 40 : 0} // Match viewBox width
+        height={svgSize.height > 0 ? svgSize.height + 40 : 0} // Match viewBox height
+        // Expand viewBox further for larger gap
+        viewBox={`-20 -20 ${svgSize.width > 0 ? svgSize.width + 40 : 0} ${
+          svgSize.height > 0 ? svgSize.height + 40 : 0
+        }`}
         className="absolute top-[49%] left-1/2 -translate-x-1/2 -translate-y-[47%]"
+        style={{ overflow: 'visible' }} // Explicitly allow overflow just in case
       >
         <defs>
           <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -51,13 +56,26 @@ const AnimatedLogo: React.FC = () => {
           </linearGradient>
         </defs>
 
-        {/* Border rectangle - Apply dynamic dasharray/offset */}
+        {/* Outer Border Rectangle - Adjust for larger gap */}
+        <rect
+          id="logoOuterBorderRect"
+          x="-20" // Increased offset
+          y="-20" // Increased offset
+          width={svgSize.width > 0 ? svgSize.width + 40 : 0} // Match viewBox size
+          height={svgSize.height > 0 ? svgSize.height + 40 : 0} // Match viewBox size
+          rx="10"
+          fill="none"
+          stroke="#FFFFFF" // Keep white for debugging
+          strokeWidth="2"
+        />
+
+        {/* Inner Border rectangle - Keep original position/size */}
         <rect
           id="logoBorderRect"
           x="1"
           y="1"
-          width={svgSize.width > 0 ? svgSize.width - 2 : 0}
-          height={svgSize.height > 0 ? svgSize.height - 2 : 0}
+          width={svgSize.width > 0 ? svgSize.width - 2 : 0} // Based on original svgSize
+          height={svgSize.height > 0 ? svgSize.height - 2 : 0} // Based on original svgSize
           rx="8"
           fill="none"
           stroke="url(#logoGradient)"
@@ -65,10 +83,10 @@ const AnimatedLogo: React.FC = () => {
           style={
             {
               strokeDasharray: pathLength,
-              strokeDashoffset: pathLength, // Start fully dashed (invisible)
-              '--path-length': pathLength, // Pass length as CSS variable
+              strokeDashoffset: pathLength,
+              '--path-length': pathLength,
             } as React.CSSProperties
-          } // Cast required for custom properties
+          }
         />
       </svg>
 
