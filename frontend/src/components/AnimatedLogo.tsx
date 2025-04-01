@@ -9,11 +9,10 @@ const AnimatedLogo: React.FC = () => {
 
   // TODO: Add CSS/Tailwind for the rotating gradient border animation
   return (
-    <div
-      className="h-full flex items-center justify-center relative" // Added relative for pseudo-element positioning later
-    >
+    <div className="logo">
       <div
-        className="logo text-4xl font-hermit text-[#c0caf5] cursor-pointer" // Added class "logo" for custom CSS target
+        className="font-hermit text-[#c0caf5] cursor-pointer inline-block"
+        style={{ fontSize: '2.5rem', fontWeight: 'bold' }}
         onClick={toggleEgg}
       >
         <span>prod-</span>

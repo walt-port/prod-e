@@ -1,7 +1,6 @@
 import React from 'react';
+import AnimatedLogo from '../components/AnimatedLogo';
 import ResourceMonitorPanel from '../components/ResourceMonitorPanel';
-// Keep AnimatedLogo import commented out for later
-// import AnimatedLogo from '../components/AnimatedLogo';
 
 const Dashboard: React.FC = () => {
   return (
@@ -34,11 +33,10 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Panel 4: Restore Original Placeholder Text Color */}
+          {/* Panel 4: Remove Centering Styles Again for Testing */}
           <div className="border border-[#bb9af7] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26]">
-            <div className="h-full flex items-center justify-center text-gray-500">
-              Animated Logo Panel (Placeholder)
-            </div>
+            {/* Component instance */}
+            <AnimatedLogo />
           </div>
         </div>
       </div>
