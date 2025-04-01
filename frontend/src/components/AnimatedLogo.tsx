@@ -72,11 +72,12 @@ const AnimatedLogo: React.FC = () => {
         />
       </svg>
 
-      {/* Text element - assign ref, use inline-block for measurement */}
+      {/* Text element - Add ID for CSS animation */}
       <div
+        id="logoTextContainer"
         ref={textRef}
-        className="font-hermit text-[#c0caf5] cursor-pointer inline-block relative z-10" // Added z-10 to be above SVG
-        style={{ fontSize: '3.5rem', fontWeight: 'bold' }} // Increased font size
+        className="font-hermit text-[#c0caf5] cursor-pointer inline-block relative z-10"
+        style={{ fontSize: '3.5rem', fontWeight: 'bold' }}
         onClick={toggleEgg}
       >
         <span>prod-</span>

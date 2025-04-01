@@ -41,3 +41,19 @@
     stroke-dashoffset: calc(var(--path-length, 500) * -1);
   }
 }
+
+/* Logo Text Pulse Animation */
+#logoTextContainer {
+  animation: logoPulse 5s ease-in-out infinite alternate;
+}
+
+@keyframes logoPulse {
+  from {
+    opacity: 0.85;
+    text-shadow: 0 0 7px #e0af68; /* Increased glow radius */
+  }
+  to {
+    opacity: 1;
+    text-shadow: 0 0 12px #e0af68; /* Increased glow radius */
+  }
+}
