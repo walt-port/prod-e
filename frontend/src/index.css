@@ -31,15 +31,13 @@
 
 /* SVG Logo Animation */
 #logoBorderRect {
-  /* Estimate path length - adjust based on actual size if needed */
-  /* Let's guess ~500px for now */
-  stroke-dasharray: 500;
-  stroke-dashoffset: 500;
+  /* stroke-dasharray and stroke-dashoffset handled by inline styles */
   animation: drawLogoBorder 4s linear infinite;
 }
 
 @keyframes drawLogoBorder {
   to {
-    stroke-dashoffset: 0;
+    /* Animate to negative path length for smooth looping */
+    stroke-dashoffset: calc(var(--path-length, 500) * -1);
   }
 }

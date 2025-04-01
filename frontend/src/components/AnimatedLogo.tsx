@@ -4,6 +4,7 @@ const AnimatedLogo: React.FC = () => {
   const [isEgg, setIsEgg] = useState(false);
   const textRef = useRef<HTMLDivElement>(null); // Ref to measure text size
   const [svgSize, setSvgSize] = useState({ width: 0, height: 0 }); // State for SVG dimensions
+  const [pathLength, setPathLength] = useState(0); // State for perimeter length
 
   const toggleEgg = () => {
     setIsEgg(!isEgg);
@@ -15,11 +16,19 @@ const AnimatedLogo: React.FC = () => {
       const { offsetWidth, offsetHeight } = textRef.current;
       // Restore padding to 12
       const padding = 12;
+      const newWidth = offsetWidth + padding * 2 + 8;
+      const newHeight = offsetHeight + padding * 2;
       setSvgSize({
         // Add extra horizontal padding
-        width: offsetWidth + padding * 2 + 8,
-        height: offsetHeight + padding * 2, // Keep vertical padding as is
+        width: newWidth,
+        height: newHeight,
       });
+
+      // Calculate perimeter
+      const rectWidth = newWidth > 0 ? newWidth - 2 : 0;
+      const rectHeight = newHeight > 0 ? newHeight - 2 : 0;
+      const perimeter = Math.round(rectWidth * 2 + rectHeight * 2);
+      setPathLength(perimeter);
     }
   }, [isEgg]); // Re-measure if text content changes (egg toggle)
 
@@ -42,17 +51,24 @@ const AnimatedLogo: React.FC = () => {
           </linearGradient>
         </defs>
 
-        {/* Border rectangle - Apply gradient stroke */}
+        {/* Border rectangle - Apply dynamic dasharray/offset */}
         <rect
-          id="logoBorderRect" // Add ID for CSS targeting
+          id="logoBorderRect"
           x="1"
           y="1"
           width={svgSize.width > 0 ? svgSize.width - 2 : 0}
           height={svgSize.height > 0 ? svgSize.height - 2 : 0}
           rx="8"
           fill="none"
-          stroke="url(#logoGradient)" // Use gradient for stroke
+          stroke="url(#logoGradient)"
           strokeWidth="2"
+          style={
+            {
+              strokeDasharray: pathLength,
+              strokeDashoffset: pathLength, // Start fully dashed (invisible)
+              '--path-length': pathLength, // Pass length as CSS variable
+            } as React.CSSProperties
+          } // Cast required for custom properties
         />
       </svg>
 
