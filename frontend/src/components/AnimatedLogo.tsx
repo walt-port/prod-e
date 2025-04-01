@@ -32,19 +32,28 @@ const AnimatedLogo: React.FC = () => {
         height={svgSize.height}
         className="absolute top-[49%] left-1/2 -translate-x-1/2 -translate-y-[47%]"
       >
-        {/* Animated border rectangle - Revert position/size changes */}
+        <defs>
+          <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            {/* Using colors from original sketch */}
+            <stop offset="0%" style={{ stopColor: '#9ece6a' }} />
+            <stop offset="33%" style={{ stopColor: '#f7768e' }} />
+            <stop offset="66%" style={{ stopColor: '#bb9af7' }} />
+            <stop offset="100%" style={{ stopColor: '#9ece6a' }} />
+          </linearGradient>
+        </defs>
+
+        {/* Border rectangle - Apply gradient stroke */}
         <rect
-          x="1" // Revert x
-          y="1" // Revert y
-          // Revert width/height
+          id="logoBorderRect" // Add ID for CSS targeting
+          x="1"
+          y="1"
           width={svgSize.width > 0 ? svgSize.width - 2 : 0}
           height={svgSize.height > 0 ? svgSize.height - 2 : 0}
-          rx="8" // Rounded corners
+          rx="8"
           fill="none"
-          stroke="#e0af68" // Example border color
+          stroke="url(#logoGradient)" // Use gradient for stroke
           strokeWidth="2"
         />
-        {/* TODO: Add SVG animation for stroke gradient/rotation */}
       </svg>
 
       {/* Text element - assign ref, use inline-block for measurement */}

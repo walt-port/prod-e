@@ -28,3 +28,18 @@
 }
 
 /* Removed non-working custom styles for AnimatedLogo */
+
+/* SVG Logo Animation */
+#logoBorderRect {
+  /* Estimate path length - adjust based on actual size if needed */
+  /* Let's guess ~500px for now */
+  stroke-dasharray: 500;
+  stroke-dashoffset: 500;
+  animation: drawLogoBorder 4s linear infinite;
+}
+
+@keyframes drawLogoBorder {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
