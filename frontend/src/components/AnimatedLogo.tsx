@@ -70,19 +70,34 @@ const AnimatedLogo: React.FC = () => {
               repeatCount="indefinite"
             />
           </linearGradient>
+          {/* White Glow Filter - Revised Structure */}
+          <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+            {/* Blur the Source Alpha */}
+            <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur" />
+            {/* Create white flood */}
+            <feFlood floodColor="white" result="floodWhite" />
+            {/* Mask the white flood with the blurred alpha */}
+            <feComposite in="floodWhite" in2="blur" operator="in" result="coloredBlur" />
+            {/* Merge original graphic over the colored blur */}
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
-        {/* Outer Border Rectangle - Adjust vertical position slightly */}
+        {/* Outer Border Rectangle - Apply glow filter */}
         <rect
           id="logoOuterBorderRect"
           x="-70"
-          y="-71" // Nudge up slightly
+          y="-71"
           width={svgSize.width > 0 ? svgSize.width + 140 : 0}
           height={svgSize.height > 0 ? svgSize.height + 140 : 0}
           rx="10"
           fill="none"
           stroke="url(#logoGradient)"
           strokeWidth="2"
+          filter="url(#glowFilter)" // Apply the filter
         />
 
         {/* Inner Border rectangle - Keep original position/size */}
