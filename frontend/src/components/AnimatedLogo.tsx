@@ -13,8 +13,8 @@ const AnimatedLogo: React.FC = () => {
   useEffect(() => {
     if (textRef.current) {
       const { offsetWidth, offsetHeight } = textRef.current;
-      // Reduce padding for less space around text
-      const padding = 8;
+      // Restore padding to 12
+      const padding = 12;
       setSvgSize({
         width: offsetWidth + padding * 2,
         height: offsetHeight + padding * 2,
@@ -25,11 +25,11 @@ const AnimatedLogo: React.FC = () => {
   return (
     // Outer container - Keep relative inline-block
     <div className="relative inline-block">
-      {/* SVG container - Center using absolute positioning + transforms */}
+      {/* SVG container - Adjust vertical alignment */}
       <svg
         width={svgSize.width}
         height={svgSize.height}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+        className="absolute top-[49%] left-1/2 -translate-x-1/2 -translate-y-[47%]"
       >
         {/* Animated border rectangle - Revert position/size changes */}
         <rect
@@ -50,7 +50,7 @@ const AnimatedLogo: React.FC = () => {
       <div
         ref={textRef}
         className="font-hermit text-[#c0caf5] cursor-pointer inline-block relative z-10" // Added z-10 to be above SVG
-        style={{ fontSize: '2.5rem', fontWeight: 'bold' }}
+        style={{ fontSize: '3.5rem', fontWeight: 'bold' }} // Increased font size
         onClick={toggleEgg}
       >
         <span>prod-</span>
