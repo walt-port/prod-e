@@ -107,10 +107,8 @@ const InfoBox: React.FC = () => {
             >
               GitHub:prod-e
             </a>
-            {/* Separator with standard margin */}
-            <span style={{ marginLeft: '1rem' }}>|</span>
-            {/* Content Section 2 (Duplicate) */}
-            <span style={{ marginLeft: '1rem' }}>👤</span>
+            {/* Content Section 2 (Duplicate) - Reduce starting margin */}
+            <span style={{ marginLeft: '0.75rem' }}>👤</span> {/* Reduced margin */}
             <a
               href="https://waltryan.com"
               target="_blank"
@@ -140,8 +138,6 @@ const InfoBox: React.FC = () => {
             >
               GitHub:prod-e
             </a>
-            {/* Separator with standard margin AND trailing margin for loop */}
-            <span style={{ marginLeft: '1rem', marginRight: '1rem' }}>|</span>
           </div>
         </div>
       </div>
