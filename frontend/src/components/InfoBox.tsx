@@ -72,9 +72,77 @@ const InfoBox: React.FC = () => {
           </p>
         </div>
 
-        {/* Status Bar (Placeholder) */}
-        <div className="border-t border-[#414868] px-2 py-1 text-xs text-gray-400">
-          Status Bar Placeholder
+        {/* Status Bar - Setup for scrolling */}
+        <div className="border-t border-[#414868] py-1 text-xs text-gray-400 overflow-hidden whitespace-nowrap font-hermit">
+          {/* Inner container for scrolling content */}
+          <div className="inline-block" id="statusBarContent">
+            {/* Content Section 1 */}
+            <span style={{ marginLeft: '1rem' }}>👤</span>
+            <a
+              href="https://waltryan.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#7aa2f7] hover:underline"
+              style={{ marginLeft: '0.25rem' }}
+            >
+              waltryan.com
+            </a>
+            <span style={{ marginLeft: '1rem' }}>💻</span>
+            <a
+              href="https://waltryan.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#7aa2f7] hover:underline"
+              style={{ marginLeft: '0.25rem' }}
+            >
+              waltryan.dev
+            </a>
+            <span style={{ marginLeft: '1rem' }}>🔗</span>
+            <a
+              href="https://github.com/walt-port/prod-e"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#7aa2f7] hover:underline"
+              style={{ marginLeft: '0.25rem' }}
+            >
+              GitHub:prod-e
+            </a>
+            {/* Divider for visual separation between repeats */}
+            <span style={{ marginLeft: '1rem', marginRight: '1rem' }}>|</span>
+            {/* Content Section 2 (Duplicate) */}
+            <span style={{ marginLeft: '1rem' }}>👤</span>
+            <a
+              href="https://waltryan.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#7aa2f7] hover:underline"
+              style={{ marginLeft: '0.25rem' }}
+            >
+              waltryan.com
+            </a>
+            <span style={{ marginLeft: '1rem' }}>💻</span>
+            <a
+              href="https://waltryan.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#7aa2f7] hover:underline"
+              style={{ marginLeft: '0.25rem' }}
+            >
+              waltryan.dev
+            </a>
+            <span style={{ marginLeft: '1rem' }}>🔗</span>
+            <a
+              href="https://github.com/walt-port/prod-e"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#7aa2f7] hover:underline"
+              style={{ marginLeft: '0.25rem' }}
+            >
+              GitHub:prod-e
+            </a>
+            {/* Add trailing space/divider for smoother loop visual */}
+            <span style={{ marginLeft: '1rem', marginRight: '1rem' }}>|</span>
+          </div>
         </div>
       </div>
     </div>
