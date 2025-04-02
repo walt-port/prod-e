@@ -74,9 +74,9 @@ const InfoBox: React.FC = () => {
 
         {/* Status Bar - Setup for scrolling */}
         <div className="border-t border-[#414868] py-1 text-xs text-gray-400 overflow-hidden whitespace-nowrap font-hermit">
-          {/* Inner container for scrolling content */}
-          <div className="inline-block" id="statusBarContent">
-            {/* Content Section 1 */}
+          {/* Inner container for scrolling content - Use flex */}
+          <div className="flex" id="statusBarContent">
+            {/* Content Section 1 - Add margin to first icon */}
             <span style={{ marginLeft: '1rem' }}>👤</span>
             <a
               href="https://waltryan.com"
@@ -107,8 +107,8 @@ const InfoBox: React.FC = () => {
             >
               GitHub:prod-e
             </a>
-            {/* Divider for visual separation between repeats */}
-            <span style={{ marginLeft: '1rem', marginRight: '1rem' }}>|</span>
+            {/* Separator with standard margin */}
+            <span style={{ marginLeft: '1rem' }}>|</span>
             {/* Content Section 2 (Duplicate) */}
             <span style={{ marginLeft: '1rem' }}>👤</span>
             <a
@@ -140,8 +140,8 @@ const InfoBox: React.FC = () => {
             >
               GitHub:prod-e
             </a>
-            {/* Add trailing space/divider for smoother loop visual */}
-            <span style={{ marginLeft: '1rem', marginRight: '1rem' }}>|</span>
+            {/* Separator with standard margin */}
+            <span style={{ marginLeft: '1rem' }}>|</span>
           </div>
         </div>
       </div>

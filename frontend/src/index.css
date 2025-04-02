@@ -59,3 +59,18 @@
 }
 
 /* Removed outer border rotation CSS */
+
+/* InfoBox Status Bar Marquee */
+#statusBarContent {
+  /* Remove padding-right, spacing handled within content */
+  animation: marquee 25s linear infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%); /* Translate by half the width (due to duplicated content) */
+  }
+}
