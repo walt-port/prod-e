@@ -140,8 +140,8 @@ const InfoBox: React.FC = () => {
             >
               GitHub:prod-e
             </a>
-            {/* Separator with standard margin */}
-            <span style={{ marginLeft: '1rem' }}>|</span>
+            {/* Separator with standard margin AND trailing margin for loop */}
+            <span style={{ marginLeft: '1rem', marginRight: '1rem' }}>|</span>
           </div>
         </div>
       </div>

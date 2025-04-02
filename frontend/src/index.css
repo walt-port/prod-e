@@ -62,7 +62,7 @@
 
 /* InfoBox Status Bar Marquee */
 #statusBarContent {
-  /* Remove padding-right, spacing handled within content */
+  /* Remove padding-right again */
   animation: marquee 25s linear infinite;
 }
 
@@ -71,6 +71,6 @@
     transform: translateX(0%);
   }
   100% {
-    transform: translateX(-50%); /* Translate by half the width (due to duplicated content) */
+    transform: translateX(-50%); /* Reset to exactly -50% */
   }
 }
