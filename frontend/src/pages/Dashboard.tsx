@@ -6,33 +6,33 @@ import ResourceMonitorPanel from '../components/ResourceMonitorPanel';
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="flex flex-col h-full p-4">
+    <div className="flex flex-col h-screen p-4 border border-[#bb9af7] rounded-xl bg-[#1a1b26]">
       {/* Header - Restore font-family if needed, assuming Hermit might not be globally available yet */}
       <h1 className="text-3xl font-bold text-center text-[#bb9af7] mb-6">
         Prod-E Monitoring Dashboard
       </h1>
 
-      {/* Restore exact structure - Use inline style for padding around the grid */}
-      <div className="flex-grow" style={{ padding: '1rem' }}>
-        {/* Use inline style for the gap between grid items */}
-        <div className="grid grid-cols-2 grid-rows-2 h-full w-full" style={{ gap: '1rem' }}>
-          {/* Panel 1: Use ResourceMonitorPanel (handles its own padding) */}
-          <div className="border border-[#7aa2f7] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26]">
+      {/* flex-grow allows this div to take remaining vertical space */}
+      <div className="flex-grow overflow-hidden">
+        {/* Grid: Removed h-full and grid-rows-2 */}
+        <div className="grid grid-cols-2 h-full w-full" style={{ gap: '1rem' }}>
+          {/* Panel 1: Added overflow-y-auto */}
+          <div className="border border-[#7aa2f7] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335]">
             <ResourceMonitorPanel />
           </div>
 
-          {/* Panel 2: Infrastructure Diagram */}
-          <div className="border border-[#9ece6a] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26]">
+          {/* Panel 2: Added overflow-y-auto */}
+          <div className="border border-[#9ece6a] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335]">
             <InfrastructureDiagram />
           </div>
 
-          {/* Panel 3: Info Box Panel */}
-          <div className="border border-[#e0af68] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26]">
+          {/* Panel 3: Added overflow-y-auto */}
+          <div className="border border-[#e0af68] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335]">
             <InfoBox />
           </div>
 
-          {/* Panel 4: Animated Logo */}
-          <div className="border border-[#bb9af7] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26] flex items-center justify-center">
+          {/* Panel 4: Added overflow-y-auto */}
+          <div className="border border-[#bb9af7] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335] flex items-center justify-center">
             <AnimatedLogo />
           </div>
         </div>
