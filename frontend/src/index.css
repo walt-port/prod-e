@@ -78,15 +78,16 @@ body {
 /* InfoBox Status Bar Marquee */
 #statusBarContent {
   /* Remove padding-right again */
-  animation: marquee 25s linear infinite;
+  animation: marquee 25s linear infinite; /* Ensure animation is applied */
 }
 
+/* Ensure keyframes are present */
 @keyframes marquee {
   0% {
     transform: translateX(0%);
   }
   100% {
-    transform: translateX(-50%); /* Reset to exactly -50% */
+    transform: translateX(-50%); /* Scroll one full copy */
   }
 }
 

@@ -71,46 +71,54 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => 
   return { nodes, edges };
 };
 
-// --- Node Definitions (positions removed) ---
+// --- Node Definitions (Add dummy positions for TS) ---
 const initialNodes: Node[] = [
   {
     id: 'internet',
     type: 'user',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'Internet / User' },
   },
   {
     id: 'alb',
     type: 'loadbalancer',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'prod-e-alb' },
   },
   {
     id: 'ecs-app',
     type: 'service',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'prod-e-app' },
   },
   {
     id: 'ecs-backend',
     type: 'service',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'prod-e-backend' },
   },
   {
     id: 'ecs-grafana',
     type: 'service',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'prod-e-grafana' },
   },
   {
     id: 'ecs-prometheus',
     type: 'service',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'prod-e-prometheus' },
   },
   {
     id: 'rds',
     type: 'database',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'prod-e-db' },
   },
   {
     id: 'lambda-api',
     type: 'lambda',
+    position: { x: 0, y: 0 }, // Dummy position for TS
     data: { label: 'prod-e-api' },
   },
 ];
@@ -126,9 +134,9 @@ const dbEdgeStyle = {
 const monitoringEdgeStyle = {
   stroke: '#e0af68', // Orange for monitoring connections
 };
-const apiEdgeStyle = {
-  stroke: '#e0af68', // Same as monitoring, yellow
-};
+// const apiEdgeStyle = { // <<< Remove unused style
+//   stroke: '#e0af68',
+// };
 const appApiEdgeStyle = {
   stroke: '#9ece6a',
 };
@@ -215,8 +223,8 @@ const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
 );
 
 const InfrastructureDiagram: React.FC = () => {
-  // Use layouted nodes/edges for initial state
-  const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
+  // Remove unused setNodes
+  const [nodes, , onNodesChange] = useNodesState(layoutedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layoutedEdges);
 
   const onConnect = useCallback(
