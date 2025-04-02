@@ -14,24 +14,25 @@ const Dashboard: React.FC = () => {
 
       {/* flex-grow allows this div to take remaining vertical space */}
       <div className="flex-grow overflow-hidden">
-        {/* Grid: Removed h-full and grid-rows-2 */}
+        {/* Grid: Removed h-full */}
         <div className="grid grid-cols-2 h-full w-full" style={{ gap: '1rem' }}>
-          {/* Panel 1: Added overflow-y-auto */}
+          {/* Panel 1: Add overflow-y-auto */}
           <div className="border border-[#7aa2f7] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335]">
             <ResourceMonitorPanel />
           </div>
 
-          {/* Panel 2: Added overflow-y-auto */}
+          {/* Panel 2: Add overflow-y-auto */}
           <div className="border border-[#9ece6a] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335]">
             <InfrastructureDiagram />
+            {/* <div>Diagram Placeholder</div> */}
           </div>
 
-          {/* Panel 3: Added overflow-y-auto */}
+          {/* Panel 3: Ensure overflow-y-auto is present */}
           <div className="border border-[#e0af68] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335]">
             <InfoBox />
           </div>
 
-          {/* Panel 4: Added overflow-y-auto */}
+          {/* Panel 4: Add overflow-y-auto */}
           <div className="border border-[#bb9af7] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335] flex items-center justify-center">
             <AnimatedLogo />
           </div>
