@@ -14,128 +14,120 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 // --- Node Definitions ---
+const nodeStyle = {
+  // Common style for reuse
+  background: '#1f2335',
+  color: '#c0caf5',
+  border: '1px solid #9ece6a',
+  fontFamily: 'Hermit, monospace',
+  fontSize: '0.8rem',
+};
 const initialNodes: Node[] = [
   {
     id: 'internet',
-    position: { x: 100, y: 50 },
+    position: { x: 350, y: 25 }, // Centered top
     data: { label: 'Internet / User' },
-    // Optional: Specify source/target position if needed later
-    // sourcePosition: Position.Bottom,
-    style: {
-      background: '#1f2335',
-      color: '#c0caf5',
-      border: '1px solid #9ece6a',
-      fontFamily: 'Hermit, monospace',
-    },
+    style: nodeStyle,
   },
   {
     id: 'alb',
-    position: { x: 100, y: 150 },
-    data: { label: 'Application Load Balancer' },
-    style: {
-      background: '#1f2335',
-      color: '#c0caf5',
-      border: '1px solid #9ece6a',
-      fontFamily: 'Hermit, monospace',
-    },
+    position: { x: 350, y: 125 }, // Below internet
+    data: { label: 'prod-e-alb' },
+    style: nodeStyle,
+  },
+  // Row of ECS Services
+  {
+    id: 'ecs-app',
+    position: { x: 50, y: 225 }, // Top-left service
+    data: { label: 'prod-e-app' },
+    style: nodeStyle,
   },
   {
-    id: 'ecs-service',
-    position: { x: 100, y: 250 },
-    data: { label: 'ECS Service (prod-e)' },
-    style: {
-      background: '#1f2335',
-      color: '#c0caf5',
-      border: '1px solid #9ece6a',
-      fontFamily: 'Hermit, monospace',
-    },
+    id: 'ecs-backend',
+    position: { x: 250, y: 225 }, // Top-middle service
+    data: { label: 'prod-e-backend' },
+    style: nodeStyle,
   },
   {
-    id: 'task-1',
-    position: { x: 0, y: 350 }, // Relative to service? Adjust later if grouping
-    data: { label: 'ECS Task 1' },
-    style: {
-      background: '#1f2335',
-      color: '#c0caf5',
-      border: '1px solid #9ece6a',
-      fontFamily: 'Hermit, monospace',
-      fontSize: '0.8rem',
-    },
+    id: 'ecs-grafana',
+    position: { x: 450, y: 225 }, // Top-right service
+    data: { label: 'prod-e-grafana' },
+    style: nodeStyle,
   },
   {
-    id: 'task-2',
-    position: { x: 200, y: 350 },
-    data: { label: 'ECS Task 2' },
-    style: {
-      background: '#1f2335',
-      color: '#c0caf5',
-      border: '1px solid #9ece6a',
-      fontFamily: 'Hermit, monospace',
-      fontSize: '0.8rem',
-    },
+    id: 'ecs-prometheus',
+    position: { x: 650, y: 325 }, // Below Grafana
+    data: { label: 'prod-e-prometheus' },
+    style: nodeStyle,
   },
+  // Database
   {
     id: 'rds',
-    position: { x: 100, y: 450 },
-    data: { label: 'RDS Database' },
-    // targetPosition: Position.Top,
-    style: {
-      background: '#1f2335',
-      color: '#c0caf5',
-      border: '1px solid #9ece6a',
-      fontFamily: 'Hermit, monospace',
-    },
+    position: { x: 250, y: 325 }, // Below backend service
+    data: { label: 'prod-e-db' },
+    style: nodeStyle,
   },
 ];
 
 // --- Edge Definitions ---
+const edgeStyle = {
+  // Common style for reuse
+  stroke: '#7aa2f7',
+};
+const dbEdgeStyle = {
+  stroke: '#bb9af7',
+};
+const monitoringEdgeStyle = {
+  stroke: '#e0af68', // Orange for monitoring connections
+};
+
 const initialEdges: Edge[] = [
   {
     id: 'e-internet-alb',
     source: 'internet',
     target: 'alb',
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#7aa2f7' },
-    style: { stroke: '#7aa2f7' },
+    markerEnd: { type: MarkerType.ArrowClosed, color: edgeStyle.stroke },
+    style: edgeStyle,
     animated: true,
   },
   {
-    id: 'e-alb-ecs',
+    id: 'e-alb-app',
     source: 'alb',
-    target: 'ecs-service',
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#7aa2f7' },
-    style: { stroke: '#7aa2f7' },
+    target: 'ecs-app',
+    markerEnd: { type: MarkerType.ArrowClosed, color: edgeStyle.stroke },
+    style: edgeStyle,
     animated: true,
   },
   {
-    id: 'e-ecs-task1',
-    source: 'ecs-service',
-    target: 'task-1',
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#7aa2f7' },
-    style: { stroke: '#7aa2f7' },
+    id: 'e-alb-backend',
+    source: 'alb',
+    target: 'ecs-backend',
+    markerEnd: { type: MarkerType.ArrowClosed, color: edgeStyle.stroke },
+    style: edgeStyle,
     animated: true,
   },
   {
-    id: 'e-ecs-task2',
-    source: 'ecs-service',
-    target: 'task-2',
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#7aa2f7' },
-    style: { stroke: '#7aa2f7' },
+    id: 'e-alb-grafana',
+    source: 'alb',
+    target: 'ecs-grafana',
+    markerEnd: { type: MarkerType.ArrowClosed, color: edgeStyle.stroke },
+    style: edgeStyle,
     animated: true,
   },
   {
-    id: 'e-task1-rds',
-    source: 'task-1',
+    id: 'e-backend-rds',
+    source: 'ecs-backend',
     target: 'rds',
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#bb9af7' }, // Different color for DB traffic?
-    style: { stroke: '#bb9af7' },
+    markerEnd: { type: MarkerType.ArrowClosed, color: dbEdgeStyle.stroke },
+    style: dbEdgeStyle,
     animated: true,
   },
   {
-    id: 'e-task2-rds',
-    source: 'task-2',
-    target: 'rds',
-    markerEnd: { type: MarkerType.ArrowClosed, color: '#bb9af7' },
-    style: { stroke: '#bb9af7' },
+    id: 'e-grafana-prometheus',
+    source: 'ecs-grafana',
+    target: 'ecs-prometheus',
+    markerEnd: { type: MarkerType.ArrowClosed, color: monitoringEdgeStyle.stroke },
+    style: monitoringEdgeStyle,
     animated: true,
   },
 ];
