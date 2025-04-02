@@ -95,10 +95,11 @@ body {
 .react-flow__controls {
   /* Remove default box shadow */
   box-shadow: none !important;
-  /* Arrange buttons horizontally */
+  /* REMOVED horizontal layout styles
   display: flex !important;
   flex-direction: row !important;
-  gap: 4px !important; /* Add a small gap between buttons */
+  gap: 4px !important;
+  */
 }
 
 .react-flow__controls-button {

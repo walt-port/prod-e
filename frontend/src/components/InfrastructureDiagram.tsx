@@ -247,7 +247,7 @@ const InfrastructureDiagram: React.FC = () => {
         // ProOptions could hide attribution if needed later
         // proOptions={{ hideAttribution: true }}
       >
-        <Controls position="bottom-left" />
+        <Controls position="top-right" />
         <Background color="#414868" gap={16} />
       </ReactFlow>
     </div>
