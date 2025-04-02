@@ -9,7 +9,7 @@ const InfoBox: React.FC = () => {
         {/* Title Bar - Keep inline padding */}
         <div
           className="bg-[#24283b] py-1 text-xs text-gray-400 border-b border-[#414868] flex justify-between items-center font-hermit"
-          style={{ paddingLeft: '1rem', paddingRight: '1rem' }}
+          style={{ paddingLeft: '0.5rem', paddingRight: '0.5rem' }}
         >
           {/* Left side */}
           <div className="flex">
@@ -19,11 +19,26 @@ const InfoBox: React.FC = () => {
             <span>Help</span>
           </div>
 
-          {/* Right side */}
+          {/* Right side - Revert to inline margins */}
           <div className="flex items-center">
-            <span>_</span>
-            <span style={{ paddingLeft: '0.5rem' }}>□</span>
-            <span style={{ paddingLeft: '0.5rem' }}>X</span>
+            {/* Divider before minimize */}
+            <div className="h-[12px] border-l border-gray-400"></div>
+            {/* Minimize span with margin */}
+            <span style={{ marginLeft: '0.5rem' }}>_</span>
+            {/* Divider with margin */}
+            <div
+              className="h-[12px] border-l border-gray-400"
+              style={{ marginLeft: '0.5rem' }}
+            ></div>
+            {/* Square span with margin */}
+            <span style={{ marginLeft: '0.5rem' }}>□</span>
+            {/* Divider with margin */}
+            <div
+              className="h-[12px] border-l border-gray-400"
+              style={{ marginLeft: '0.5rem' }}
+            ></div>
+            {/* X span with margin */}
+            <span style={{ marginLeft: '0.5rem' }}>X</span>
           </div>
         </div>
 
