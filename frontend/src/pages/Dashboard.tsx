@@ -22,7 +22,10 @@ const Dashboard: React.FC = () => {
           {/* Panel 1: Add overflow-y-auto */}
           <div
             className="border border-[#7aa2f7] overflow-y-auto shadow-lg bg-[#1f2335]"
-            style={{ borderRadius: '0.5rem' }}
+            style={{
+              borderRadius: '0.5rem',
+              boxShadow: '0 0 12px rgba(122, 162, 247, 0.4)',
+            }}
           >
             <ResourceMonitorPanel />
           </div>
@@ -30,7 +33,10 @@ const Dashboard: React.FC = () => {
           {/* Panel 2: Add overflow-y-auto */}
           <div
             className="border border-[#9ece6a] overflow-y-auto shadow-lg bg-[#1f2335]"
-            style={{ borderRadius: '0.5rem' }}
+            style={{
+              borderRadius: '0.5rem',
+              boxShadow: '0 0 12px rgba(158, 206, 106, 0.4)',
+            }}
           >
             <InfrastructureDiagram />
             {/* <div>Diagram Placeholder</div> */}
@@ -39,7 +45,10 @@ const Dashboard: React.FC = () => {
           {/* Panel 3: Ensure overflow-y-auto is present */}
           <div
             className="border border-[#e0af68] overflow-y-auto shadow-lg bg-[#1f2335]"
-            style={{ borderRadius: '0.5rem' }}
+            style={{
+              borderRadius: '0.5rem',
+              boxShadow: '0 0 12px rgba(224, 175, 104, 0.4)',
+            }}
           >
             <InfoBox />
           </div>
@@ -47,7 +56,10 @@ const Dashboard: React.FC = () => {
           {/* Panel 4: Add overflow-y-auto */}
           <div
             className="border border-[#bb9af7] overflow-y-auto shadow-lg bg-[#1f2335] flex items-center justify-center"
-            style={{ borderRadius: '0.5rem' }}
+            style={{
+              borderRadius: '0.5rem',
+              boxShadow: '0 0 12px rgba(187, 154, 247, 0.4)',
+            }}
           >
             <AnimatedLogo />
           </div>
