@@ -4,8 +4,14 @@ const InfoBox: React.FC = () => {
   return (
     // Outer container - Use flex to center the inner window
     <div className="h-full w-full flex items-center justify-center p-4">
-      {/* Floating window element - Add w/h classes */}
-      <div className="w-[90%] h-[90%] flex flex-col bg-[#1f2335] border border-[#414868] rounded-md overflow-hidden shadow-lg">
+      {/* Floating window element - Use inline border-radius */}
+      <div
+        className="w-[90%] h-[90%] flex flex-col bg-[#1f2335] border border-[#414868] overflow-hidden shadow-lg"
+        style={{
+          boxShadow: '0 0 10px rgba(255, 255, 255, 0.4)',
+          borderRadius: '0.5rem',
+        }}
+      >
         {/* Title Bar - Keep inline padding */}
         <div
           className="bg-[#24283b] py-1 text-xs text-gray-400 border-b border-[#414868] flex justify-between items-center font-hermit"
