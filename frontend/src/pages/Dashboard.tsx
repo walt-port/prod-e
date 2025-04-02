@@ -1,5 +1,6 @@
 import React from 'react';
 import AnimatedLogo from '../components/AnimatedLogo';
+import InfoBox from '../components/InfoBox';
 import ResourceMonitorPanel from '../components/ResourceMonitorPanel';
 
 const Dashboard: React.FC = () => {
@@ -26,11 +27,9 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Panel 3: Restore Original Placeholder Text Color */}
+          {/* Panel 3: Info Box Panel */}
           <div className="border border-[#e0af68] rounded-lg overflow-hidden shadow-lg bg-[#1a1b26]">
-            <div className="h-full flex items-center justify-center text-gray-500">
-              Info Box Panel (Placeholder)
-            </div>
+            <InfoBox />
           </div>
 
           {/* Panel 4: Restore Original Wrapper Styles */}
