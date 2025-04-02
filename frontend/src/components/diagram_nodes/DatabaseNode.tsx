@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 
-// Database cylinder icon SVG
+// PostgreSQL elephant icon SVG - Using stroke
 const DatabaseIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -12,9 +12,12 @@ const DatabaseIcon = () => (
     stroke="#c0caf5"
     strokeWidth="1.5"
   >
-    <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+    {/* Simplified PostgreSQL Elephant Path Data */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.5 14c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-7 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-2.69-4.45c-.3-.2-.51-.53-.51-.91V10c0-.38.21-.71.51-.91l5.19-3.19c.3-.2.69-.2.99 0l5.19 3.19c.3.2.51.53.51.91v.64c0 .38-.21.71-.51.91l-5.19 3.19c-.3.2-.69.2-.99 0l-5.19-3.19z"
+    />
   </svg>
 );
 
@@ -39,7 +42,13 @@ const DatabaseNode = ({ data }: NodeProps) => {
       />
       <DatabaseIcon />
       <div style={{ marginLeft: '8px' }}>{data.label}</div>
-      {/* No source handle if it's the final destination */}
+      {/* No source handle for the database node */}
+      <Handle
+        type="target" // Keep target handle for connections from services
+        position={Position.Left} // Example: Position on the left
+        id="a" // Unique ID if multiple handles on the same side
+        style={{ background: 'transparent', border: '1px solid #555', top: '50%' }}
+      />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 
-// Simple Load Balancer icon SVG
+// AWS ELB icon SVG - Using stroke
 const LoadBalancerIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -12,12 +12,13 @@ const LoadBalancerIcon = () => (
     stroke="#c0caf5"
     strokeWidth="1.5"
   >
-    <path d="M12 2 L12 6" /> {/* Vertical line down */}
-    <path d="M4 6 L20 6" /> {/* Horizontal bar */}
-    <path d="M8 6 L8 10" /> {/* Left branch */}
-    <path d="M16 6 L16 10" /> {/* Right branch */}
-    <circle cx="8" cy="12" r="2" /> {/* Left circle */}
-    <circle cx="16" cy="12" r="2" /> {/* Right circle */}
+    {/* Switched back to stroke for clarity */}
+    {/* Simplified AWS ELB Icon Path Data */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 2a10 10 0 100 20 10 10 0 000-20zm-1 14.5v-3H8v-3h3v-3h2v3h3v3h-3v3h-2zm1-11.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"
+    />
   </svg>
 );
 

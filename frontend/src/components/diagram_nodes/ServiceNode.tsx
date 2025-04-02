@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 
-// Placeholder SVG icon data (e.g., simple boxes)
+// Hexagon icon SVG - Using stroke
 const ServiceIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -12,8 +12,8 @@ const ServiceIcon = () => (
     stroke="#c0caf5"
     strokeWidth="1.5"
   >
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <rect x="7" y="7" width="10" height="10" rx="1" ry="1"></rect>
+    {/* Simple Hexagon Path */}
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 16V8l-9-5-9 5v8l9 5 9-5z"></path>
   </svg>
 );
 
