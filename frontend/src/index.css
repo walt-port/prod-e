@@ -74,3 +74,33 @@
     transform: translateX(-50%); /* Reset to exactly -50% */
   }
 }
+
+/* React Flow Controls Styling */
+.react-flow__controls {
+  /* Remove default box shadow */
+  box-shadow: none !important;
+  /* Arrange buttons horizontally */
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 4px !important; /* Add a small gap between buttons */
+}
+
+.react-flow__controls-button {
+  background-color: #2a2f41 !important; /* Darker background */
+  border: 1px solid #414868 !important; /* Subtle border */
+  border-radius: 4px !important; /* Slightly rounded corners */
+  box-shadow: none !important;
+}
+
+.react-flow__controls-button svg {
+  fill: #a9b1d6 !important; /* Light grey icon color */
+}
+
+.react-flow__controls-button:hover {
+  background-color: #414868 !important; /* Slightly lighter on hover */
+}
+
+/* Optional: Style the zoom display */
+.react-flow__controls-interactive {
+  color: #a9b1d6 !important; /* Match icon color */
+}
