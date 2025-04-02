@@ -12,9 +12,9 @@ const Dashboard: React.FC = () => {
         Prod-E Monitoring Dashboard
       </h1>
 
-      {/* flex-grow allows this div to take remaining vertical space */}
-      <div className="flex-grow overflow-hidden">
-        {/* Grid: Removed h-full */}
+      {/* flex-grow allows this div to take remaining vertical space - Added overflow-hidden and padding */}
+      <div className="flex-grow overflow-hidden" style={{ padding: '1rem' }}>
+        {/* Grid - Restore h-full to fill flex parent */}
         <div className="grid grid-cols-2 h-full w-full" style={{ gap: '1rem' }}>
           {/* Panel 1: Add overflow-y-auto */}
           <div className="border border-[#7aa2f7] rounded-lg overflow-y-auto shadow-lg bg-[#1f2335]">
