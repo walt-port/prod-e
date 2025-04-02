@@ -12,10 +12,23 @@ import ReactFlow, {
 } from 'reactflow';
 
 import 'reactflow/dist/style.css';
+import DatabaseNode from './diagram_nodes/DatabaseNode'; // Import
+import LoadBalancerNode from './diagram_nodes/LoadBalancerNode'; // Import
+import ServiceNode from './diagram_nodes/ServiceNode'; // Import custom node
+import UserNode from './diagram_nodes/UserNode'; // Import
+
+// Define node types
+const nodeTypes = {
+  service: ServiceNode,
+  user: UserNode, // Register
+  loadbalancer: LoadBalancerNode, // Register
+  database: DatabaseNode, // Register
+  // Add other custom node types here later (e.g., database, loadbalancer)
+};
 
 // --- Node Definitions ---
 const nodeStyle = {
-  // Common style for reuse
+  // Common style for reuse - Keep for nodes without custom components for now
   background: '#1f2335',
   color: '#c0caf5',
   border: '1px solid #9ece6a',
@@ -25,47 +38,47 @@ const nodeStyle = {
 const initialNodes: Node[] = [
   {
     id: 'internet',
+    type: 'user', // Use custom type
     position: { x: 350, y: 25 }, // Centered top
     data: { label: 'Internet / User' },
-    style: nodeStyle,
   },
   {
     id: 'alb',
+    type: 'loadbalancer', // Use custom type
     position: { x: 350, y: 125 }, // Below internet
     data: { label: 'prod-e-alb' },
-    style: nodeStyle,
   },
-  // Row of ECS Services
+  // Row of ECS Services - Use custom type
   {
     id: 'ecs-app',
+    type: 'service', // Use custom node type
     position: { x: 50, y: 225 }, // Top-left service
     data: { label: 'prod-e-app' },
-    style: nodeStyle,
   },
   {
     id: 'ecs-backend',
+    type: 'service', // Use custom node type
     position: { x: 250, y: 225 }, // Top-middle service
     data: { label: 'prod-e-backend' },
-    style: nodeStyle,
   },
   {
     id: 'ecs-grafana',
+    type: 'service', // Use custom node type
     position: { x: 450, y: 225 }, // Top-right service
     data: { label: 'prod-e-grafana' },
-    style: nodeStyle,
   },
   {
     id: 'ecs-prometheus',
+    type: 'service', // Use custom node type
     position: { x: 650, y: 325 }, // Below Grafana
     data: { label: 'prod-e-prometheus' },
-    style: nodeStyle,
   },
   // Database
   {
     id: 'rds',
+    type: 'database', // Use custom type
     position: { x: 250, y: 325 }, // Below backend service
     data: { label: 'prod-e-db' },
-    style: nodeStyle,
   },
 ];
 
@@ -151,6 +164,7 @@ const InfrastructureDiagram: React.FC = () => {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView // Zoom to fit initially
+        nodeTypes={nodeTypes} // Pass custom node types
         // ProOptions could hide attribution if needed later
         // proOptions={{ hideAttribution: true }}
       >
