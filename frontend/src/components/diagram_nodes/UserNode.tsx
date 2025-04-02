@@ -21,6 +21,7 @@ const UserNode = ({ data }: NodeProps) => {
         borderRadius: '4px',
         display: 'flex',
         alignItems: 'center',
+        border: '1px solid #9ece6a',
       }}
     >
       {/* No target handle for the ultimate source */}

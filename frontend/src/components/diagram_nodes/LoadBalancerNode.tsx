@@ -34,6 +34,7 @@ const LoadBalancerNode = ({ data }: NodeProps) => {
         borderRadius: '4px',
         display: 'flex',
         alignItems: 'center',
+        border: '1px solid #7aa2f7',
       }}
     >
       <Handle

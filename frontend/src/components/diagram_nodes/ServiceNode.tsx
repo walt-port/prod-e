@@ -29,6 +29,7 @@ const ServiceNode = ({ data }: NodeProps) => {
         borderRadius: '4px',
         display: 'flex',
         alignItems: 'center',
+        border: '1px solid #e0af68',
       }}
     >
       <Handle

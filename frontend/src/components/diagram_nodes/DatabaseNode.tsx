@@ -33,6 +33,7 @@ const DatabaseNode = ({ data }: NodeProps) => {
         borderRadius: '4px',
         display: 'flex',
         alignItems: 'center',
+        border: '1px solid #bb9af7',
       }}
     >
       <Handle
