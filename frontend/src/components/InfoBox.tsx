@@ -42,9 +42,34 @@ const InfoBox: React.FC = () => {
           </div>
         </div>
 
-        {/* Content Area (Placeholder) */}
-        <div className="flex-grow p-4 text-sm text-[#c0caf5] overflow-y-auto">
-          Content Area Placeholder
+        {/* Content Area - Use inline padding */}
+        <div
+          className="flex-grow text-sm text-[#c0caf5] overflow-y-auto font-hermit"
+          style={{
+            paddingTop: '0.5rem', // Reduced padding (pt-2)
+            paddingRight: '1rem', // Keep pr-4
+            paddingBottom: '0.5rem', // Reduced padding (pb-2)
+            paddingLeft: '1.5rem', // Keep pl-6 equivalent
+          }}
+        >
+          <p className="mb-4">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
+            incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
+            exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure
+            dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+          </p>
+          <p className="mb-4">
+            Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt
+            mollit anim id est laborum. Curabitur pretium tincidunt lacus. Nulla gravida orci a
+            odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus
+            magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.
+          </p>
+          <p>
+            Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor.
+            Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien
+            risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada
+            nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque.
+          </p>
         </div>
 
         {/* Status Bar (Placeholder) */}
