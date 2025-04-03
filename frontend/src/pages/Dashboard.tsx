@@ -99,22 +99,20 @@ const Dashboard: React.FC = () => {
             <ResourceMonitorPanel />
           </div>
 
-          {/* Panel 2: Swap to Orange Border/Glow */}
-          <div
-            className="border border-[#e0af68] overflow-y-auto shadow-lg bg-[#1f2335] p-4"
-            style={{ borderRadius: '0.5rem', boxShadow: '0 0 12px rgba(224, 175, 104, 0.4)' }}
-          >
-            <InfrastructureDiagram />
-            {/* Diagram Placeholder */}
-          </div>
-
-          {/* Panel 3: Swap to Green Border/Glow */}
+          {/* Panel 2: Swap back to Green Border/Glow */}
           <div
             className="border border-[#9ece6a] overflow-y-auto shadow-lg bg-[#1f2335] p-4"
             style={{ borderRadius: '0.5rem', boxShadow: '0 0 12px rgba(158, 206, 106, 0.4)' }}
           >
+            <InfrastructureDiagram />
+          </div>
+
+          {/* Panel 3: Swap back to Orange Border/Glow */}
+          <div
+            className="border border-[#e0af68] overflow-y-auto shadow-lg bg-[#1f2335] p-4"
+            style={{ borderRadius: '0.5rem', boxShadow: '0 0 12px rgba(224, 175, 104, 0.4)' }}
+          >
             <InfoBox />
-            {/* InfoBox Placeholder */}
           </div>
 
           {/* Panel 4: Restore overflow-y-auto */}
