@@ -23,6 +23,7 @@ export class Ecs extends Construct {
   public taskRole: IamRole;
   public taskDefinition: EcsTaskDefinition;
   public backendTaskDefinition: EcsTaskDefinition;
+  public appTaskDefinition: EcsTaskDefinition;
 
   constructor(scope: Construct, id: string, networking: Networking, alb: Alb) {
     super(scope, id);
@@ -47,6 +48,11 @@ export class Ecs extends Construct {
     const awsRegion = assertEnvVar('AWS_REGION');
     const awsAccountId = assertEnvVar('AWS_ACCOUNT_ID');
     const ecsEgressCidr = assertEnvVar('ECS_EGRESS_CIDR');
+    const appCpu = assertEnvVar('APP_CPU');
+    const appMemory = assertEnvVar('APP_MEMORY');
+    const appContainerName = assertEnvVar('APP_CONTAINER_NAME');
+    const appTag = assertEnvVar('APP_TAG');
+    const appPort = Number(assertEnvVar('APP_PORT'));
 
     this.cluster = new EcsCluster(this, 'cluster', {
       name: `${projectName}-cluster`,
@@ -68,6 +74,16 @@ export class Ecs extends Construct {
       sourceSecurityGroupId: networking.albSecurityGroup.id,
       securityGroupId: this.securityGroup.id,
       description: 'Allow traffic from ALB',
+    });
+
+    new SecurityGroupRule(this, 'ecs-app-http-inbound', {
+      type: 'ingress',
+      fromPort: appPort,
+      toPort: appPort,
+      protocol: 'tcp',
+      sourceSecurityGroupId: networking.albSecurityGroup.id,
+      securityGroupId: this.securityGroup.id,
+      description: 'Allow traffic from ALB to App',
     });
 
     new SecurityGroupRule(this, 'ecs-all-outbound', {
@@ -126,7 +142,6 @@ export class Ecs extends Construct {
     });
 
     new IamRolePolicyAttachment(this, 'ecs-task-role-secrets-policy', {
-      // Renamed here
       role: this.taskRole.name,
       policyArn: 'arn:aws:iam::aws:policy/SecretsManagerReadWrite',
     });
@@ -242,6 +257,40 @@ export class Ecs extends Construct {
         },
       ]),
       tags: { Name: `${projectName}-task-def`, Project: projectName },
+    });
+
+    this.appTaskDefinition = new EcsTaskDefinition(this, 'app-task-definition', {
+      family: `${projectName}-app-task`,
+      requiresCompatibilities: ['FARGATE'],
+      networkMode: 'awsvpc',
+      cpu: appCpu,
+      memory: appMemory,
+      executionRoleArn: this.taskExecutionRole.arn,
+      taskRoleArn: this.taskRole.arn,
+      containerDefinitions: JSON.stringify([
+        {
+          name: appContainerName,
+          image: `${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/${appContainerName}:${appTag}`,
+          essential: true,
+          portMappings: [
+            {
+              containerPort: appPort,
+              hostPort: appPort,
+              protocol: 'tcp',
+            },
+          ],
+          logConfiguration: {
+            logDriver: 'awslogs',
+            options: {
+              'awslogs-group': `/ecs/${projectName}-app-task`,
+              'awslogs-region': awsRegion,
+              'awslogs-stream-prefix': 'ecs',
+              'awslogs-create-group': 'true',
+            },
+          },
+        },
+      ]),
+      tags: { Name: `${projectName}-app-task-def`, Project: projectName },
     });
 
     this.service = new EcsService(this, 'grafana-service', {

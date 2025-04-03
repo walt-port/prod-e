@@ -317,12 +317,14 @@ check_ecs() {
       PROJECT_TAG_VAL=$(echo "$TAGS" | jq -r --arg proj "$PROJECT_NAME" '.[] | select(.key=="Project" and .value==$proj) | .value')
       if [ "$PROJECT_TAG_VAL" == "$PROJECT_NAME" ]; then
         CLUSTER_ARN="$arn"
+        CLUSTER_ARN_GLOBAL="$arn" # Set global variable
         break
       fi
     done
 
     if [ -z "$CLUSTER_ARN" ]; then
         print_error "ECS Cluster tagged with Project=$PROJECT_NAME not found."
+        CLUSTER_ARN_GLOBAL="" # Ensure global is empty if not found
         return 1
     fi
 
@@ -392,7 +394,6 @@ check_alb() {
 
     if [ -z "$ALB_ARN" ]; then
         print_error "Application Load Balancer for project $PROJECT_NAME not found via tags or name."
-        export CHECK_ALB_DNS=""
         return 1
     fi
 
@@ -401,7 +402,6 @@ check_alb() {
 
     if [ -z "$ALB_INFO" ] || [ "$(echo "$ALB_INFO" | jq -r '.LoadBalancerArn // "null"')" == "null" ]; then
         print_error "Failed to describe ALB found via ARN $ALB_ARN."
-        export CHECK_ALB_DNS=""
         return 1
     fi
 
@@ -410,8 +410,9 @@ check_alb() {
     ALB_STATE=$(echo "$ALB_INFO" | jq -r '.State')
     ALB_TYPE=$(echo "$ALB_INFO" | jq -r '.Type')
 
-    # Export the DNS name FOUND before potential errors below
-    export CHECK_ALB_DNS="$ALB_DNS"
+    # Set global variables for other functions (Added)
+    ALB_ARN_GLOBAL="$ALB_ARN"
+    ALB_DNS_GLOBAL="$ALB_DNS"
 
     if [ "$ALB_STATE" == "active" ]; then
         print_success "ALB: $ALB_NAME ($ALB_TYPE) - State: $ALB_STATE"
@@ -470,81 +471,107 @@ check_ecr() {
     print_header "ECR REPOSITORIES (Used by Project: $PROJECT_NAME)"
 
     # Find task def families for the project
-    FAMILIES=$(aws ecs list-task-definition-families --family-prefix "$PROJECT_NAME" --status ACTIVE --query "families" --output json --region "$AWS_REGION")
-    if [ "$(echo "$FAMILIES" | jq '. | length')" -eq 0 ]; then
-        print_warning "No active task definition families found with prefix '$PROJECT_NAME'."
+    FAMILIES=$(aws ecs list-task-definition-families --family-prefix "$PROJECT_NAME" --status ACTIVE --query "families" --output json --region "$AWS_REGION" 2>/dev/null)
+    if [ $? -ne 0 ] || [ "$(echo "$FAMILIES" | jq '. | length')" -eq 0 ]; then
+        print_warning "No active task definition families found with prefix '$PROJECT_NAME'. Unable to check ECR Repos."
         return
     fi
 
-    IMAGE_URIS=""
+    REPOSITORIES=""
     # Use process substitution to avoid subshell for the outer loop
     while read -r family; do
-      TASK_DEF_DETAIL=$(aws ecs describe-task-definition --task-definition "$family" --query "taskDefinition" --output json --region "$AWS_REGION" 2>/dev/null)
-      if [ -z "$TASK_DEF_DETAIL" ]; then
-          print_warning "Could not describe task definition for $family, skipping."
+      # Get only the latest ACTIVE revision ARN for the family
+      TASK_DEF_ARN=$(aws ecs describe-task-definition --task-definition "$family" --query 'taskDefinition.taskDefinitionArn' --output text --region "$AWS_REGION" 2>/dev/null)
+      if [ -z "$TASK_DEF_ARN" ]; then
+          print_warning "Could not get ARN for task definition family $family, skipping ECR check for it."
           continue
       fi
 
-      # Use process substitution for the inner loop as well
-      while IFS= read -r img; do
-        # Append the image URI followed by a newline directly to the main variable
-        IMAGE_URIS+="${img}"$'\n'
-      done < <(echo "$TASK_DEF_DETAIL" | jq -r '.containerDefinitions[].image')
+      # Describe the specific task definition ARN
+      TASK_DEF_DETAIL=$(aws ecs describe-task-definition --task-definition "$TASK_DEF_ARN" --query 'taskDefinition' --output json --region "$AWS_REGION" 2>/dev/null)
+      if [ -z "$TASK_DEF_DETAIL" ]; then
+          print_warning "Could not describe task definition $TASK_DEF_ARN, skipping ECR check for it."
+          continue
+      fi
 
-    done < <(echo "$FAMILIES" | jq -r '.[]') # <--- Process substitution here
+      # Extract image URIs from container definitions
+      IMAGES=$(echo "$TASK_DEF_DETAIL" | jq -r '.containerDefinitions[].image')
+      for img in $IMAGES; do
+          # Extract repo name: Look for content between first / and :
+          REPO_NAME=$(echo "$img" | awk -F/ '{print $2}' | awk -F: '{print $1}')
+          # Check if valid repo name was extracted
+          if [[ -n "$REPO_NAME" && "$REPO_NAME" != *"amazonaws.com"* ]]; then
+              # Add to list if not already present
+              if ! echo "$REPOSITORIES" | grep -qw "$REPO_NAME"; then
+                  REPOSITORIES="$REPOSITORIES $REPO_NAME"
+              fi
+          fi
+      done
+    done < <(echo "$FAMILIES" | jq -r '.[]') # Feed families to the loop
 
-    # Get unique image URIs using printf and filter out empty lines
-    UNIQUE_IMAGE_URIS=$(printf '%s' "$IMAGE_URIS" | sort -u | grep '.')
-
-    if [ -z "$UNIQUE_IMAGE_URIS" ]; then
-        print_error "Could not extract valid image URIs (format: registry/repo:tag) from latest task definitions."
+    if [ -z "$REPOSITORIES" ]; then
+        print_warning "Could not extract any repository names from active task definitions."
         return
     fi
 
-    print_success "Checking ECR repositories referenced in task definitions..."
-    ALL_REPOS_OK=true
-    FAILURE_DETAILS=""
+    print_success "Checking ECR repositories derived from task definitions..."
+    MISSING_REPOS=0
+    for repo in $REPOSITORIES; do
+        # Trim potential leading/trailing whitespace just in case
+        repo=$(echo "$repo" | xargs)
+        if [ -z "$repo" ]; then continue; fi
 
-    echo "$UNIQUE_IMAGE_URIS" | while read -r image_uri; do
-        # Simpler parsing using parameter expansion and rev
-        repo_tag=$(echo "$image_uri" | rev | cut -d/ -f1 | rev) # Get repo:tag part
-        REPO_NAME=$(echo "$repo_tag" | cut -d: -f1)
-        IMAGE_TAG=$(echo "$repo_tag" | cut -d: -f2)
-
-        if [[ -z "$REPO_NAME" || -z "$IMAGE_TAG" || "$repo_tag" == "$REPO_NAME" ]]; then # Basic validation
-            print_warning "Skipping potentially malformed image URI: $image_uri"
-            continue
-        fi
-
-        # Check if repository exists
-        REPO_URI=$(aws ecr describe-repositories --repository-names "$REPO_NAME" --query "repositories[0].repositoryUri" --output text --region "$AWS_REGION" 2>/dev/null)
-        if [ $? -ne 0 ] || [ -z "$REPO_URI" ]; then
-            print_error "Repository '$REPO_NAME' referenced in task definition not found."
-            ALL_REPOS_OK=false
-            FAILURE_DETAILS+="  ${S_ARROW} Repo missing: $REPO_NAME\\n"
-            continue
-        fi
-
-        print_success "Repository: $REPO_NAME"
-        print_detail "URI: $REPO_URI"
-
-        # Check if the specific tag used exists
-        IMAGE_DETAIL=$(aws ecr describe-images --repository-name "$REPO_NAME" --image-ids "imageTag=$IMAGE_TAG" --query "imageDetails[0].imagePushedAt" --output text --region "$AWS_REGION" 2>/dev/null)
-        if [ $? -ne 0 ] || [ -z "$IMAGE_DETAIL" ]; then
-            print_error "  Image tag '$IMAGE_TAG' used in task definition not found in repository '$REPO_NAME'."
-            ALL_REPOS_OK=false
-            FAILURE_DETAILS+="  ${S_ARROW} Tag missing: $REPO_NAME:$IMAGE_TAG\\n"
+        aws ecr describe-repositories --repository-names "$repo" --region "$AWS_REGION" --output text > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            print_error "ECR Repository: '$repo' not found."
+            ((MISSING_REPOS++))
         else
-            print_success "  Image tag '$IMAGE_TAG' found (Pushed at: $IMAGE_DETAIL)"
+            print_detail "ECR Repository: '$repo' found ${C_GREEN}${S_TICK}${C_GRAY}"
         fi
     done
 
-    # Final status based on checks
-    if [ "$ALL_REPOS_OK" = false ]; then
-        print_error "One or more ECR repositories/tags referenced in task definitions were not found."
-        echo -e "$FAILURE_DETAILS" # Show summary of failures
+    if [ $MISSING_REPOS -eq 0 ]; then
+        print_success "All derived ECR repositories found."
     else
-        print_success "All checked ECR repositories and tags were found."
+        print_error "$MISSING_REPOS derived ECR repository/repositories missing."
+    fi
+}
+
+# Check status of ECS Task Definitions
+check_ecs_task_definitions() {
+    print_header "ECS TASK DEFINITIONS (Prefix: $PROJECT_NAME)"
+    FAMILIES=$(aws ecs list-task-definition-families --family-prefix "$PROJECT_NAME" --status ACTIVE --query "families" --output json --region "$AWS_REGION" 2>/dev/null)
+
+    if [ $? -ne 0 ] || [ "$(echo "$FAMILIES" | jq '. | length')" -eq 0 ]; then
+        print_error "No ACTIVE task definition families found with prefix '$PROJECT_NAME'."
+        return 1
+    fi
+
+    print_success "Found active task definition families matching prefix '$PROJECT_NAME'. Checking status..."
+    FAILED_DEFS=0
+    while read -r family; do
+        # Get the latest revision ARN of the active family
+        TASK_DEF_ARN=$(aws ecs describe-task-definition --task-definition "$family" --query 'taskDefinition.taskDefinitionArn' --output text --region "$AWS_REGION" 2>/dev/null)
+        if [ -z "$TASK_DEF_ARN" ]; then
+            print_warning "Could not get ARN for task definition family $family, cannot check status."
+            continue
+        fi
+
+        # Describe using the ARN to ensure we check the specific latest active revision
+        TASK_DEF_STATUS=$(aws ecs describe-task-definition --task-definition "$TASK_DEF_ARN" --query 'taskDefinition.status' --output text --region "$AWS_REGION" 2>/dev/null)
+
+        if [ "$TASK_DEF_STATUS" == "ACTIVE" ]; then
+            print_detail "Task Definition: $family (Latest: $TASK_DEF_ARN) - Status: $TASK_DEF_STATUS ${C_GREEN}${S_TICK}${C_GRAY}"
+        else
+            print_error "Task Definition: $family (Latest: $TASK_DEF_ARN) - Status: $TASK_DEF_STATUS"
+            ((FAILED_DEFS++))
+        fi
+    done < <(echo "$FAMILIES" | jq -r '.[]')
+
+    if [ $FAILED_DEFS -eq 0 ]; then
+        print_success "All latest active task definitions have ACTIVE status."
+    else
+        print_error "$FAILED_DEFS task definition(s) found with non-ACTIVE status."
     fi
 }
 
@@ -552,20 +579,24 @@ check_ecr() {
 check_monitoring() {
     print_header "MONITORING SERVICES (ECS)"
 
-    # Use stored ALB DNS if available
-    if [ -z "$CHECK_ALB_DNS" ]; then
+    # Use global variable set by check_alb
+    if [ -z "$ALB_DNS_GLOBAL" ]; then
         print_warning "ALB DNS not available, skipping endpoint checks."
-        ALB_DNS="" # Ensure it's empty
-    else
-        ALB_DNS="$CHECK_ALB_DNS"
+        # ALB_DNS="" # Ensure it's empty # This line is not needed
+    fi
+
+    # Use CLUSTER_ARN_GLOBAL
+    if [ -z "$CLUSTER_ARN_GLOBAL" ]; then
+      print_error "Cluster ARN not available, cannot check monitoring services."
+      return 1
     fi
 
     # Check Grafana Service (assuming name convention *-grafana-service)
-    GRAFANA_SERVICE_ARN=$(aws ecs list-services --cluster "$CLUSTER_ARN" --query "serviceArns[?contains(@, \`$PROJECT_NAME-grafana-service\`)]" --output text --region "$AWS_REGION")
+    GRAFANA_SERVICE_ARN=$(aws ecs list-services --cluster "$CLUSTER_ARN_GLOBAL" --query "serviceArns[?contains(@, \`$PROJECT_NAME-grafana-service\`)]" --output text --region "$AWS_REGION")
     if [ -z "$GRAFANA_SERVICE_ARN" ]; then
         print_error "Grafana ECS service not found (expected name like '$PROJECT_NAME-grafana-service')."
     else
-        SERVICE_DETAIL=$(aws ecs describe-services --cluster "$CLUSTER_ARN" --services "$GRAFANA_SERVICE_ARN" --query "services[0].{serviceName:serviceName,status:status,desiredCount:desiredCount,runningCount:runningCount}" --output json --region "$AWS_REGION")
+        SERVICE_DETAIL=$(aws ecs describe-services --cluster "$CLUSTER_ARN_GLOBAL" --services "$GRAFANA_SERVICE_ARN" --query "services[0].{serviceName:serviceName,status:status,desiredCount:desiredCount,runningCount:runningCount}" --output json --region "$AWS_REGION")
         # ... (rest of service status check like in check_ecs) ...
         SERVICE_NAME=$(echo "$SERVICE_DETAIL" | jq -r '.serviceName')
         SERVICE_STATUS=$(echo "$SERVICE_DETAIL" | jq -r '.status')
@@ -578,25 +609,15 @@ check_monitoring() {
         fi
 
         # Check Grafana endpoint if ALB DNS is known
-        if [ -n "$ALB_DNS" ]; then
-            GRAFANA_PATH=${GRAFANA_PATH:-"/grafana"} # Get from env or default
-            GRAFANA_URL="http://${ALB_DNS}${GRAFANA_PATH}/api/health" # Use health API
-            print_detail "Testing Grafana endpoint: $GRAFANA_URL"
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "$GRAFANA_URL")
-            if [[ "$HTTP_STATUS" == "200" ]]; then
-                print_success "Grafana endpoint check returned HTTP $HTTP_STATUS"
-            else
-                print_error "Grafana endpoint check returned HTTP $HTTP_STATUS"
-            fi
-        fi
+        print_info "Skipping external endpoint check for Grafana (use ECS/TG health)."
     fi
 
     # Check Prometheus Service (assuming name convention *-prometheus-service)
-    PROM_SERVICE_ARN=$(aws ecs list-services --cluster "$CLUSTER_ARN" --query "serviceArns[?contains(@, \`$PROJECT_NAME-prometheus-service\`)]" --output text --region "$AWS_REGION")
+    PROM_SERVICE_ARN=$(aws ecs list-services --cluster "$CLUSTER_ARN_GLOBAL" --query "serviceArns[?contains(@, \`$PROJECT_NAME-prometheus-service\`)]" --output text --region "$AWS_REGION")
      if [ -z "$PROM_SERVICE_ARN" ]; then
         print_error "Prometheus ECS service not found (expected name like '$PROJECT_NAME-prometheus-service')."
     else
-        SERVICE_DETAIL=$(aws ecs describe-services --cluster "$CLUSTER_ARN" --services "$PROM_SERVICE_ARN" --query "services[0].{serviceName:serviceName,status:status,desiredCount:desiredCount,runningCount:runningCount}" --output json --region "$AWS_REGION")
+        SERVICE_DETAIL=$(aws ecs describe-services --cluster "$CLUSTER_ARN_GLOBAL" --services "$PROM_SERVICE_ARN" --query "services[0].{serviceName:serviceName,status:status,desiredCount:desiredCount,runningCount:runningCount}" --output json --region "$AWS_REGION")
         # ... (rest of service status check like in check_ecs) ...
         SERVICE_NAME=$(echo "$SERVICE_DETAIL" | jq -r '.serviceName')
         SERVICE_STATUS=$(echo "$SERVICE_DETAIL" | jq -r '.status')
@@ -609,147 +630,177 @@ check_monitoring() {
         fi
 
         # Check Prometheus endpoint if ALB DNS is known
-        if [ -n "$ALB_DNS" ]; then
-            PROM_PATH=${PROMETHEUS_PATH:-"/metrics"} # Get from env or default
-            PROM_URL="http://${ALB_DNS}${PROM_PATH}"
-            print_detail "Testing Prometheus endpoint: $PROM_URL"
-            # Prometheus often doesn't need auth and returns 200
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "$PROM_URL")
-            if [[ "$HTTP_STATUS" == "200" ]]; then
-                print_success "Prometheus endpoint check returned HTTP $HTTP_STATUS"
-            else
-                # Could be 404 if path incorrect, or 5xx if error
-                print_error "Prometheus endpoint check returned HTTP $HTTP_STATUS"
-            fi
-        fi
+        print_info "Skipping external endpoint check for Prometheus (use ECS/TG health)."
     fi
 }
 
-# Check for potentially orphaned / unused resources specific to the project
-check_orphaned_resources() {
-    print_header "POTENTIAL ORPHANED RESOURCES"
-
-    # Check for project-tagged Security Groups not attached to anything
-    print_detail "Checking for unused project-tagged Security Groups..."
-    PROJECT_SGS=$(aws ec2 describe-security-groups --filters "Name=tag:Project,Values=$PROJECT_NAME" --query "SecurityGroups[*].GroupId" --output text --region "$AWS_REGION")
-    UNUSED_SG_FOUND=false
-    for sg_id in $PROJECT_SGS; do
-        # Check ENIs - primary usage indicator
-        ENI_USAGE=$(aws ec2 describe-network-interfaces --filters "Name=group-id,Values=$sg_id" --query "NetworkInterfaces[*].NetworkInterfaceId" --output text --region "$AWS_REGION")
-        # Add checks for other services (LB, RDS, Lambda, EC2) if they might use SGs directly without ENIs showing up easily
-        if [[ -z "$ENI_USAGE" ]]; then
-             SG_NAME=$(aws ec2 describe-security-groups --group-ids "$sg_id" --query "SecurityGroups[0].GroupName" --output text --region "$AWS_REGION")
-             print_warning "Security Group $SG_NAME ($sg_id) tagged with project may be unused (no ENIs found)."
-             UNUSED_SG_FOUND=true
-        fi
-    done
-    if [ "$UNUSED_SG_FOUND" = false ]; then
-        print_success "No project-tagged Security Groups appear obviously unused."
+# NEW: Check ALB Listener Rules
+check_alb_listener_rules() {
+    # Use global variable set by check_alb
+    if [ -z "$ALB_ARN_GLOBAL" ]; then
+        print_info "Skipping Listener Rule check as ALB ARN is not available."
+        return
     fi
 
+    print_header "ALB LISTENER RULES (ALB: ${ALB_ARN_GLOBAL})"
 
-    # Check for unattached EBS volumes (consider adding Project tag check if volumes are tagged)
-    print_detail "Checking for unattached EBS volumes..."
-    VOLUMES=$(aws ec2 describe-volumes --filters "Name=status,Values=available" --query "Volumes[*].{ID:VolumeId,Size:Size,Created:CreateTime, ProjectTag:Tags[?Key=='Project']|[0].Value}" --output json --region "$AWS_REGION")
-    UNATTACHED_COUNT=$(echo "$VOLUMES" | jq --arg proj "$PROJECT_NAME" '[.[] | select(.ProjectTag == null or .ProjectTag != $proj)] | length')
-    PROJECT_UNATTACHED=$(echo "$VOLUMES" | jq --arg proj "$PROJECT_NAME" '[.[] | select(.ProjectTag == $proj) ]')
-    PROJECT_UNATTACHED_COUNT=$(echo "$PROJECT_UNATTACHED" | jq '. | length')
 
-    if [ "$PROJECT_UNATTACHED_COUNT" -eq 0 ]; then
-        print_success "No unattached EBS volumes tagged with Project=$PROJECT_NAME found."
+    # Treat port as number in query
+    LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN_GLOBAL" --query "Listeners[0].ListenerArn" --output text --region "$AWS_REGION" 2>/dev/null)
+
+    if [[ "$LISTENER_ARN" == "None" || -z "$LISTENER_ARN" ]]; then
+        print_error "No listener found on port $listener_port for ALB."
+        return 1
+    fi
+
+    print_success "Found Listener: $LISTENER_ARN (Port $listener_port)"
+    LISTENER_RULES=$(aws elbv2 describe-rules --listener-arn "$LISTENER_ARN" --query "Rules" --output json --region "$AWS_REGION" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+      print_error "Failed to describe rules for listener $LISTENER_ARN."
+      return 1
+    fi
+    RULES_COUNT=$(echo "$LISTENER_RULES" | jq '. | length')
+
+    if [ "$RULES_COUNT" -eq 0 ]; then
+        print_error "No rules found for listener $LISTENER_ARN"
     else
-        print_warning "$PROJECT_UNATTACHED_COUNT unattached EBS volume(s) tagged with Project=$PROJECT_NAME found:"
-        echo "$PROJECT_UNATTACHED" | jq -c '.[]' | while read -r volume; do
-            VOLUME_ID=$(echo "$volume" | jq -r '.ID')
-            SIZE=$(echo "$volume" | jq -r '.Size')
-            CREATED=$(echo "$volume" | jq -r '.Created')
-            print_detail "  ${S_ARROW} $VOLUME_ID (${SIZE}GB, created $CREATED)"
-        done
-         ((CHECKS_FAILED++)) # Count this as a failure to investigate
-    fi
-     if [ "$UNATTACHED_COUNT" -gt 0 ]; then
-         print_info "$UNATTACHED_COUNT other unattached EBS volume(s) found (untagged or different project)."
-    fi
+        print_success "Found $RULES_COUNT rules for listener $LISTENER_ARN. Verifying project rules..."
 
+        # Rule Checks Logic
+        declare -A rule_checks
+        rule_checks=( [5]=0 [10]=0 [20]=0 [100]=0 ) # Expected priorities
+        declare -A rule_details
 
-    # Check for unallocated Elastic IPs (consider adding Project tag check if EIPs are tagged)
-    print_detail "Checking for unallocated Elastic IPs..."
-    UNUSED_EIPS=$(aws ec2 describe-addresses --query "Addresses[?AssociationId==null].{AllocationId:AllocationId,PublicIp:PublicIp, ProjectTag:Tags[?Key=='Project']|[0].Value}" --output json --region "$AWS_REGION")
-    UNALLOCATED_COUNT=$(echo "$UNUSED_EIPS" | jq --arg proj "$PROJECT_NAME" '[.[] | select(.ProjectTag == null or .ProjectTag != $proj)] | length')
-    PROJECT_UNALLOCATED=$(echo "$UNUSED_EIPS" | jq --arg proj "$PROJECT_NAME" '[.[] | select(.ProjectTag == $proj) ]')
-    PROJECT_UNALLOCATED_COUNT=$(echo "$PROJECT_UNALLOCATED" | jq '. | length')
+        # Use process substitution to read rules safely
+        while IFS= read -r rule; do
+            PRIORITY=$(echo "$rule" | jq -r '.Priority | select(. != "default")')
+            IS_DEFAULT=$(echo "$rule" | jq -r '.IsDefault')
+            # Check if Conditions and Actions exist before trying to access them
+            HAS_CONDITIONS=$(echo "$rule" | jq 'has("Conditions")')
+            HAS_ACTIONS=$(echo "$rule" | jq 'has("Actions") and (.Actions | length > 0)')
 
-    if [ "$PROJECT_UNALLOCATED_COUNT" -eq 0 ]; then
-        print_success "No unallocated Elastic IPs tagged with Project=$PROJECT_NAME found."
-    else
-         print_warning "$PROJECT_UNALLOCATED_COUNT unallocated EIP(s) tagged with Project=$PROJECT_NAME found:"
-        echo "$PROJECT_UNALLOCATED" | jq -c '.[]' | while read -r eip; do
-            EIP_ID=$(echo "$eip" | jq -r '.AllocationId')
-            EIP_IP=$(echo "$eip" | jq -r '.PublicIp')
-            print_detail "  ${S_ARROW} $EIP_IP ($EIP_ID)"
-         done
-         ((CHECKS_FAILED++)) # Count this as a failure to investigate
-    fi
-    if [ "$UNALLOCATED_COUNT" -gt 0 ]; then
-         print_info "$UNALLOCATED_COUNT other unallocated EIP(s) found (untagged or different project)."
-    fi
+            if [ "$IS_DEFAULT" == "true" ]; then continue; fi # Skip default rule
 
+            # Basic structural checks
+            if [[ "$HAS_ACTIONS" != "true" || -z "$PRIORITY" ]]; then continue; fi
 
-    # Check for old ECS task definitions (families prefixed with project name)
-    print_detail "Checking for excessive inactive ECS task definition revisions..."
-    FAMILIES=$(aws ecs list-task-definition-families --family-prefix "$PROJECT_NAME" --status ACTIVE --query "families" --output text --region "$AWS_REGION")
-    HIGH_REVISION_FOUND=false
-    if [ -n "$FAMILIES" ]; then
-        for family in $FAMILIES; do
-            # Get count of *all* revisions (active and inactive)
-            TOTAL_REVISIONS=$(aws ecs list-task-definitions --family-prefix "$family" --status ACTIVE --query "length(taskDefinitionArns)" --output text --region "$AWS_REGION") # Check ACTIVE only? Or all? List shows ACTIVE. Describe needed for inactive?
-            INACTIVE_REVISIONS=$(aws ecs list-task-definitions --family-prefix "$family" --status INACTIVE --query "length(taskDefinitionArns)" --output text --region "$AWS_REGION")
-            ALL_REVS=$((TOTAL_REVISIONS + INACTIVE_REVISIONS))
+            ACTION_TYPE=$(echo "$rule" | jq -r '.Actions[0].Type')
+            TARGET_GROUP_ARN=$(echo "$rule" | jq -r '.Actions[0].TargetGroupArn // ""')
 
-            # Define threshold (e.g., more than 10 total revisions)
-            THRESHOLD=10
-            if [ "$ALL_REVS" -gt "$THRESHOLD" ]; then
-                print_warning "Task definition family '$family' has $ALL_REVS total revisions (>$THRESHOLD), consider cleanup."
-                HIGH_REVISION_FOUND=true
+            if [[ "$ACTION_TYPE" != "forward" || -z "$TARGET_GROUP_ARN" ]]; then continue; fi
+
+            # Store details using priority as key
+            rule_details[$PRIORITY]=$(echo "$rule" | jq -c '{Conditions: .Conditions, TargetGroupArn: .Actions[0].TargetGroupArn}')
+
+            # Mark priority as found
+            if [[ -v rule_checks[$PRIORITY] ]]; then
+                rule_checks[$PRIORITY]=1
             fi
-        done
-    fi
-     if [ "$HIGH_REVISION_FOUND" = false ]; then
-        print_success "No task definition families found with excessive revisions (> $THRESHOLD)."
-    fi
-}
+        done < <(echo "$LISTENER_RULES" | jq -c '.[]')
 
+        # --- Verify specific rules ---
+        # Rule Priority 5: Frontend App (/* -> app-tg)
+        ((TOTAL_CHECKS++))
+        local CHECK_PASSED=false
+        if [ ${rule_checks[5]} -eq 1 ]; then
+            DETAILS_JSON=${rule_details[5]}
+            COND_PATH=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].PathPatternConfig.Values[0] // ""')
+            COND_FIELD=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].Field // ""')
+            TG_ARN=$(echo "$DETAILS_JSON" | jq -r '.TargetGroupArn // ""')
+            if [[ "$COND_FIELD" == "path-pattern" && "$COND_PATH" == "/*" && "$TG_ARN" == *"app-tg"* ]]; then
+                 print_detail "Rule Prio 5 (App): Path '$COND_PATH' -> TG '$TG_ARN' ${C_GREEN}${S_TICK}${C_GRAY}"
+                 CHECK_PASSED=true
+                 ((CHECKS_PASSED++))
+            fi
+        fi
+        if [ "$CHECK_PASSED" = false ]; then
+            print_error "Rule Prio 5 (App): Missing or incorrect config. Expected '/* -> *app-tg*' Found: $(echo ${rule_details[5]:-MISSING} | jq -c .)"
+            ((CHECKS_FAILED++))
+        fi
+
+        # Rule Priority 10: Grafana (/grafana* -> grafana-tg)
+        ((TOTAL_CHECKS++))
+        CHECK_PASSED=false
+        if [ ${rule_checks[10]} -eq 1 ]; then
+            DETAILS_JSON=${rule_details[10]}
+            COND_PATH=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].PathPatternConfig.Values[0] // ""')
+            COND_FIELD=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].Field // ""')
+            TG_ARN=$(echo "$DETAILS_JSON" | jq -r '.TargetGroupArn // ""')
+            if [[ "$COND_FIELD" == "path-pattern" && "$COND_PATH" == *"/grafana"* && "$TG_ARN" == *"grafana-tg"* ]]; then
+                 print_detail "Rule Prio 10 (Grafana): Path '$COND_PATH' -> TG '$TG_ARN' ${C_GREEN}${S_TICK}${C_GRAY}"
+                 CHECK_PASSED=true
+                 ((CHECKS_PASSED++))
+            fi
+        fi
+         if [ "$CHECK_PASSED" = false ]; then
+            print_error "Rule Prio 10 (Grafana): Missing or incorrect config. Expected '*/grafana* -> *grafana-tg*' Found: $(echo ${rule_details[10]:-MISSING} | jq -c .)"
+            ((CHECKS_FAILED++))
+        fi
+
+        # Rule Priority 20: Prometheus (/metrics* -> prometheus-tg)
+        ((TOTAL_CHECKS++))
+         CHECK_PASSED=false
+        if [ ${rule_checks[20]} -eq 1 ]; then
+            DETAILS_JSON=${rule_details[20]}
+            COND_PATH=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].PathPatternConfig.Values[0] // ""')
+             COND_FIELD=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].Field // ""')
+            TG_ARN=$(echo "$DETAILS_JSON" | jq -r '.TargetGroupArn // ""')
+            if [[ "$COND_FIELD" == "path-pattern" && "$COND_PATH" == *"/metrics"* && "$TG_ARN" == *"prometheus-tg"* ]]; then
+                 print_detail "Rule Prio 20 (Prometheus): Path '$COND_PATH' -> TG '$TG_ARN' ${C_GREEN}${S_TICK}${C_GRAY}"
+                  CHECK_PASSED=true
+                 ((CHECKS_PASSED++))
+            fi
+        fi
+         if [ "$CHECK_PASSED" = false ]; then
+            print_error "Rule Prio 20 (Prometheus): Missing or incorrect config. Expected '*/metrics* -> *prometheus-tg*' Found: $(echo ${rule_details[20]:-MISSING} | jq -c .)"
+            ((CHECKS_FAILED++))
+        fi
+
+        # Rule Priority 100: Backend (/api/* -> ecs-tg)
+        ((TOTAL_CHECKS++))
+         CHECK_PASSED=false
+        if [ ${rule_checks[100]} -eq 1 ]; then
+            DETAILS_JSON=${rule_details[100]}
+            COND_PATH=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].PathPatternConfig.Values[0] // ""')
+             COND_FIELD=$(echo "$DETAILS_JSON" | jq -r '.Conditions[0].Field // ""')
+            TG_ARN=$(echo "$DETAILS_JSON" | jq -r '.TargetGroupArn // ""')
+            if [[ "$COND_FIELD" == "path-pattern" && "$COND_PATH" == "/api/*" && "$TG_ARN" == *"ecs-tg"* ]]; then
+                 print_detail "Rule Prio 100 (Backend): Path '$COND_PATH' -> TG '$TG_ARN' ${C_GREEN}${S_TICK}${C_GRAY}"
+                  CHECK_PASSED=true
+                 ((CHECKS_PASSED++))
+            fi
+        fi
+         if [ "$CHECK_PASSED" = false ]; then
+            print_error "Rule Prio 100 (Backend): Missing or incorrect config. Expected '/api/* -> *ecs-tg*' Found: $(echo ${rule_details[100]:-MISSING} | jq -c .)"
+            ((CHECKS_FAILED++))
+        fi
+    fi # End if rules count > 0
+}
 
 # --- Main Execution ---
 
 # Run AWS config check first
 check_aws_config
 
-# Get Cluster ARN once for efficiency
+# Global variables for shared info
+CLUSTER_ARN_GLOBAL=\"\" # Set by check_ecs
+ALB_ARN_GLOBAL=\"\"     # Set by check_alb
+ALB_DNS_GLOBAL=\"\"     # Set by check_alb
+
+# Get Cluster ARN once for efficiency # This block seems redundant now
 # Ensure this happens *before* check_ecs and check_monitoring are called
-CLUSTER_ARN=""
-ALL_CLUSTERS=$(aws ecs list-clusters --query clusterArns --output json --region "$AWS_REGION")
-for arn in $(echo "$ALL_CLUSTERS" | jq -r '.[]'); do
-  TAGS=$(aws ecs describe-clusters --clusters "$arn" --include TAGS --query "clusters[0].tags" --output json --region "$AWS_REGION" 2>/dev/null)
-  PROJECT_TAG_VAL=$(echo "$TAGS" | jq -r --arg proj "$PROJECT_NAME" '.[] | select(.key=="Project" and .value==$proj) | .value')
-  if [ "$PROJECT_TAG_VAL" == "$PROJECT_NAME" ]; then
-    CLUSTER_ARN="$arn"
-    break
-  fi
-done
-# Export cluster ARN for use in checks
-export CHECK_CLUSTER_ARN="$CLUSTER_ARN"
+# CLUSTER_ARN=\"\" # Remove
+# ... (remove old cluster ARN finding logic here if present) ...
 
 # Run checks for core components
 check_vpc
 check_rds
-check_ecs # Uses exported CHECK_CLUSTER_ARN
-check_alb # Exports CHECK_ALB_DNS on success
-check_ecr
-check_monitoring # Uses exported CHECK_CLUSTER_ARN and CHECK_ALB_DNS
-
-# Run checks for potential issues
-check_orphaned_resources
+check_ecs # Combined cluster and service check
+check_ecr # Added
+check_ecs_task_definitions # Added
+check_alb # Sets ALB_ARN_GLOBAL, ALB_DNS_GLOBAL
+check_alb_listener_rules # Added Call - Uses ALB_ARN_GLOBAL
+check_monitoring # Uses CLUSTER_ARN_GLOBAL and ALB_DNS_GLOBAL
 
 # --- Summary ---
 print_header "CHECK SUMMARY"

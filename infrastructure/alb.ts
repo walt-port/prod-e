@@ -32,6 +32,9 @@ export class Alb extends Construct {
     const prometheusPort = Number(assertEnvVar('PROMETHEUS_PORT'));
     const prometheusHealthPath = assertEnvVar('PROMETHEUS_HEALTH_PATH');
     const prometheusPath = assertEnvVar('PROMETHEUS_PATH');
+    const appPort = Number(assertEnvVar('APP_PORT'));
+    const appPath = assertEnvVar('APP_PATH');
+    const backendApiPath = assertEnvVar('BACKEND_API_PATH');
 
     this.alb = new ApplicationLoadBalancer(this, 'alb', {
       name: `${projectName}-alb`,
@@ -95,6 +98,25 @@ export class Alb extends Construct {
       tags: { Name: `${projectName}-prometheus-tg`, Project: projectName },
     });
 
+    const appTargetGroup = new LbTargetGroup(this, 'app-target-group', {
+      name: `${projectName}-app-tg`,
+      port: appPort,
+      protocol: 'HTTP',
+      vpcId: networking.vpc.id,
+      targetType: 'ip',
+      healthCheck: {
+        enabled: true,
+        path: '/',
+        port: 'traffic-port',
+        healthyThreshold: 2,
+        unhealthyThreshold: 2,
+        timeout: 5,
+        interval: 30,
+        matcher: '200-399',
+      },
+      tags: { Name: `${projectName}-app-tg`, Project: projectName },
+    });
+
     this.listener = new AlbListener(this, 'listener', {
       loadBalancerArn: this.alb.arn,
       port: albPort,
@@ -125,13 +147,18 @@ export class Alb extends Construct {
       action: [{ type: 'forward', targetGroupArn: this.prometheusTargetGroup.arn }],
     });
 
-    // Add default rule for the main backend ECS service
+    new LbListenerRule(this, 'app-rule', {
+      listenerArn: this.listener.arn,
+      priority: 5,
+      action: [{ type: 'forward', targetGroupArn: appTargetGroup.arn }],
+      condition: [{ pathPattern: { values: [appPath] } }],
+    });
+
     new LbListenerRule(this, 'ecs-rule', {
       listenerArn: this.listener.arn,
-      priority: 100, // Lower priority than specific rules
+      priority: 100,
       action: [{ type: 'forward', targetGroupArn: this.ecsTargetGroup.arn }],
-      // Default rule, matches all paths if no other condition matches
-      condition: [{ pathPattern: { values: ['/*'] } }],
+      condition: [{ pathPattern: { values: [backendApiPath] } }],
     });
   }
 }

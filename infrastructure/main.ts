@@ -5,6 +5,7 @@ import { App, RemoteBackend, TerraformOutput, TerraformStack } from 'cdktf';
 import { Construct } from 'constructs';
 import { DataAwsCallerIdentity } from '../.gen/providers/aws/data-aws-caller-identity';
 import { EcsService } from '../.gen/providers/aws/ecs-service';
+import { LbTargetGroup } from '../.gen/providers/aws/lb-target-group';
 import { AwsProvider } from '../.gen/providers/aws/provider';
 import { Alb } from './alb';
 import { Ecs } from './ecs';
@@ -34,6 +35,9 @@ export class ProdEStack extends TerraformStack {
     const backendDesiredCount = Number(assertEnvVar('BACKEND_DESIRED_COUNT'));
     const backendContainerName = assertEnvVar('BACKEND_CONTAINER_NAME');
     const backendPort = Number(assertEnvVar('BACKEND_PORT'));
+    const appDesiredCount = Number(assertEnvVar('APP_DESIRED_COUNT'));
+    const appContainerName = assertEnvVar('APP_CONTAINER_NAME');
+    const appPort = Number(assertEnvVar('APP_PORT'));
 
     const awsProvider = new AwsProvider(this, 'aws', { region: awsRegion });
     new DataAwsCallerIdentity(this, 'current', { provider: awsProvider });
@@ -69,6 +73,31 @@ export class ProdEStack extends TerraformStack {
       forceNewDeployment: true,
       tags: { Name: `${projectName}-backend-service`, Project: projectName },
       dependsOn: [alb.alb, alb.ecsTargetGroup, alb.listener],
+    });
+
+    const appTargetGroup = alb.node.findChild('app-target-group') as LbTargetGroup;
+
+    const appService = new EcsService(this, 'app-service', {
+      name: `${projectName}-app-service`,
+      cluster: ecs.cluster.id,
+      taskDefinition: ecs.appTaskDefinition.arn,
+      desiredCount: appDesiredCount,
+      launchType: 'FARGATE',
+      networkConfiguration: {
+        subnets: networking.privateSubnets.map(s => s.id),
+        securityGroups: [ecs.securityGroup.id],
+        assignPublicIp: false,
+      },
+      loadBalancer: [
+        {
+          targetGroupArn: appTargetGroup.arn,
+          containerName: appContainerName,
+          containerPort: appPort,
+        },
+      ],
+      forceNewDeployment: true,
+      tags: { Name: `${projectName}-app-service`, Project: projectName },
+      dependsOn: [alb.listener, appTargetGroup],
     });
 
     new TerraformOutput(this, 'alb_endpoint', { value: alb.alb.dnsName });
