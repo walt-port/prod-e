@@ -11,7 +11,7 @@ const LoadingTerminal: React.FC<LoadingTerminalProps> = ({
   delayBeforeStart = 500,
   onFinished,
 }) => {
-  const commands = ['cd /.dev/prod-e', 'exec prod-e']; // Define commands
+  const commands = ['cd /app/prod-e', 'exec prod-e']; // Define commands
   const [lines, setLines] = useState<string[]>(['', '']); // State for text of each command line
   const [currentLineIndex, setCurrentLineIndex] = useState(0); // 0 or 1
   const [currentPrompt, setCurrentPrompt] = useState('❯ ~'); // Initial prompt with space
@@ -27,7 +27,6 @@ const LoadingTerminal: React.FC<LoadingTerminalProps> = ({
 
   useEffect(() => {
     isFinishingRef.current = false;
-    let localCurrentLineIndex = 0; // Track internal index
 
     const cleanup = () => {
       if (startTimeoutRef.current) clearTimeout(startTimeoutRef.current);
@@ -39,7 +38,6 @@ const LoadingTerminal: React.FC<LoadingTerminalProps> = ({
 
     // Function to type a single line
     const typeLine = (lineIndex: number) => {
-      let charIndex = 0;
       const currentCommand = commands[lineIndex];
 
       typingIntervalRef.current = setInterval(() => {
@@ -60,13 +58,15 @@ const LoadingTerminal: React.FC<LoadingTerminalProps> = ({
 
           // Check if finished typing the current line
           if (currentLineText.length >= currentCommand.length) {
-            clearInterval(typingIntervalRef.current); // Stop typing this line
+            if (typingIntervalRef.current) {
+              clearInterval(typingIntervalRef.current); // Stop typing this line
+            }
 
             // --- Transition to next step ---
             if (lineIndex === 0) {
               // Finished first command
               setCurrentLineIndex(1); // Allow rendering of next prompt/line
-              setCurrentPrompt('❯ ~/.dev/prod-e'); // Update prompt immediately
+              setCurrentPrompt('❯ /app/prod-e'); // Update prompt immediately
 
               // <<< Explicitly reset line 1 text before scheduling next typing >>>
               setLines(prevLines => {
