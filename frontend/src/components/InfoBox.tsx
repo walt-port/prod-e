@@ -52,29 +52,38 @@ const InfoBox: React.FC = () => {
         <div
           className="flex-grow text-sm text-[#c0caf5] overflow-y-auto font-hermit"
           style={{
-            paddingTop: '0.5rem', // Reduced padding (pt-2)
-            paddingRight: '1rem', // Keep pr-4
-            paddingBottom: '0.5rem', // Reduced padding (pb-2)
-            paddingLeft: '1.5rem', // Keep pl-6 equivalent
+            paddingTop: '0.5rem',
+            paddingRight: '1rem',
+            paddingBottom: '0.5rem',
+            paddingLeft: '1.5rem',
           }}
         >
           <p className="mb-4">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-            incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-            exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure
-            dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+            Welcome to "prod-e" – The Production Experience Showcase, a fully-functional AWS
+            production environment built as a passion project to demonstrate modern cloud
+            architecture principles. This infrastructure features a multi-container ECS cluster
+            hosting a React TypeScript frontend, backend services, and comprehensive monitoring
+            through Prometheus and Grafana – all balanced across availability zones with application
+            load balancing. The architecture is defined and deployed using Infrastructure as Code
+            principles through CDKTF in TypeScript, connecting to a dedicated PostgreSQL RDS
+            database instance for persistent storage.
           </p>
           <p className="mb-4">
-            Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt
-            mollit anim id est laborum. Curabitur pretium tincidunt lacus. Nulla gravida orci a
-            odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus
-            magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.
+            Created from a deep interest in cloud infrastructure and DevOps methodologies, "prod-e"
+            represents the culmination of years of technical knowledge and practical application.
+            This project was born from my desire to build a complete end-to-end system that mirrors
+            enterprise-grade deployments, allowing me to experiment with best practices and advanced
+            configurations in a controlled yet realistic environment. The multi-service architecture
+            demonstrates how complex systems can be elegantly orchestrated in the cloud.
           </p>
           <p>
-            Duis ac tellus et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor.
-            Ut ullamcorper, ligula eu tempor congue, eros est euismod turpis, id tincidunt sapien
-            risus a quam. Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada
-            nulla a mi. Duis sapien sem, aliquet nec, commodo eget, consequat quis, neque.
+            The infrastructure is managed through a robust CI/CD pipeline via GitHub Actions,
+            ensuring consistent and reliable deployments. Post-deployment health checks
+            automatically verify resource availability and configuration, with comprehensive
+            reporting delivered via email. This showcase highlights the power of automation,
+            infrastructure as code, and observability in modern application delivery – principles
+            I've implemented throughout my technical career. "prod-e" stands as testament to the
+            satisfaction that comes from building sophisticated cloud systems that simply work.
           </p>
         </div>
 
