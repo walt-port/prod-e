@@ -123,3 +123,15 @@ body {
 .react-flow__controls-interactive {
   color: #a9b1d6 !important; /* Match icon color */
 }
+
+/* Style React Flow Attribution Link */
+.react-flow__attribution {
+  background-color: rgba(42, 47, 65, 0.6) !important; /* Match control bg, slightly transparent */
+  opacity: 0.6 !important; /* Make it more transparent */
+  border-radius: 4px !important; /* Match control rounding */
+  padding: 2px 4px !important; /* Add slight padding */
+}
+
+.react-flow__attribution a {
+  color: #a9b1d6 !important; /* Match control icon color */
+}
