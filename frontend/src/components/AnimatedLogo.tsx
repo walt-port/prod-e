@@ -4,6 +4,7 @@ const AnimatedLogo: React.FC = () => {
   const [isEgg, setIsEgg] = useState(false);
   const textRef = useRef<HTMLDivElement>(null); // Ref to measure text size
   const [svgSize, setSvgSize] = useState({ width: 0, height: 0 }); // State for SVG dimensions
+  const [pathLength, setPathLength] = useState(0); // <<< Restore pathLength state
 
   const toggleEgg = () => {
     setIsEgg(!isEgg);
@@ -22,6 +23,12 @@ const AnimatedLogo: React.FC = () => {
         width: neededWidth,
         height: neededHeight,
       });
+
+      // <<< Restore perimeter calculation >>>
+      const rectInnerWidth = neededWidth > 0 ? neededWidth - 2 : 0;
+      const rectInnerHeight = neededHeight > 0 ? neededHeight - 2 : 0;
+      const perimeter = Math.round(rectInnerWidth * 2 + rectInnerHeight * 2);
+      setPathLength(perimeter);
     }
   }, [isEgg]); // Re-measure if text content changes (egg toggle)
 
@@ -92,6 +99,26 @@ const AnimatedLogo: React.FC = () => {
           stroke="url(#logoGradient)"
           strokeWidth="2"
           // filter="url(#glowFilter)" // <<< Temporarily disable filter
+        />
+
+        {/* <<< Restore Inner Border rectangle >>> */}
+        <rect
+          id="logoBorderRect"
+          x="1"
+          y="1"
+          width={svgSize.width > 0 ? svgSize.width - 2 : 0}
+          height={svgSize.height > 0 ? svgSize.height - 2 : 0}
+          rx="8"
+          fill="none"
+          stroke="url(#logoGradient)"
+          strokeWidth="2"
+          style={
+            {
+              strokeDasharray: pathLength,
+              strokeDashoffset: pathLength,
+              '--path-length': pathLength,
+            } as React.CSSProperties
+          }
         />
       </svg>
 
