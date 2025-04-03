@@ -115,7 +115,7 @@ const LoadingTerminal: React.FC<LoadingTerminalProps> = ({
 
   return (
     <div
-      className={`bg-[#1a1b26] border border-[#414868]
+      className={`bg-[#1a1b26] border border-[#bb9af7]
                  font-mono text-[#c0caf5] outline-none z-50 p-4
                  transition-opacity duration-500 ease-in-out
                  ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}

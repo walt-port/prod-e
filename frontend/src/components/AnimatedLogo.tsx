@@ -59,7 +59,7 @@ const AnimatedLogo: React.FC = () => {
               type="rotate"
               from="0"
               to="360"
-              dur="10s"
+              dur="5s"
               repeatCount="indefinite"
             />
           </linearGradient>
