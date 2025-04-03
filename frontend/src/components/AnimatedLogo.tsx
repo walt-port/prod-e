@@ -48,18 +48,19 @@ const AnimatedLogo: React.FC = () => {
             y2="100%"
             gradientTransform="rotate(0)"
           >
-            {/* Using colors from original sketch */}
-            <stop offset="0%" style={{ stopColor: '#9ece6a' }} />
-            <stop offset="33%" style={{ stopColor: '#f7768e' }} />
-            <stop offset="66%" style={{ stopColor: '#bb9af7' }} />
-            <stop offset="100%" style={{ stopColor: '#9ece6a' }} />
+            {/* Updated Color Sequence */}
+            <stop offset="0%" style={{ stopColor: '#f7768e' }} /> {/* Pink */}
+            <stop offset="25%" style={{ stopColor: '#e0af68' }} /> {/* Orange */}
+            <stop offset="50%" style={{ stopColor: '#bb9af7' }} /> {/* Purple */}
+            <stop offset="75%" style={{ stopColor: '#7aa2f7' }} /> {/* Blue */}
+            <stop offset="100%" style={{ stopColor: '#f7768e' }} /> {/* Pink (for loop) */}
             {/* Animate the gradient rotation - Re-enabled */}
             <animateTransform
               attributeName="gradientTransform"
               type="rotate"
               from="0"
               to="360"
-              dur="5s"
+              dur="7s"
               repeatCount="indefinite"
             />
           </linearGradient>
