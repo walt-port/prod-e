@@ -10,39 +10,39 @@ interface ContainerStat {
   cpuUsagePercent: number; // Added for the bar graph
 }
 
-// Updated mock data
+// Updated mock data reflecting desired services
 const mockContainerData: ContainerStat[] = [
   {
-    id: 'task-1-backend',
-    name: 'prod-e-backend-1',
+    id: 'task-app',
+    name: 'prod-e-app',
+    cpu: '0.25 vCPU',
+    memory: '512 MiB',
+    status: 'RUNNING',
+    cpuUsagePercent: 75, // Example usage
+  },
+  {
+    id: 'task-backend',
+    name: 'prod-e-backend',
     cpu: '0.25 vCPU',
     memory: '512 MiB',
     status: 'RUNNING',
     cpuUsagePercent: 65,
   },
   {
-    id: 'task-1-prometheus',
-    name: 'prod-e-prometheus-1',
-    cpu: '0.10 vCPU',
-    memory: '256 MiB',
-    status: 'RUNNING',
-    cpuUsagePercent: 30,
-  },
-  {
-    id: 'task-1-grafana',
-    name: 'prod-e-grafana-1',
+    id: 'task-grafana',
+    name: 'prod-e-grafana',
     cpu: '0.15 vCPU',
     memory: '300 MiB',
     status: 'RUNNING',
     cpuUsagePercent: 45,
   },
   {
-    id: 'task-old-stopped',
-    name: 'prod-e-backend-old',
-    cpu: '0.25 vCPU',
-    memory: '512 MiB',
-    status: 'STOPPED',
-    cpuUsagePercent: 0,
+    id: 'task-prometheus',
+    name: 'prod-e-prometheus',
+    cpu: '0.10 vCPU',
+    memory: '256 MiB',
+    status: 'RUNNING',
+    cpuUsagePercent: 30,
   },
 ];
 
@@ -61,7 +61,15 @@ const renderUsageBar = (percentage: number, barWidth = 20) => {
 };
 
 const ResourceMonitorPanel: React.FC = () => {
-  const [containers, setContainers] = useState<ContainerStat[]>(mockContainerData);
+  const [containers] = useState<ContainerStat[]>(mockContainerData);
+
+  // Comment out unused handler for now
+  /*
+  const handleRefresh = () => {
+    // Placeholder for refresh logic
+    console.log('Refresh clicked');
+  };
+  */
 
   const getStatusColor = (status: ContainerStat['status']) => {
     switch (status) {
@@ -80,7 +88,9 @@ const ResourceMonitorPanel: React.FC = () => {
     <div className="h-full flex flex-col" style={{ padding: '1rem' }}>
       {/* Header: Use flex-grow on title span to push button right */}
       <h2 className="text-lg font-semibold text-[#7aa2f7] mb-4 flex items-center">
-        <span className="flex-grow">ECS Container Stats</span>
+        <span className="flex-grow" style={{ textShadow: '0 0 8px rgba(122, 162, 247, 0.4)' }}>
+          prod-e-cluster
+        </span>
         {/* Refresh indicator: Smaller text, adjusted padding */}
         <span
           className="text-[10px] text-gray-400 font-mono font-normal
